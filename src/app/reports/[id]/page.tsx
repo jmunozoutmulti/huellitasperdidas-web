@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchReport } from "@/lib/api";
-import type { PageProps } from "next/dist/server/app-render/app-render";
 
 const TYPE_LABEL: Record<string, string> = {
   lost: "Perdido",
@@ -28,8 +27,8 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export default async function ReportPage({ params }: PageProps) {
-  const { id } = await params as { id: string };
+export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   let report;
   try {
