@@ -90,35 +90,39 @@ function LlmPanel({ result }: { result: Record<string, unknown> }) {
   if (result.error) {
     return <p className="text-red-600 text-sm font-mono">{String(result.error)}</p>;
   }
-  const relevant = result.is_relevant as boolean;
-  const colors = (result.colors as string[] | undefined) ?? [];
-  const marks = (result.distinctive_marks as string[] | undefined) ?? [];
+  const relevant = Boolean(result.is_relevant);
+  const rejectionReason = result.rejection_reason != null ? String(result.rejection_reason) : null;
+  const confidence = typeof result.confidence === "number" ? result.confidence : 0;
+  const colors = Array.isArray(result.colors) ? (result.colors as string[]) : [];
+  const marks = Array.isArray(result.distinctive_marks) ? (result.distinctive_marks as string[]) : [];
+  const hasCollar = result.has_collar != null ? Boolean(result.has_collar) : null;
+  const collarColor = result.collar_color != null ? String(result.collar_color) : null;
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 flex-wrap">
         <Badge ok={relevant}>{relevant ? "RELEVANTE" : "RECHAZADO"}</Badge>
-        {result.rejection_reason && (
-          <code className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">{String(result.rejection_reason)}</code>
+        {rejectionReason && (
+          <code className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">{rejectionReason}</code>
         )}
-        <span className="text-xs text-gray-500">confianza: {((result.confidence as number || 0) * 100).toFixed(0)}%</span>
+        <span className="text-xs text-gray-500">confianza: {(confidence * 100).toFixed(0)}%</span>
       </div>
       <div className="space-y-0.5">
-        <KV label="Tipo reporte" value={result.report_type as string} />
-        <KV label="Mascota" value={result.pet_type as string} />
-        <KV label="Nombre" value={result.name as string} />
+        <KV label="Tipo reporte" value={result.report_type != null ? String(result.report_type) : null} />
+        <KV label="Mascota" value={result.pet_type != null ? String(result.pet_type) : null} />
+        <KV label="Nombre" value={result.name != null ? String(result.name) : null} />
         <KV label="Colores" value={colors.join(", ") || null} />
-        <KV label="Tamaño" value={result.size as string} />
-        <KV label="Sexo" value={result.sex as string} />
+        <KV label="Tamaño" value={result.size != null ? String(result.size) : null} />
+        <KV label="Sexo" value={result.sex != null ? String(result.sex) : null} />
         <KV label="Collar" value={
-          result.has_collar != null
-            ? result.has_collar ? `Sí${result.collar_color ? ` (${result.collar_color})` : ""}` : "No"
+          hasCollar != null
+            ? hasCollar ? `Sí${collarColor ? ` (${collarColor})` : ""}` : "No"
             : null
         } />
-        <KV label="Teléfono" value={result.contact_phone as string} />
-        <KV label="Contacto" value={result.contact_name as string} />
-        <KV label="Distrito" value={result.district as string} />
-        <KV label="Dirección" value={result.address_hint as string} />
-        <KV label="Fecha evento" value={result.event_date as string} />
+        <KV label="Teléfono" value={result.contact_phone != null ? String(result.contact_phone) : null} />
+        <KV label="Contacto" value={result.contact_name != null ? String(result.contact_name) : null} />
+        <KV label="Distrito" value={result.district != null ? String(result.district) : null} />
+        <KV label="Dirección" value={result.address_hint != null ? String(result.address_hint) : null} />
+        <KV label="Fecha evento" value={result.event_date != null ? String(result.event_date) : null} />
         {marks.length > 0 && <KV label="Marcas" value={marks.join(", ")} />}
       </div>
       {result.description_clean && (
@@ -158,7 +162,7 @@ function PostResultCard({ post, index, total }: { post: DebugPostResult; index: 
                 </Badge>
               )}
               {post.llm_result && !post.llm_result.error && (
-                <Badge ok={post.llm_result.is_relevant as boolean}>
+                <Badge ok={Boolean(post.llm_result.is_relevant)}>
                   LLM: {post.llm_result.is_relevant ? "OK" : "NO"}
                 </Badge>
               )}
