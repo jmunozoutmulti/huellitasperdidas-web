@@ -32,6 +32,7 @@ const COLOR_LABEL: Record<string, string> = {
 };
 
 interface ExtractedFeatures {
+  name?: string | null;
   colors?: string[];
   size?: string | null;
   age?: string | null;
@@ -148,6 +149,8 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
 
   const typeColor = TYPE_COLOR[report.report_type] ?? TYPE_COLOR.unknown;
   const typeLabel = TYPE_LABEL[report.report_type] ?? report.report_type;
+  const features = report.extracted_features as ExtractedFeatures;
+  const petName = features.name;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -175,7 +178,11 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
             )}
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900">
+          {petName && (
+            <p className="text-3xl font-bold text-gray-900">{petName}</p>
+          )}
+
+          <h1 className={`font-bold text-gray-900 ${petName ? "text-base text-gray-500 font-normal" : "text-2xl"}`}>
             {report.title ?? "Sin título"}
           </h1>
 
@@ -223,6 +230,12 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
                 </a>
               </div>
             )}
+            {report.address_hint && (
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Referencia de ubicación</span>
+                <span className="font-medium text-gray-800">{report.address_hint}</span>
+              </div>
+            )}
           </div>
 
           {report.source_url && (
@@ -239,7 +252,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
           )}
         </div>
 
-        <FeaturesSection features={report.extracted_features as ExtractedFeatures} />
+        <FeaturesSection features={features} />
 
         {report.images.length > 0 && (
           <div className="space-y-3">
