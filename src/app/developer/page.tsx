@@ -200,6 +200,16 @@ function PostResultCard({ post, index, total }: { post: DebugPostResult; index: 
                     </pre>
                   </div>
                 )}
+                {post.fetch?.ocr_text && (
+                  <div>
+                    <p className="text-xs text-amber-600 font-semibold mb-1">
+                      OCR — texto extraído de imágenes ({post.fetch.ocr_text.length} chars):
+                    </p>
+                    <pre className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded p-3 overflow-auto max-h-40 whitespace-pre-wrap">
+                      {post.fetch.ocr_text.slice(0, 2000)}{post.fetch.ocr_text.length > 2000 ? "\n…" : ""}
+                    </pre>
+                  </div>
+                )}
                 {(post.fetch?.images?.length ?? 0) > 0 && (
                   <div>
                     <p className="text-xs text-gray-400 mb-2">

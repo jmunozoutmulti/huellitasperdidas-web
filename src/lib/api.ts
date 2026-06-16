@@ -133,6 +133,7 @@ export interface DebugFetch {
   raw_text: string | null;
   og_description: string | null;
   is_partial: boolean;
+  ocr_text: string | null;
   images: DebugImage[];
 }
 
