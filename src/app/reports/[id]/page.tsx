@@ -20,12 +20,12 @@ const SEX_LABEL: Record<string, string> = {
 };
 
 const COLOR_LABEL: Record<string, string> = {
-  blanco: "Blanco",
+  blanco: "Blanco / Crema",
   negro: "Negro",
-  marron: "Marrón",
-  amarillo: "Amarillo / Dorado",
-  gris: "Gris",
-  naranja: "Naranja",
+  marron: "Marrón / Caramelo",
+  amarillo: "Amarillo / Dorado / Rubio",
+  gris: "Gris / Plateado",
+  naranja: "Naranja / Rojizo",
   tricolor: "Tricolor",
   manchas: "Con manchas",
   atigrado: "Atigrado",
