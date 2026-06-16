@@ -125,7 +125,7 @@ function LlmPanel({ result }: { result: Record<string, unknown> }) {
         <KV label="Fecha evento" value={result.event_date != null ? String(result.event_date) : null} />
         {marks.length > 0 && <KV label="Marcas" value={marks.join(", ")} />}
       </div>
-      {result.description_clean && (
+      {result.description_clean != null && (
         <div>
           <p className="text-xs text-gray-400 mb-1">Descripción limpia:</p>
           <p className="text-sm text-gray-800 bg-blue-50 rounded p-3 whitespace-pre-wrap border border-blue-100">
