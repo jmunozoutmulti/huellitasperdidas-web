@@ -126,8 +126,8 @@ export interface DebugFetch {
   title: string | null;
   raw_text: string | null;
   og_description: string | null;
-  requires_playwright: boolean;
-  error: string | null;
+  is_partial: boolean;
+  image_urls: string[];
 }
 
 export interface DebugClassifier {
@@ -142,13 +142,20 @@ export interface DebugClassifier {
   advice_matched: string[];
 }
 
+export interface DebugPostResult {
+  url: string;
+  error: string | null;
+  fetch: DebugFetch | null;
+  classifier: DebugClassifier | null;
+  llm_result: Record<string, unknown> | null;
+}
+
 export interface DebugResponse {
   url: string;
   is_feed: boolean;
-  fetch: DebugFetch;
-  classifier: DebugClassifier | null;
-  llm_result: Record<string, unknown> | null;
   llm_available: boolean;
+  error?: string;
+  results: DebugPostResult[];
 }
 
 export async function debugUrl(url: string, is_feed: boolean): Promise<DebugResponse> {

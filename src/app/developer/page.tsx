@@ -2,135 +2,226 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { debugUrl, DebugResponse, DebugClassifier } from "@/lib/api";
+import { debugUrl, DebugResponse, DebugPostResult, DebugClassifier } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Small helpers
 // ---------------------------------------------------------------------------
 
 function Badge({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
       {children}
     </span>
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+      <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-baseline gap-2">
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</h3>
+        {subtitle && <span className="text-xs text-gray-400">{subtitle}</span>}
       </div>
       <div className="p-4">{children}</div>
     </div>
   );
 }
 
-function KeyValue({ label, value }: { label: string; value: React.ReactNode }) {
+function KV({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === null || value === undefined || value === "") return null;
   return (
-    <div className="flex gap-2 text-sm">
-      <span className="text-gray-500 shrink-0 w-36">{label}</span>
-      <span className="text-gray-900 font-mono break-all">{value ?? <span className="text-gray-400 italic">null</span>}</span>
+    <div className="flex gap-2 text-sm py-0.5">
+      <span className="text-gray-400 shrink-0 w-32 text-right">{label}</span>
+      <span className="text-gray-900 font-mono break-all">{value}</span>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Classifier panel
+// ---------------------------------------------------------------------------
+
 function ClassifierPanel({ c }: { c: DebugClassifier }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Badge ok={c.is_relevant}>{c.is_relevant ? "RELEVANTE" : "RECHAZADO"}</Badge>
         {c.rejection_reason && (
-          <span className="text-xs text-red-600 font-mono bg-red-50 px-2 py-0.5 rounded">{c.rejection_reason}</span>
+          <code className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">{c.rejection_reason}</code>
         )}
         <span className="text-xs text-gray-500">confianza: {(c.confidence * 100).toFixed(0)}%</span>
       </div>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div className="bg-green-50 rounded p-2">
-          <div className="text-2xl font-bold text-green-700">{c.pos_hits}</div>
-          <div className="text-xs text-green-600">keywords +</div>
-        </div>
-        <div className="bg-red-50 rounded p-2">
-          <div className="text-2xl font-bold text-red-700">{c.neg_hits}</div>
-          <div className="text-xs text-red-600">keywords −</div>
-        </div>
-        <div className="bg-yellow-50 rounded p-2">
-          <div className="text-2xl font-bold text-yellow-700">{c.advice_hits}</div>
-          <div className="text-xs text-yellow-600">señales artículo</div>
-        </div>
+      <div className="grid grid-cols-3 gap-3 text-center">
+        {[
+          { count: c.pos_hits, label: "keywords +", color: "green" },
+          { count: c.neg_hits, label: "keywords −", color: "red" },
+          { count: c.advice_hits, label: "señales artículo", color: "yellow" },
+        ].map(({ count, label, color }) => (
+          <div key={label} className={`bg-${color}-50 rounded p-2`}>
+            <div className={`text-2xl font-bold text-${color}-700`}>{count}</div>
+            <div className={`text-xs text-${color}-600`}>{label}</div>
+          </div>
+        ))}
       </div>
-      {c.positive_matched.length > 0 && (
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Positivos encontrados:</p>
+      {[
+        { list: c.positive_matched, label: "Positivos", colorClass: "bg-green-100 text-green-800" },
+        { list: c.negative_matched, label: "Negativos", colorClass: "bg-red-100 text-red-800" },
+        { list: c.advice_matched, label: "Artículo", colorClass: "bg-yellow-100 text-yellow-800" },
+      ].filter(({ list }) => list.length > 0).map(({ list, label, colorClass }) => (
+        <div key={label}>
+          <p className="text-xs text-gray-400 mb-1">{label}:</p>
           <div className="flex flex-wrap gap-1">
-            {c.positive_matched.map((kw) => (
-              <span key={kw} className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded font-mono">{kw}</span>
+            {list.map((kw) => (
+              <span key={kw} className={`text-xs px-2 py-0.5 rounded font-mono ${colorClass}`}>{kw}</span>
             ))}
           </div>
         </div>
-      )}
-      {c.negative_matched.length > 0 && (
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Negativos encontrados:</p>
-          <div className="flex flex-wrap gap-1">
-            {c.negative_matched.map((kw) => (
-              <span key={kw} className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded font-mono">{kw}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {c.advice_matched.length > 0 && (
-        <div>
-          <p className="text-xs text-gray-500 mb-1">Señales de artículo encontradas:</p>
-          <div className="flex flex-wrap gap-1">
-            {c.advice_matched.map((kw) => (
-              <span key={kw} className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded font-mono">{kw}</span>
-            ))}
-          </div>
-        </div>
-      )}
+      ))}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// LLM panel
+// ---------------------------------------------------------------------------
 
 function LlmPanel({ result }: { result: Record<string, unknown> }) {
   if (result.error) {
     return <p className="text-red-600 text-sm font-mono">{String(result.error)}</p>;
   }
   const relevant = result.is_relevant as boolean;
+  const colors = (result.colors as string[] | undefined) ?? [];
+  const marks = (result.distinctive_marks as string[] | undefined) ?? [];
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Badge ok={relevant}>{relevant ? "RELEVANTE" : "RECHAZADO"}</Badge>
         {result.rejection_reason && (
-          <span className="text-xs text-red-600 font-mono bg-red-50 px-2 py-0.5 rounded">{String(result.rejection_reason)}</span>
+          <code className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">{String(result.rejection_reason)}</code>
         )}
         <span className="text-xs text-gray-500">confianza: {((result.confidence as number || 0) * 100).toFixed(0)}%</span>
       </div>
-      <div className="grid grid-cols-1 gap-1.5">
-        <KeyValue label="Tipo reporte" value={result.report_type as string} />
-        <KeyValue label="Tipo mascota" value={result.pet_type as string} />
-        <KeyValue label="Nombre" value={result.name as string} />
-        <KeyValue label="Colores" value={(result.colors as string[] || []).join(", ") || null} />
-        <KeyValue label="Tamaño" value={result.size as string} />
-        <KeyValue label="Sexo" value={result.sex as string} />
-        <KeyValue label="Collar" value={result.has_collar != null ? (result.has_collar ? `Sí${result.collar_color ? ` (${result.collar_color})` : ""}` : "No") : null} />
-        <KeyValue label="Teléfono" value={result.contact_phone as string} />
-        <KeyValue label="Contacto" value={result.contact_name as string} />
-        <KeyValue label="Distrito" value={result.district as string} />
-        <KeyValue label="Dirección" value={result.address_hint as string} />
-        <KeyValue label="Fecha evento" value={result.event_date as string} />
-        {(result.distinctive_marks as string[] || []).length > 0 && (
-          <KeyValue label="Marcas" value={(result.distinctive_marks as string[]).join(", ")} />
-        )}
+      <div className="space-y-0.5">
+        <KV label="Tipo reporte" value={result.report_type as string} />
+        <KV label="Mascota" value={result.pet_type as string} />
+        <KV label="Nombre" value={result.name as string} />
+        <KV label="Colores" value={colors.join(", ") || null} />
+        <KV label="Tamaño" value={result.size as string} />
+        <KV label="Sexo" value={result.sex as string} />
+        <KV label="Collar" value={
+          result.has_collar != null
+            ? result.has_collar ? `Sí${result.collar_color ? ` (${result.collar_color})` : ""}` : "No"
+            : null
+        } />
+        <KV label="Teléfono" value={result.contact_phone as string} />
+        <KV label="Contacto" value={result.contact_name as string} />
+        <KV label="Distrito" value={result.district as string} />
+        <KV label="Dirección" value={result.address_hint as string} />
+        <KV label="Fecha evento" value={result.event_date as string} />
+        {marks.length > 0 && <KV label="Marcas" value={marks.join(", ")} />}
       </div>
       {result.description_clean && (
         <div>
-          <p className="text-xs text-gray-500 mb-1">Descripción limpia:</p>
-          <p className="text-sm text-gray-800 bg-gray-50 rounded p-3 whitespace-pre-wrap border border-gray-200">
+          <p className="text-xs text-gray-400 mb-1">Descripción limpia:</p>
+          <p className="text-sm text-gray-800 bg-blue-50 rounded p-3 whitespace-pre-wrap border border-blue-100">
             {String(result.description_clean)}
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Single post result card
+// ---------------------------------------------------------------------------
+
+function PostResultCard({ post, index, total }: { post: DebugPostResult; index: number; total: number }) {
+  const [expanded, setExpanded] = useState(index === 0);
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-xs text-gray-400 shrink-0">Post {index + 1}/{total}</span>
+          {post.error ? (
+            <span className="text-red-600 text-xs font-mono truncate">{post.error}</span>
+          ) : (
+            <>
+              {post.classifier && (
+                <Badge ok={post.classifier.is_relevant}>
+                  {post.classifier.is_relevant ? "RELEVANTE" : "RECHAZADO"}
+                </Badge>
+              )}
+              {post.llm_result && !post.llm_result.error && (
+                <Badge ok={post.llm_result.is_relevant as boolean}>
+                  LLM: {post.llm_result.is_relevant ? "OK" : "NO"}
+                </Badge>
+              )}
+              <span className="text-xs text-gray-500 truncate font-mono">{post.url}</span>
+            </>
+          )}
+        </div>
+        <span className="text-gray-400 text-xs shrink-0 ml-2">{expanded ? "▲" : "▼"}</span>
+      </button>
+
+      {expanded && (
+        <div className="divide-y divide-gray-100">
+          {post.error ? (
+            <div className="p-4 bg-red-50 text-red-700 text-sm">
+              <strong>Error:</strong> {post.error}
+            </div>
+          ) : (
+            <>
+              {/* Fetch */}
+              <div className="p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fetch</p>
+                <div className="space-y-0.5">
+                  <KV label="HTTP status" value={post.fetch?.status_code} />
+                  <KV label="Título" value={post.fetch?.title} />
+                  <KV label="OG description" value={post.fetch?.og_description} />
+                  {post.fetch?.is_partial && (
+                    <div className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded">Contenido parcial</div>
+                  )}
+                </div>
+                {post.fetch?.raw_text && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Texto extraído ({post.fetch.raw_text.length} chars):</p>
+                    <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded p-3 overflow-auto max-h-40 whitespace-pre-wrap">
+                      {post.fetch.raw_text.slice(0, 1500)}{post.fetch.raw_text.length > 1500 ? "\n…" : ""}
+                    </pre>
+                  </div>
+                )}
+                {(post.fetch?.image_urls?.length ?? 0) > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {post.fetch!.image_urls.slice(0, 4).map((src, i) => (
+                      <img key={i} src={src} alt="" className="w-20 h-20 object-cover rounded border border-gray-200" />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Classifier */}
+              {post.classifier && (
+                <div className="p-4 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Clasificador</p>
+                  <ClassifierPanel c={post.classifier} />
+                </div>
+              )}
+
+              {/* LLM */}
+              {post.llm_result ? (
+                <div className="p-4 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">OpenAI LLM</p>
+                  <LlmPanel result={post.llm_result} />
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -167,18 +258,17 @@ export default function DeveloperPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div>
             <Link href="/" className="text-blue-600 hover:underline text-sm">← Volver al listado</Link>
-            <h1 className="text-xl font-bold text-gray-900 mt-1">Developer Tool</h1>
-            <p className="text-sm text-gray-500">Prueba una URL y ve qué extraería el worker</p>
+            <h1 className="text-xl font-bold text-gray-900 mt-0.5">Developer Tool</h1>
+            <p className="text-sm text-gray-500">Prueba una URL con el pipeline real del worker (Playwright incluido)</p>
           </div>
-          <span className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium">Solo admin</span>
+          <span className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium shrink-0">Admin only</span>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-        {/* Input form */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -188,26 +278,30 @@ export default function DeveloperPage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.facebook.com/groups/... o cualquier URL"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+              <p className="text-xs text-gray-400 mt-1">
+                Facebook e Instagram usan Playwright automáticamente — puede tomar hasta 30 segundos.
+              </p>
             </div>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="flex items-start gap-6 flex-wrap">
+              <label className="flex items-start gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={isFeed}
                   onChange={(e) => setIsFeed(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600"
                 />
-                <span className="text-sm text-gray-700">
-                  Es un <strong>feed</strong> (grupo/perfil con múltiples posts — se rescrapea en cada corrida)
-                </span>
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Es un feed</span>
+                  <p className="text-xs text-gray-400">Grupo / perfil con múltiples posts. Se rescrapea en cada corrida. Muestra hasta 5 posts de muestra.</p>
+                </div>
               </label>
               <button
                 type="submit"
                 disabled={loading || !url.trim()}
-                className="ml-auto px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ml-auto px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Analizando…" : "Analizar URL"}
               </button>
@@ -215,80 +309,50 @@ export default function DeveloperPage() {
           </form>
         </div>
 
+        {loading && (
+          <div className="text-center py-10 text-gray-500 text-sm">
+            Ejecutando el worker con esta URL… Facebook puede tomar hasta 30s.
+          </div>
+        )}
+
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">{error}</div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+            <strong>Error:</strong> {error}
+          </div>
         )}
 
         {result && (
           <div className="space-y-4">
-            {/* Fetch result */}
-            <SectionCard title="1. Fetch — contenido descargado">
-              {result.fetch.requires_playwright ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-yellow-800 text-sm">
-                  <strong>Requiere Playwright:</strong> {result.fetch.error}
-                </div>
-              ) : result.fetch.error ? (
-                <div className="bg-red-50 border border-red-200 rounded p-3 text-red-700 text-sm">
-                  <strong>Error:</strong> {result.fetch.error}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 gap-1.5">
-                    <KeyValue label="HTTP status" value={result.fetch.status_code} />
-                    <KeyValue label="Título" value={result.fetch.title} />
-                    <KeyValue label="OG description" value={result.fetch.og_description} />
-                  </div>
-                  {result.fetch.raw_text && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Texto extraído ({result.fetch.raw_text.length} chars):</p>
-                      <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap">
-                        {result.fetch.raw_text.slice(0, 2000)}{result.fetch.raw_text.length > 2000 ? "\n…(truncado)" : ""}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-            </SectionCard>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-800">
+                {result.results.length} {result.is_feed ? "posts extraídos del feed" : "resultado"}
+              </h2>
+              <div className="flex gap-2 text-xs">
+                <span className={`px-2 py-1 rounded ${result.llm_available ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                  OpenAI: {result.llm_available ? "activo" : "sin clave"}
+                </span>
+                {result.error && (
+                  <span className="bg-red-100 text-red-700 px-2 py-1 rounded">{result.error}</span>
+                )}
+              </div>
+            </div>
 
-            {/* Classifier */}
-            {result.classifier ? (
-              <SectionCard title="2. Clasificador — ¿es un anuncio real?">
-                <ClassifierPanel c={result.classifier} />
-              </SectionCard>
+            {result.results.length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 text-sm">
+                No se extrajeron posts. {result.error ? `Error: ${result.error}` : "La URL podría requerir autenticación o tener contenido vacío."}
+              </div>
             ) : (
-              !result.fetch.requires_playwright && (
-                <SectionCard title="2. Clasificador">
-                  <p className="text-sm text-gray-500">No hay texto para clasificar.</p>
-                </SectionCard>
-              )
+              <div className="space-y-3">
+                {result.results.map((post, i) => (
+                  <PostResultCard key={i} post={post} index={i} total={result.results.length} />
+                ))}
+              </div>
             )}
 
-            {/* LLM */}
-            {result.llm_available ? (
-              result.llm_result ? (
-                <SectionCard title="3. OpenAI — normalización LLM">
-                  <LlmPanel result={result.llm_result} />
-                </SectionCard>
-              ) : (
-                !result.fetch.requires_playwright && (
-                  <SectionCard title="3. OpenAI — normalización LLM">
-                    <p className="text-sm text-gray-500">No se ejecutó (sin texto).</p>
-                  </SectionCard>
-                )
-              )
-            ) : (
-              <SectionCard title="3. OpenAI — normalización LLM">
-                <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-yellow-800 text-sm">
-                  OpenAI no configurado. Agrega <code className="font-mono">OPENAI_API_KEY</code> en el .env del servidor para activarlo.
-                </div>
-              </SectionCard>
-            )}
-
-            {/* Feed note */}
             <div className={`rounded-lg border p-4 text-sm ${isFeed ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-gray-50 border-gray-200 text-gray-600"}`}>
               {isFeed
-                ? "Esta URL está marcada como feed — el worker la rescrapeará en cada corrida automáticamente."
-                : "Esta URL NO es un feed — el worker la procesará una sola vez."}
+                ? "Esta URL como feed será rescrapeada automáticamente en cada corrida del worker."
+                : "Esta URL como post individual será procesada una sola vez."}
             </div>
           </div>
         )}
