@@ -94,6 +94,11 @@ export interface SearchRequest {
   image_base64?: string;
 }
 
+export interface SearchResult extends Report {
+  match_score: number;
+  match_pct: number;
+}
+
 export interface SearchMeta {
   extracted_features: {
     pet_type?: string | null;
@@ -104,10 +109,11 @@ export interface SearchMeta {
   };
   image_colors: string[];
   total_candidates: number;
+  phash_matches: number;
 }
 
 export interface SearchResponse {
-  results: Report[];
+  results: SearchResult[];
   meta: SearchMeta;
 }
 
