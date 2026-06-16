@@ -2,6 +2,115 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchReport } from "@/lib/api";
 
+const SIZE_LABEL: Record<string, string> = {
+  small: "Pequeño",
+  medium: "Mediano",
+  large: "Grande",
+};
+
+const AGE_LABEL: Record<string, string> = {
+  puppy: "Cachorro",
+  adult: "Adulto",
+  senior: "Senior",
+};
+
+const SEX_LABEL: Record<string, string> = {
+  male: "Macho",
+  female: "Hembra",
+};
+
+const COLOR_LABEL: Record<string, string> = {
+  blanco: "Blanco",
+  negro: "Negro",
+  marron: "Marrón",
+  amarillo: "Amarillo / Dorado",
+  gris: "Gris",
+  naranja: "Naranja",
+  tricolor: "Tricolor",
+  manchas: "Con manchas",
+  atigrado: "Atigrado",
+};
+
+interface ExtractedFeatures {
+  colors?: string[];
+  size?: string | null;
+  age?: string | null;
+  sex?: string | null;
+  has_collar?: boolean;
+  collar_color?: string | null;
+  distinctive_marks?: string[];
+}
+
+function FeaturesSection({ features }: { features: ExtractedFeatures }) {
+  const colors = features.colors ?? [];
+  const marks = features.distinctive_marks ?? [];
+  const hasAnything =
+    colors.length > 0 ||
+    features.size ||
+    features.age ||
+    (features.sex && features.sex !== "unknown") ||
+    features.has_collar ||
+    marks.length > 0;
+
+  if (!hasAnything) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-gray-800">Características físicas</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+        {features.size && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Tamaño</span>
+            <span className="font-medium text-gray-800">{SIZE_LABEL[features.size] ?? features.size}</span>
+          </div>
+        )}
+        {features.age && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Edad aprox.</span>
+            <span className="font-medium text-gray-800">{AGE_LABEL[features.age] ?? features.age}</span>
+          </div>
+        )}
+        {features.sex && features.sex !== "unknown" && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Sexo</span>
+            <span className="font-medium text-gray-800">{SEX_LABEL[features.sex] ?? features.sex}</span>
+          </div>
+        )}
+        {features.has_collar && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Collar</span>
+            <span className="font-medium text-gray-800">
+              {features.collar_color ? `Sí, color ${features.collar_color}` : "Sí"}
+            </span>
+          </div>
+        )}
+      </div>
+      {colors.length > 0 && (
+        <div>
+          <span className="text-gray-400 block text-xs uppercase tracking-wide mb-2">Colores</span>
+          <div className="flex flex-wrap gap-2">
+            {colors.map((c) => (
+              <span key={c} className="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full capitalize">
+                {COLOR_LABEL[c] ?? c}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {marks.length > 0 && (
+        <div>
+          <span className="text-gray-400 block text-xs uppercase tracking-wide mb-2">Marcas distintivas</span>
+          <ul className="text-sm text-gray-700 space-y-1">
+            {marks.map((m, i) => (
+              <li key={i} className="capitalize">• {m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TYPE_LABEL: Record<string, string> = {
   lost: "Perdido",
   found: "Encontrado",
@@ -101,6 +210,19 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
                 <span className="font-medium text-gray-800">{report.contact_name}</span>
               </div>
             )}
+            {report.contact_phone && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Teléfono</span>
+                <a
+                  href={`https://wa.me/${report.contact_phone.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-green-700 hover:underline"
+                >
+                  {report.contact_phone}
+                </a>
+              </div>
+            )}
           </div>
 
           {report.source_url && (
@@ -116,6 +238,8 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
             </div>
           )}
         </div>
+
+        <FeaturesSection features={report.extracted_features as ExtractedFeatures} />
 
         {report.images.length > 0 && (
           <div className="space-y-3">
