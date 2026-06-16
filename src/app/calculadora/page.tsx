@@ -163,7 +163,7 @@ function NumInput({
         const v = parseFloat(e.target.value);
         if (!isNaN(v) && v >= 0) onChange(v);
       }}
-      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-right font-mono bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-right font-mono text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
     />
   );
 }
