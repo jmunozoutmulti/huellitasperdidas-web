@@ -87,3 +87,40 @@ export async function fetchStats(): Promise<Stats> {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export interface SearchRequest {
+  district: string;
+  text?: string;
+  image_base64?: string;
+}
+
+export interface SearchMeta {
+  extracted_features: {
+    pet_type?: string | null;
+    name?: string | null;
+    colors?: string[];
+    size?: string | null;
+    has_collar?: boolean;
+  };
+  image_colors: string[];
+  total_candidates: number;
+}
+
+export interface SearchResponse {
+  results: Report[];
+  meta: SearchMeta;
+}
+
+export async function searchPets(req: SearchRequest): Promise<SearchResponse> {
+  const res = await fetch(`${API_BASE}/v1/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `API error: ${res.status}`);
+  }
+  return res.json();
+}
