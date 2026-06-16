@@ -67,6 +67,12 @@ export default function HomePage() {
             >
               Dev
             </Link>
+            <Link
+              href="/calculadora"
+              className="bg-gray-100 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+            >
+              Costos
+            </Link>
           </div>
           <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
             <input
