@@ -123,7 +123,8 @@ export interface SearchResponse {
 
 export interface DebugImage {
   url: string;
-  is_pet_photo: boolean | null;
+  is_pet: boolean | null;
+  score: number | null;
 }
 
 export interface DebugFetch {
