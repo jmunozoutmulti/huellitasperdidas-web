@@ -40,6 +40,7 @@ interface ExtractedFeatures {
   has_collar?: boolean;
   collar_color?: string | null;
   distinctive_marks?: string[];
+  physical_traits?: Record<string, string>;
 }
 
 function FeaturesSection({ features }: { features: ExtractedFeatures }) {
@@ -106,6 +107,19 @@ function FeaturesSection({ features }: { features: ExtractedFeatures }) {
               <li key={i} className="capitalize">• {m}</li>
             ))}
           </ul>
+        </div>
+      )}
+      {features.physical_traits && Object.keys(features.physical_traits).length > 0 && (
+        <div>
+          <span className="text-gray-400 block text-xs uppercase tracking-wide mb-2">Características adicionales</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+            {Object.entries(features.physical_traits).map(([k, v]) => (
+              <div key={k}>
+                <span className="text-gray-400 block text-xs capitalize">{k.replace(/_/g, " ")}</span>
+                <span className="font-medium text-gray-800 capitalize">{v}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
