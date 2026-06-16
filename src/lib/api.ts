@@ -121,13 +121,18 @@ export interface SearchResponse {
 // Developer debug
 // ---------------------------------------------------------------------------
 
+export interface DebugImage {
+  url: string;
+  is_pet_photo: boolean | null;
+}
+
 export interface DebugFetch {
   status_code: number | null;
   title: string | null;
   raw_text: string | null;
   og_description: string | null;
   is_partial: boolean;
-  image_urls: string[];
+  images: DebugImage[];
 }
 
 export interface DebugClassifier {

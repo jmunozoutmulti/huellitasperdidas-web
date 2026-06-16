@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { debugUrl, DebugResponse, DebugPostResult, DebugClassifier } from "@/lib/api";
+import { debugUrl, DebugResponse, DebugPostResult, DebugClassifier, DebugImage } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -200,11 +200,39 @@ function PostResultCard({ post, index, total }: { post: DebugPostResult; index: 
                     </pre>
                   </div>
                 )}
-                {(post.fetch?.image_urls?.length ?? 0) > 0 && (
-                  <div className="flex gap-2 flex-wrap">
-                    {post.fetch!.image_urls.slice(0, 4).map((src, i) => (
-                      <img key={i} src={src} alt="" className="w-20 h-20 object-cover rounded border border-gray-200" />
-                    ))}
+                {(post.fetch?.images?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">
+                      Imágenes ({post.fetch!.images.length}):
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      {post.fetch!.images.map((img: DebugImage, i: number) => (
+                        <div key={i} className="relative w-24 h-24 shrink-0">
+                          <img
+                            src={img.url}
+                            alt=""
+                            className={`w-24 h-24 object-cover rounded border ${img.is_pet_photo === false ? "border-red-400 opacity-50" : "border-gray-200"}`}
+                          />
+                          {img.is_pet_photo === false && (
+                            <div className="absolute inset-0 flex items-center justify-center rounded bg-red-900/40">
+                              <span className="text-white text-[10px] font-bold bg-red-600 px-1.5 py-0.5 rounded text-center leading-tight">
+                                NO SE<br/>USARÁ
+                              </span>
+                            </div>
+                          )}
+                          {img.is_pet_photo === true && (
+                            <div className="absolute bottom-1 right-1">
+                              <span className="text-[10px] font-bold bg-green-600 text-white px-1 py-0.5 rounded">✓</span>
+                            </div>
+                          )}
+                          {img.is_pet_photo === null && (
+                            <div className="absolute bottom-1 right-1">
+                              <span className="text-[10px] bg-gray-500 text-white px-1 py-0.5 rounded">?</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
