@@ -219,7 +219,8 @@ function PostResultCard({ post, index, total }: { post: DebugPostResult; index: 
                       {post.fetch!.images.map((img: DebugImage, i: number) => {
                         const discarded = img.is_pet === false;
                         const scoreLabel = img.score != null ? `${Math.round(img.score * 10)}/10` : null;
-                        const scoreBg = img.score == null ? "bg-gray-500"
+                        const scoreBg = discarded ? "bg-red-700"
+                          : img.score == null ? "bg-gray-500"
                           : img.score >= 0.8 ? "bg-green-600"
                           : img.score >= 0.5 ? "bg-yellow-500"
                           : "bg-orange-500";
@@ -237,18 +238,17 @@ function PostResultCard({ post, index, total }: { post: DebugPostResult; index: 
                                 </span>
                               </div>
                             )}
-                            {!discarded && scoreLabel && (
+                            {scoreLabel != null ? (
                               <div className="absolute bottom-1 right-1">
                                 <span className={`text-[10px] font-bold ${scoreBg} text-white px-1 py-0.5 rounded`}>
                                   {scoreLabel}
                                 </span>
                               </div>
-                            )}
-                            {img.is_pet === null && (
+                            ) : img.is_pet === null ? (
                               <div className="absolute bottom-1 right-1">
                                 <span className="text-[10px] bg-gray-500 text-white px-1 py-0.5 rounded">?</span>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}
