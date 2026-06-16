@@ -65,6 +65,20 @@ const SERVICES: Service[] = [
       "detail:low = 85 tok imagen · ~50 tok texto input · ~5 tok output · ≈ $0.000023/imagen",
   },
   {
+    id: "openai_ocr",
+    name: "OpenAI gpt-4o-mini — OCR flyers",
+    description: "Extrae texto de posts que son solo imagen (flyers, afiches)",
+    volumeLabel: "posts / mes",
+    unitLabel: "USD / post",
+    defaultVolume: 150,
+    defaultPrice: 0.0003,
+    isFixed: false,
+    priceStep: 0.00001,
+    volumeStep: 25,
+    pricingNote:
+      "Solo corre cuando raw_text < 200 chars y hay imágenes · detail:low + 600 tok output ≈ $0.0003/post · hasta 3 imágenes por post",
+  },
+  {
     id: "proxy",
     name: "IPRoyal Proxy Residencial",
     description: "Tráfico para scraping de Facebook con Playwright",
