@@ -117,6 +117,54 @@ export interface SearchResponse {
   meta: SearchMeta;
 }
 
+// ---------------------------------------------------------------------------
+// Developer debug
+// ---------------------------------------------------------------------------
+
+export interface DebugFetch {
+  status_code: number | null;
+  title: string | null;
+  raw_text: string | null;
+  og_description: string | null;
+  requires_playwright: boolean;
+  error: string | null;
+}
+
+export interface DebugClassifier {
+  is_relevant: boolean;
+  confidence: number;
+  rejection_reason: string | null;
+  pos_hits: number;
+  neg_hits: number;
+  advice_hits: number;
+  positive_matched: string[];
+  negative_matched: string[];
+  advice_matched: string[];
+}
+
+export interface DebugResponse {
+  url: string;
+  is_feed: boolean;
+  fetch: DebugFetch;
+  classifier: DebugClassifier | null;
+  llm_result: Record<string, unknown> | null;
+  llm_available: boolean;
+}
+
+export async function debugUrl(url: string, is_feed: boolean): Promise<DebugResponse> {
+  const res = await fetch(`${API_BASE}/v1/admin/debug/process-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, is_feed }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function searchPets(req: SearchRequest): Promise<SearchResponse> {
   const res = await fetch(`${API_BASE}/v1/search`, {
     method: "POST",
