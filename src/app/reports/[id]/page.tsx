@@ -180,7 +180,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
           </h1>
 
           {report.description && (
-            <p className="text-gray-700 leading-relaxed">{report.description}</p>
+            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{report.description}</p>
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm pt-2">
