@@ -88,10 +88,25 @@ export async function fetchStats(): Promise<Stats> {
   return res.json();
 }
 
+export interface AnalyzeImageResult {
+  is_pet: boolean;
+  validation_error: string | null;
+  pet_type: string | null;
+  colors: string[];
+  size: string | null;
+  sex: string | null;
+  has_collar: boolean;
+  collar_color: string | null;
+  distinctive_marks: string[];
+  physical_traits: Record<string, string>;
+  summary: string;
+}
+
 export interface SearchRequest {
   district: string;
   text?: string;
   image_base64?: string;
+  image_features?: AnalyzeImageResult;
 }
 
 export interface SearchResult extends Report {
@@ -105,11 +120,15 @@ export interface SearchMeta {
     name?: string | null;
     colors?: string[];
     size?: string | null;
+    sex?: string | null;
     has_collar?: boolean;
+    collar_color?: string | null;
+    distinctive_marks?: string[];
   };
   image_colors: string[];
   total_candidates: number;
   phash_matches: number;
+  image_summary: string;
 }
 
 export interface SearchResponse {
@@ -170,6 +189,20 @@ export async function debugUrl(url: string, is_feed: boolean): Promise<DebugResp
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url, is_feed }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail ?? `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function analyzeImage(image_base64: string): Promise<AnalyzeImageResult> {
+  const res = await fetch(`${API_BASE}/v1/search/analyze-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image_base64 }),
     cache: "no-store",
   });
   if (!res.ok) {
