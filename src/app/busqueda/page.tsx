@@ -14,6 +14,26 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
+const MAX_IMAGE_PX = 1024;
+const IMAGE_QUALITY = 0.85;
+
+function compressImage(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAX_IMAGE_PX / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", IMAGE_QUALITY));
+    };
+    img.src = dataUrl;
+  });
+}
+
 const LIMA_DISTRICTS = [
   "Ancón", "Ate", "Barranco", "Breña", "Carabayllo", "Cercado de Lima",
   "Chaclacayo", "Chorrillos", "Cieneguilla", "Comas", "El Agustino",
@@ -229,25 +249,27 @@ export default function BusquedaPage() {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const b64 = reader.result as string;
-      setImagePreview(b64);
-      setImageBase64(b64);
-      setAnalyzing(true);
+      const raw = reader.result as string;
+      compressImage(raw).then((b64) => {
+        setImagePreview(b64);
+        setImageBase64(b64);
+        setAnalyzing(true);
 
-      analyzeImage(b64)
-        .then((result) => {
-          if (!result.is_pet) {
-            setAnalyzeError(result.validation_error ?? "La imagen no parece ser una mascota.");
-            setImageBase64(null);
-            setImagePreview(null);
-          } else {
-            setDetectedFeatures(result);
-          }
-        })
-        .catch(() => {
-          // API unavailable — keep image, proceed without LLM features
-        })
-        .finally(() => setAnalyzing(false));
+        analyzeImage(b64)
+          .then((result) => {
+            if (!result.is_pet) {
+              setAnalyzeError(result.validation_error ?? "La imagen no parece ser una mascota.");
+              setImageBase64(null);
+              setImagePreview(null);
+            } else {
+              setDetectedFeatures(result);
+            }
+          })
+          .catch(() => {
+            // API unavailable — keep image, proceed without LLM features
+          })
+          .finally(() => setAnalyzing(false));
+      });
     };
     reader.readAsDataURL(file);
   }, []);
