@@ -54,7 +54,7 @@ export default function ReportCard({ report }: { report: Report }) {
   const sourceColor = SOURCE_COLOR[report.source_type] ?? "bg-gray-50 text-gray-500 border border-gray-200";
 
   return (
-    <Link href={`/reports/${report.id}`} className="block group">
+    <Link href={`/report?id=${report.id}`} className="block group">
       <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
         {image ? (
           <div className="h-48 bg-gray-100 overflow-hidden">

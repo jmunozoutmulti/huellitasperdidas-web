@@ -1,6 +1,9 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { fetchReport } from "@/lib/api";
+import { fetchReport, type ReportDetail } from "@/lib/api";
 
 const SIZE_LABEL: Record<string, string> = {
   small: "Pequeño",
@@ -151,14 +154,51 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+const LoadingSkeleton = () => (
+  <div className="min-h-screen bg-gray-50">
+    <header className="bg-white border-b border-gray-200">
+      <div className="max-w-4xl mx-auto px-4 py-4">
+        <Link href="/" className="text-blue-600 hover:underline text-sm">← Volver al listado</Link>
+      </div>
+    </header>
+    <main className="max-w-4xl mx-auto px-4 py-8 space-y-4 animate-pulse">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div className="h-6 bg-gray-200 rounded w-1/4" />
+        <div className="h-8 bg-gray-200 rounded w-3/4" />
+        <div className="h-4 bg-gray-200 rounded w-full" />
+        <div className="h-4 bg-gray-200 rounded w-5/6" />
+      </div>
+    </main>
+  </div>
+);
 
-  let report;
-  try {
-    report = await fetchReport(id);
-  } catch {
-    notFound();
+function ReportContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+
+  const [report, setReport] = useState<ReportDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!id) { setLoading(false); setError(true); return; }
+    fetchReport(id)
+      .then(setReport)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return <LoadingSkeleton />;
+
+  if (error || !report) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center px-4">
+        <div className="text-5xl mb-4">🐾</div>
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Reporte no encontrado</h1>
+        <p className="text-gray-500 text-sm mb-6">Es posible que este reporte haya sido eliminado o la URL no sea válida.</p>
+        <Link href="/" className="text-blue-600 hover:underline text-sm">← Volver al listado</Link>
+      </div>
+    );
   }
 
   const typeColor = TYPE_COLOR[report.report_type] ?? TYPE_COLOR.unknown;
@@ -170,31 +210,21 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <Link href="/" className="text-blue-600 hover:underline text-sm">
-            ← Volver al listado
-          </Link>
+          <Link href="/" className="text-blue-600 hover:underline text-sm">← Volver al listado</Link>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className={`text-sm font-semibold px-3 py-1 rounded-full ${typeColor}`}>
-              {typeLabel}
-            </span>
+            <span className={`text-sm font-semibold px-3 py-1 rounded-full ${typeColor}`}>{typeLabel}</span>
             {report.pet_type && (
-              <span className="text-sm text-gray-600 capitalize bg-gray-100 px-3 py-1 rounded-full">
-                {report.pet_type}
-              </span>
+              <span className="text-sm text-gray-600 capitalize bg-gray-100 px-3 py-1 rounded-full">{report.pet_type}</span>
             )}
-            {report.has_video && (
-              <span className="text-sm text-gray-500">▶ Tiene video</span>
-            )}
+            {report.has_video && <span className="text-sm text-gray-500">▶ Tiene video</span>}
           </div>
 
-          {petName && (
-            <p className="text-3xl font-bold text-gray-900">{petName}</p>
-          )}
+          {petName && <p className="text-3xl font-bold text-gray-900">{petName}</p>}
 
           <h1 className={`font-bold text-gray-900 ${petName ? "text-base text-gray-500 font-normal" : "text-2xl"}`}>
             {report.title ?? "Sin título"}
@@ -220,9 +250,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
             {(report.event_date ?? report.published_at) && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Fecha</span>
-                <span className="font-medium text-gray-800">
-                  {formatDate(report.event_date ?? report.published_at)}
-                </span>
+                <span className="font-medium text-gray-800">{formatDate(report.event_date ?? report.published_at)}</span>
               </div>
             )}
             {report.contact_name && (
@@ -254,12 +282,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
 
           {report.source_url && (
             <div className="pt-2">
-              <a
-                href={report.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-sm"
-              >
+              <a href={report.source_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
                 Ver publicación original →
               </a>
             </div>
@@ -274,11 +297,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {report.images.map((img) => (
                 <div key={img.id} className="rounded-lg overflow-hidden bg-gray-100 aspect-square">
-                  <img
-                    src={img.storage_url ?? img.image_url}
-                    alt="Mascota"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={img.storage_url ?? img.image_url} alt="Mascota" className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
@@ -286,5 +305,13 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
         )}
       </main>
     </div>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <ReportContent />
+    </Suspense>
   );
 }

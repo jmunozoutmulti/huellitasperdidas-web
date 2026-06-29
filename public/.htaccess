@@ -1,0 +1,10 @@
+Options -MultiViews
+RewriteEngine On
+
+# Si el archivo o directorio existe, servirlo directamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Para rutas dinámicas (ej: /reports/uuid/) redirigir al index.html raíz
+# El router de Next.js client-side toma control desde ahí
+RewriteRule ^ /index.html [L]

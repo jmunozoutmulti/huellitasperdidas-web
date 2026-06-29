@@ -183,7 +183,7 @@ function ResultCard({ result }: { result: SearchResult }) {
   const badge = matchBadge(result.match_pct);
 
   return (
-    <Link href={`/reports/${result.id}`} className="block group">
+    <Link href={`/report?id=${result.id}`} className="block group">
       <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-white">
         <div className="relative h-44 bg-gray-100 overflow-hidden">
           {image ? (
