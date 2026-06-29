@@ -34,5 +34,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./out/
-          server-dir: public_html/qa.huellasperdidas.com/
+          server-dir: qa.huellasperdidas.com/
           dangerous-clean-slate: false
