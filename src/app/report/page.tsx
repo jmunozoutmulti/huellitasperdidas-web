@@ -163,6 +163,14 @@ const DATE_LABEL: Record<string, string> = {
   unknown: "Fecha de la pérdida",
 };
 
+const LOCATION_LABEL: Record<string, string> = {
+  found: "Dónde lo encontraste exactamente",
+  adoption: "Lugar de entrega",
+  lost: "Dónde fue vista por última vez",
+  sighting: "Dónde fue vista por última vez",
+  unknown: "Dónde fue vista por última vez",
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-PE", {
@@ -258,6 +266,12 @@ function ReportContent() {
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm pt-2">
+            {report.package_name && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Plan de publicación</span>
+                <span className="font-medium text-gray-800">{report.package_name}</span>
+              </div>
+            )}
             {report.district && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Distrito</span>
@@ -308,12 +322,6 @@ function ReportContent() {
                 <span className="font-medium text-gray-800">{report.color}</span>
               </div>
             )}
-            {report.age && (
-              <div>
-                <span className="text-gray-400 block text-xs uppercase tracking-wide">Edad</span>
-                <span className="font-medium text-gray-800">{AGE_LABEL[report.age] ?? report.age}</span>
-              </div>
-            )}
             {report.contact_name && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Contacto</span>
@@ -341,25 +349,31 @@ function ReportContent() {
             )}
             {report.last_seen_location && (
               <div className="col-span-2 sm:col-span-3">
-                <span className="text-gray-400 block text-xs uppercase tracking-wide">Dónde fue vista por última vez</span>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">
+                  {LOCATION_LABEL[report.report_type] ?? "Dónde fue vista por última vez"}
+                </span>
                 <span className="font-medium text-gray-800">{report.last_seen_location}</span>
               </div>
             )}
+            {report.reward && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Recompensa</span>
+                <span className="font-medium text-gray-800">{report.reward}</span>
+              </div>
+            )}
+            {report.age && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Edad</span>
+                <span className="font-medium text-gray-800">{AGE_LABEL[report.age] ?? report.age}</span>
+              </div>
+            )}
+            {report.adoption_extras && (
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Extras de adopción</span>
+                <span className="font-medium text-gray-800 whitespace-pre-wrap">{report.adoption_extras}</span>
+              </div>
+            )}
           </div>
-
-          {report.reward && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Recompensa</span>
-              <p className="text-sm font-medium text-amber-900">{report.reward}</p>
-            </div>
-          )}
-
-          {report.adoption_extras && (
-            <div>
-              <span className="text-gray-400 block text-xs uppercase tracking-wide mb-1">Extras de adopción</span>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{report.adoption_extras}</p>
-            </div>
-          )}
 
           {report.source_url && (
             <div className="pt-2">
