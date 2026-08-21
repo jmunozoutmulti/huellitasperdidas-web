@@ -27,6 +27,12 @@ export interface Report {
   has_video: boolean;
   status: string;
   created_at: string;
+  sex: string | null;
+  is_neutered: boolean | null;
+  size: string | null;
+  breed: string | null;
+  color: string | null;
+  age: string | null;
   images: Image[];
 }
 
@@ -38,6 +44,9 @@ export interface ReportDetail extends Report {
   confidence_score: number | null;
   extracted_features: Record<string, unknown>;
   address_hint: string | null;
+  last_seen_location: string | null;
+  reward: string | null;
+  adoption_extras: string | null;
 }
 
 export interface PaginatedResponse<T> {

@@ -34,6 +34,90 @@ const COLOR_LABEL: Record<string, string> = {
   atigrado: "Atigrado",
 };
 
+const NEUTERED_LABEL: Record<string, string> = {
+  true: "Sí",
+  false: "No",
+};
+
+function PetDetailsSection({ report }: { report: ReportDetail }) {
+  const hasAny =
+    report.sex ||
+    report.is_neutered != null ||
+    report.size ||
+    report.breed ||
+    report.color ||
+    report.age ||
+    report.last_seen_location ||
+    report.reward ||
+    report.adoption_extras;
+
+  if (!hasAny) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-gray-800">Datos de la mascota</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+        {report.sex && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Sexo</span>
+            <span className="font-medium text-gray-800">{SEX_LABEL[report.sex] ?? report.sex}</span>
+          </div>
+        )}
+        {report.is_neutered != null && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Esterilizado</span>
+            <span className="font-medium text-gray-800">{NEUTERED_LABEL[String(report.is_neutered)]}</span>
+          </div>
+        )}
+        {report.size && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Tamaño</span>
+            <span className="font-medium text-gray-800">{SIZE_LABEL[report.size] ?? report.size}</span>
+          </div>
+        )}
+        {report.age && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Edad aprox.</span>
+            <span className="font-medium text-gray-800">{AGE_LABEL[report.age] ?? report.age}</span>
+          </div>
+        )}
+        {report.breed && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Raza</span>
+            <span className="font-medium text-gray-800">{report.breed}</span>
+          </div>
+        )}
+        {report.color && (
+          <div>
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Color</span>
+            <span className="font-medium text-gray-800">{report.color}</span>
+          </div>
+        )}
+        {report.last_seen_location && (
+          <div className="col-span-2 sm:col-span-3">
+            <span className="text-gray-400 block text-xs uppercase tracking-wide">Lugar</span>
+            <span className="font-medium text-gray-800">{report.last_seen_location}</span>
+          </div>
+        )}
+      </div>
+
+      {report.reward && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Recompensa</span>
+          <p className="text-sm font-medium text-amber-900">{report.reward}</p>
+        </div>
+      )}
+
+      {report.adoption_extras && (
+        <div>
+          <span className="text-gray-400 block text-xs uppercase tracking-wide mb-1">Incluye</span>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{report.adoption_extras}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface ExtractedFeatures {
   name?: string | null;
   colors?: string[];
@@ -288,6 +372,8 @@ function ReportContent() {
             </div>
           )}
         </div>
+
+        <PetDetailsSection report={report} />
 
         <FeaturesSection features={features} />
 
