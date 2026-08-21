@@ -155,6 +155,14 @@ const TYPE_COLOR: Record<string, string> = {
   unknown: "bg-gray-100 text-gray-600",
 };
 
+const DATE_LABEL: Record<string, string> = {
+  lost: "Fecha de la pérdida",
+  found: "Fecha de lo encontrado",
+  sighting: "Fecha del avistamiento",
+  adoption: "Fecha de publicación",
+  unknown: "Fecha de la pérdida",
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-PE", {
@@ -264,7 +272,9 @@ function ReportContent() {
             )}
             {(report.event_date ?? report.published_at) && (
               <div>
-                <span className="text-gray-400 block text-xs uppercase tracking-wide">Fecha</span>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">
+                  {DATE_LABEL[report.report_type] ?? "Fecha"}
+                </span>
                 <span className="font-medium text-gray-800">{formatDate(report.event_date ?? report.published_at)}</span>
               </div>
             )}
