@@ -47,6 +47,8 @@ export interface ReportDetail extends Report {
   last_seen_location: string | null;
   reward: string | null;
   adoption_extras: string | null;
+  package_name: string | null;
+  package_slug: string | null;
 }
 
 export interface PaginatedResponse<T> {
