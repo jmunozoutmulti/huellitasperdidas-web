@@ -292,34 +292,34 @@ function ReportContent() {
                 <span className="font-medium text-gray-800">{formatDate(report.event_date ?? report.published_at)}</span>
               </div>
             )}
-            {report.sex && (
+            {report.meta.sex && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Macho / Hembra</span>
-                <span className="font-medium text-gray-800">{SEX_LABEL[report.sex] ?? report.sex}</span>
+                <span className="font-medium text-gray-800">{SEX_LABEL[report.meta.sex] ?? report.meta.sex}</span>
               </div>
             )}
-            {report.is_neutered != null && (
+            {report.meta.is_neutered != null && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Castrado</span>
-                <span className="font-medium text-gray-800">{NEUTERED_LABEL[String(report.is_neutered)]}</span>
+                <span className="font-medium text-gray-800">{NEUTERED_LABEL[String(report.meta.is_neutered)]}</span>
               </div>
             )}
-            {report.size && (
+            {report.meta.size && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Tamaño</span>
-                <span className="font-medium text-gray-800">{SIZE_LABEL[report.size] ?? report.size}</span>
+                <span className="font-medium text-gray-800">{SIZE_LABEL[report.meta.size] ?? report.meta.size}</span>
               </div>
             )}
-            {report.breed && (
+            {report.meta.breed && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Raza o especie</span>
-                <span className="font-medium text-gray-800">{report.breed}</span>
+                <span className="font-medium text-gray-800">{report.meta.breed}</span>
               </div>
             )}
-            {report.color && (
+            {report.meta.color && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Color / Pelaje</span>
-                <span className="font-medium text-gray-800">{report.color}</span>
+                <span className="font-medium text-gray-800">{report.meta.color}</span>
               </div>
             )}
             {report.contact_name && (
@@ -347,30 +347,30 @@ function ReportContent() {
                 <span className="font-medium text-gray-800">{report.address_hint}</span>
               </div>
             )}
-            {report.last_seen_location && (
+            {report.meta.last_seen_location && (
               <div className="col-span-2 sm:col-span-3">
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">
                   {LOCATION_LABEL[report.report_type] ?? "Dónde fue vista por última vez"}
                 </span>
-                <span className="font-medium text-gray-800">{report.last_seen_location}</span>
+                <span className="font-medium text-gray-800">{report.meta.last_seen_location}</span>
               </div>
             )}
-            {report.reward && (
+            {report.meta.reward && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Recompensa</span>
-                <span className="font-medium text-gray-800">{report.reward}</span>
+                <span className="font-medium text-gray-800">{report.meta.reward}</span>
               </div>
             )}
-            {report.age && (
+            {report.meta.age && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Edad</span>
-                <span className="font-medium text-gray-800">{AGE_LABEL[report.age] ?? report.age}</span>
+                <span className="font-medium text-gray-800">{AGE_LABEL[report.meta.age] ?? report.meta.age}</span>
               </div>
             )}
-            {report.adoption_extras && (
+            {report.meta.adoption_extras && (
               <div className="col-span-2 sm:col-span-3">
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Extras de adopción</span>
-                <span className="font-medium text-gray-800 whitespace-pre-wrap">{report.adoption_extras}</span>
+                <span className="font-medium text-gray-800 whitespace-pre-wrap">{report.meta.adoption_extras}</span>
               </div>
             )}
           </div>
