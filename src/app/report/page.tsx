@@ -22,6 +22,14 @@ const SEX_LABEL: Record<string, string> = {
   female: "Hembra",
 };
 
+const PET_TYPE_LABEL: Record<string, string> = {
+  dog: "Perro",
+  cat: "Gato",
+  bird: "Ave",
+  rabbit: "Conejo",
+  other: "Otro",
+};
+
 const COLOR_LABEL: Record<string, string> = {
   blanco: "Blanco / Crema",
   negro: "Negro",
@@ -250,7 +258,9 @@ function ReportContent() {
               </span>
             )}
             {report.pet_type && (
-              <span className="text-sm text-gray-600 capitalize bg-gray-100 px-3 py-1 rounded-full">{report.pet_type}</span>
+              <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                {PET_TYPE_LABEL[report.pet_type.toLowerCase()] ?? report.pet_type}
+              </span>
             )}
             {report.has_video && <span className="text-sm text-gray-500">▶ Tiene video</span>}
           </div>

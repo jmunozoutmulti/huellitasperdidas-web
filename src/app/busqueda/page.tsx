@@ -67,6 +67,11 @@ const PET_TYPE_LABEL: Record<string, string> = {
   rabbit: "🐇 Conejo", hamster: "🐹 Hámster", other: "🐾 Otro",
 };
 
+const PET_TYPE_LABEL_PLAIN: Record<string, string> = {
+  dog: "Perro", cat: "Gato", bird: "Ave",
+  rabbit: "Conejo", hamster: "Hámster", other: "Otro",
+};
+
 // ---------------------------------------------------------------------------
 // Subcomponents
 // ---------------------------------------------------------------------------
@@ -204,7 +209,11 @@ function ResultCard({ result }: { result: SearchResult }) {
         <div className="p-3 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${typeColor}`}>{typeLabel}</span>
-            {result.pet_type && <span className="text-xs text-gray-500 capitalize">{result.pet_type}</span>}
+            {result.pet_type && (
+              <span className="text-xs text-gray-500">
+                {PET_TYPE_LABEL_PLAIN[result.pet_type.toLowerCase()] ?? result.pet_type}
+              </span>
+            )}
           </div>
           <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-snug">
             {result.title ?? "Sin título"}

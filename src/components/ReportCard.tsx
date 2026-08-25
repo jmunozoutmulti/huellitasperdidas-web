@@ -17,6 +17,14 @@ const TYPE_COLOR: Record<string, string> = {
   unknown: "bg-gray-100 text-gray-600",
 };
 
+const PET_TYPE_LABEL: Record<string, string> = {
+  dog: "Perro",
+  cat: "Gato",
+  bird: "Ave",
+  rabbit: "Conejo",
+  other: "Otro",
+};
+
 const SOURCE_LABEL: Record<string, string> = {
   facebook_public: "Facebook",
   google_search: "Brave",
@@ -81,7 +89,9 @@ export default function ReportCard({ report }: { report: Report }) {
               </span>
             )}
             {report.pet_type && (
-              <span className="text-xs text-gray-500 capitalize">{report.pet_type}</span>
+              <span className="text-xs text-gray-500">
+                {PET_TYPE_LABEL[report.pet_type.toLowerCase()] ?? report.pet_type}
+              </span>
             )}
             {report.has_video && (
               <span className="text-xs text-gray-400">▶ Video</span>
