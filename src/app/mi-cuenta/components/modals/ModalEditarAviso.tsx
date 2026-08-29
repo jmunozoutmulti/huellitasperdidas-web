@@ -351,7 +351,6 @@ export default function ModalEditarAviso({
                                             <div
                                                 className="date-input-trigger"
                                                 onClick={() => {
-                                                    setEditZonePopoverOpen(false);
                                                     setEditDatePopoverOpen((prev) => !prev);
                                                 }}
                                             >
