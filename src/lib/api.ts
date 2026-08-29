@@ -9,6 +9,21 @@ export interface Image {
   detected_pet_type: string | null;
 }
 
+export interface ReportMeta {
+  sex: string | null;
+  is_neutered: boolean | null;
+  size: string | null;
+  breed: string | null;
+  color: string | null;
+  age: string | null;
+}
+
+export interface ReportMetaDetail extends ReportMeta {
+  last_seen_location: string | null;
+  reward: string | null;
+  adoption_extras: string | null;
+}
+
 export interface Report {
   id: string;
   report_type: string;
@@ -27,10 +42,11 @@ export interface Report {
   has_video: boolean;
   status: string;
   created_at: string;
+  meta: ReportMeta;
   images: Image[];
 }
 
-export interface ReportDetail extends Report {
+export interface ReportDetail extends Omit<Report, "meta"> {
   contact_name: string | null;
   contact_phone: string | null;
   contact_url: string | null;
@@ -38,6 +54,9 @@ export interface ReportDetail extends Report {
   confidence_score: number | null;
   extracted_features: Record<string, unknown>;
   address_hint: string | null;
+  meta: ReportMetaDetail;
+  package_name: string | null;
+  package_slug: string | null;
 }
 
 export interface PaginatedResponse<T> {

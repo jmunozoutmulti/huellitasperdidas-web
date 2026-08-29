@@ -22,6 +22,14 @@ const SEX_LABEL: Record<string, string> = {
   female: "Hembra",
 };
 
+const PET_TYPE_LABEL: Record<string, string> = {
+  dog: "Perro",
+  cat: "Gato",
+  bird: "Ave",
+  rabbit: "Conejo",
+  other: "Otro",
+};
+
 const COLOR_LABEL: Record<string, string> = {
   blanco: "Blanco / Crema",
   negro: "Negro",
@@ -32,6 +40,16 @@ const COLOR_LABEL: Record<string, string> = {
   tricolor: "Tricolor",
   manchas: "Con manchas",
   atigrado: "Atigrado",
+};
+
+const NEUTERED_LABEL: Record<string, string> = {
+  true: "Sí",
+  false: "No",
+};
+
+const PKG_SLUG_COLOR: Record<string, string> = {
+  pro: "bg-blue-100 text-blue-800",
+  max: "bg-amber-100 text-amber-800",
 };
 
 interface ExtractedFeatures {
@@ -145,6 +163,22 @@ const TYPE_COLOR: Record<string, string> = {
   unknown: "bg-gray-100 text-gray-600",
 };
 
+const DATE_LABEL: Record<string, string> = {
+  lost: "Fecha de la pérdida",
+  found: "Fecha de lo encontrado",
+  sighting: "Fecha del avistamiento",
+  adoption: "Fecha de publicación",
+  unknown: "Fecha de la pérdida",
+};
+
+const LOCATION_LABEL: Record<string, string> = {
+  found: "Dónde lo encontraste exactamente",
+  adoption: "Lugar de entrega",
+  lost: "Dónde fue vista por última vez",
+  sighting: "Dónde fue vista por última vez",
+  unknown: "Dónde fue vista por última vez",
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-PE", {
@@ -218,8 +252,15 @@ function ReportContent() {
         <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`text-sm font-semibold px-3 py-1 rounded-full ${typeColor}`}>{typeLabel}</span>
+            {report.package_name && (
+              <span className={`text-sm font-semibold px-3 py-1 rounded-full ${PKG_SLUG_COLOR[report.package_slug ?? ""] ?? "bg-purple-100 text-purple-800"}`}>
+                ★ {report.package_name}
+              </span>
+            )}
             {report.pet_type && (
-              <span className="text-sm text-gray-600 capitalize bg-gray-100 px-3 py-1 rounded-full">{report.pet_type}</span>
+              <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                {PET_TYPE_LABEL[report.pet_type.toLowerCase()] ?? report.pet_type}
+              </span>
             )}
             {report.has_video && <span className="text-sm text-gray-500">▶ Tiene video</span>}
           </div>
@@ -235,6 +276,12 @@ function ReportContent() {
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm pt-2">
+            {report.package_name && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Plan de publicación</span>
+                <span className="font-medium text-gray-800">{report.package_name}</span>
+              </div>
+            )}
             {report.district && (
               <div>
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Distrito</span>
@@ -249,8 +296,40 @@ function ReportContent() {
             )}
             {(report.event_date ?? report.published_at) && (
               <div>
-                <span className="text-gray-400 block text-xs uppercase tracking-wide">Fecha</span>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">
+                  {DATE_LABEL[report.report_type] ?? "Fecha"}
+                </span>
                 <span className="font-medium text-gray-800">{formatDate(report.event_date ?? report.published_at)}</span>
+              </div>
+            )}
+            {report.meta.sex && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Macho / Hembra</span>
+                <span className="font-medium text-gray-800">{SEX_LABEL[report.meta.sex] ?? report.meta.sex}</span>
+              </div>
+            )}
+            {report.meta.is_neutered != null && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Castrado</span>
+                <span className="font-medium text-gray-800">{NEUTERED_LABEL[String(report.meta.is_neutered)]}</span>
+              </div>
+            )}
+            {report.meta.size && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Tamaño</span>
+                <span className="font-medium text-gray-800">{SIZE_LABEL[report.meta.size] ?? report.meta.size}</span>
+              </div>
+            )}
+            {report.meta.breed && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Raza o especie</span>
+                <span className="font-medium text-gray-800">{report.meta.breed}</span>
+              </div>
+            )}
+            {report.meta.color && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Color / Pelaje</span>
+                <span className="font-medium text-gray-800">{report.meta.color}</span>
               </div>
             )}
             {report.contact_name && (
@@ -276,6 +355,32 @@ function ReportContent() {
               <div className="col-span-2 sm:col-span-3">
                 <span className="text-gray-400 block text-xs uppercase tracking-wide">Referencia de ubicación</span>
                 <span className="font-medium text-gray-800">{report.address_hint}</span>
+              </div>
+            )}
+            {report.meta.last_seen_location && (
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">
+                  {LOCATION_LABEL[report.report_type] ?? "Dónde fue vista por última vez"}
+                </span>
+                <span className="font-medium text-gray-800">{report.meta.last_seen_location}</span>
+              </div>
+            )}
+            {report.meta.reward && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Recompensa</span>
+                <span className="font-medium text-gray-800">{report.meta.reward}</span>
+              </div>
+            )}
+            {report.meta.age && (
+              <div>
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Edad</span>
+                <span className="font-medium text-gray-800">{AGE_LABEL[report.meta.age] ?? report.meta.age}</span>
+              </div>
+            )}
+            {report.meta.adoption_extras && (
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-gray-400 block text-xs uppercase tracking-wide">Extras de adopción</span>
+                <span className="font-medium text-gray-800 whitespace-pre-wrap">{report.meta.adoption_extras}</span>
               </div>
             )}
           </div>
