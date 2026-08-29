@@ -1,0 +1,141 @@
+<!--
+    Plantilla: Solicitud de baja de cuenta
+    Variables que el backend debe reemplazar antes de enviar:
+      {{USER_NAME}}        — nombre del usuario
+      {{DELETION_DATE}}     — fecha/hora en que se ejecutará la baja (solicitud + 24h)
+      {{SUPPORT_EMAIL}}     — contacto@huellasperdidas.com
+      {{LOGO_URL}}          — URL absoluta del logo (debe ser pública, no relativa)
+
+    Nota de compilación: los correos usan tablas + estilos inline a propósito
+    (no <style> en el <head> ni CSS moderno) porque Outlook y varios clientes
+    de correo ignoran o rompen con CSS que un navegador normal sí soporta.
+-->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solicitud de baja de cuenta</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#F0F1F4; font-family: Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+        style="background-color:#F0F1F4; padding: 32px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                    style="max-width: 480px; background-color:#ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0e4e8;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" style="padding: 28px 24px 16px 24px;">
+                            <img src="{{LOGO_URL}}" alt="Huellas Perdidas" width="44" height="44"
+                                style="display:block; margin: 0 auto 8px auto;" />
+                            <span
+                                style="font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color:#e70808; text-transform: uppercase;">
+                                Huellas Perdidas
+                            </span>
+                        </td>
+                    </tr>
+
+                    <!-- Icono de alerta -->
+                    <tr>
+                        <td align="center" style="padding: 8px 24px 0 24px;">
+                            <table role="presentation" cellpadding="0" cellspacing="0"
+                                style="width:56px; height:56px; background-color:#ffe6e6; border-radius:50%;">
+                                <tr>
+                                    <td align="center" valign="middle" style="font-size: 26px; color:#e70808;">
+                                        !
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Título -->
+                    <tr>
+                        <td align="center" style="padding: 16px 32px 0 32px;">
+                            <h1 style="margin:0; font-size: 20px; line-height: 1.3; color:#000000; font-weight:700;">
+                                Solicitaste eliminar tu cuenta
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Cuerpo -->
+                    <tr>
+                        <td style="padding: 16px 32px 0 32px;">
+                            <p style="margin:0 0 16px 0; font-size: 15px; line-height: 1.6; color:#4A5566;">
+                                Hola <b style="color:#000000;">{{USER_NAME}}</b>, confirmamos que recibimos tu solicitud
+                                para eliminar tu cuenta de Huellas Perdidas.
+                            </p>
+                            <p style="margin:0 0 16px 0; font-size: 15px; line-height: 1.6; color:#4A5566;">
+                                Tu cuenta, publicaciones e historial se eliminarán de forma permanente el:
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Caja de fecha -->
+                    <tr>
+                        <td style="padding: 0 32px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="background-color:#F4F5F7; border: 1px solid #e0e4e8; border-radius: 8px;">
+                                <tr>
+                                    <td align="center" style="padding: 14px;">
+                                        <span style="font-size: 16px; font-weight: 700; color:#000000;">
+                                            {{DELETION_DATE}}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Aviso de "si fue un error" -->
+                    <tr>
+                        <td style="padding: 20px 32px 0 32px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                style="background-color:#FEFCDD; border: 1px solid #FDEC1C; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 14px 16px;">
+                                        <p style="margin:0; font-size: 14px; line-height: 1.6; color:#4A5566;">
+                                            <b style="color:#000000;">¿Fue un error?</b><br />
+                                            Si no solicitaste esto, escríbenos antes de la fecha indicada a
+                                            <a href="mailto:{{SUPPORT_EMAIL}}"
+                                                style="color:#e70808; font-weight:700;">{{SUPPORT_EMAIL}}</a>
+                                            y cancelamos la baja de tu cuenta.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Botón de contacto -->
+                    <tr>
+                        <td align="center" style="padding: 24px 32px 8px 32px;">
+                            <a href="mailto:{{SUPPORT_EMAIL}}"
+                                style="display:inline-block; background-color:#e70808; color:#ffffff; text-decoration:none; font-size: 15px; font-weight:700; padding: 12px 28px; border-radius: 8px;">
+                                Contactar a soporte
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 32px 28px 32px; border-top: 1px solid #e0e4e8; margin-top: 16px;">
+                            <p
+                                style="margin: 20px 0 0 0; font-size: 12px; line-height: 1.6; color:#6a6f7f; text-align:center;">
+                                Este es un mensaje automático de Huellas Perdidas. Si tienes dudas, escríbenos a
+                                <a href="mailto:{{SUPPORT_EMAIL}}" style="color:#6a6f7f;">{{SUPPORT_EMAIL}}</a>.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

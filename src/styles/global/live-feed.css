@@ -1,0 +1,129 @@
+.live-feed-popup {
+    position: fixed;
+    bottom: 2em;
+    left: 2em;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5em;
+    box-shadow: 0 0.25em 1.5em rgba(0, 0, 0, 0.08);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.6em 1em;
+    font-size: 0.95em;
+    color: #000;
+    transform: translateY(120%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.live-feed-popup.live-feed-visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.live-feed-dot {
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+    background: var(--brand-red);
+    flex-shrink: 0;
+    animation: dotPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes dotPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.live-feed-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #000;
+    font-size: 1em;
+    padding: 0;
+    margin-left: 0.25em;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+
+/* Color del punto según tipo */
+.live-feed-popup.feed-perdido {
+    background: var(--brand-red-alpha);
+}
+
+.live-feed-popup.feed-perdido .live-feed-dot {
+    background: var(--brand-red);
+}
+
+
+.live-feed-popup.feed-encontrado {
+    background: var(--emerald-brand-alpha);
+}
+
+.live-feed-popup.feed-encontrado .live-feed-dot {
+    background: var(--emerald-brand);
+}
+
+.live-feed-popup.feed-avistamiento {
+    background: var(--yellow-brand-alpha);
+}
+
+.live-feed-popup.feed-avistamiento .live-feed-dot {
+    background: var(--yellow-brand);
+}
+
+
+.live-feed-popup.feed-adopcion {
+    background: var(--purple-brand-alpha);
+}
+
+.live-feed-popup.feed-adopcion .live-feed-dot {
+    background: var(--purple-brand);
+}
+
+/* Borde izquierdo sutil para reforzar el tipo */
+.live-feed-popup.feed-perdido {
+    border: 1px solid var(--brand-red);
+}
+
+.live-feed-popup.feed-encontrado {
+    border: 1px solid var(--emerald-brand);
+}
+
+.live-feed-popup.feed-avistamiento {
+    border: 1px solid var(--yellow-brand);
+}
+
+.live-feed-popup.feed-adopcion {
+    border: 1px solid var(--purple-brand);
+}
+
+
+@media screen and (max-width: 760px) {
+
+    .live-feed-popup {
+        white-space: inherit;
+        font-size: 0.9em;
+    }
+
+    .live-feed-popup {
+        left: inherit;
+        right: 1em;
+        max-width: 70%;
+        text-align: right;
+    }
+}

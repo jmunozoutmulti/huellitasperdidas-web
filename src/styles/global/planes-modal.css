@@ -1,0 +1,497 @@
+/* ==========================================================================
+   PLANES MODAL OVERLAY
+   ========================================================================== */
+.planes-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5em;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.planes-modal-overlay:not(.style-hidden) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+
+.planes-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(244 245 247 / 90%);
+}
+
+.planes-modal-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 50em;
+    max-height: 95vh;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-radius: 1em;
+    padding: 1.5em;
+    transform: translateY(30px) scale(0.97);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 25px 150px rgba(0, 0, 0, 0.15);
+}
+
+.planes-modal-overlay:not(.style-hidden) .planes-modal-card {
+    transform: translateY(0) scale(1);
+}
+
+
+/* HEADER */
+.planes-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1em;
+    gap: 1em;
+}
+
+.planes-modal-header>div {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+.planes-modal-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 1em;
+    font-weight: 500;
+    color: var(--brand-red);
+    background: var(--brand-red-alpha);
+    border: 1px solid rgba(220, 38, 38, 0.1);
+    padding: 0.25em 0.75em;
+    border-radius: 3em;
+}
+
+.planes-modal-eyebrow i {
+    font-size: 1.3em;
+}
+
+.planes-modal-close {
+    background: var(--bg-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1em;
+    color: var(--text-main);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.planes-modal-close i {
+    font-size: 1.3em;
+}
+
+.planes-modal-close:hover {
+    background: var(--brand-red);
+    color: #fff;
+    border-color: var(--brand-red);
+}
+
+.modal-icon img {
+    width: 5em;
+}
+
+/* GRID DE PLANES */
+.planes-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1em;
+    margin-bottom: 1em;
+}
+
+.planes-modal-plan-label {
+    display: block;
+    cursor: pointer;
+}
+
+.planes-modal-plan-label input[type="radio"] {
+    display: none;
+}
+
+.planes-modal-plan-item {
+    border: 1px solid var(--border-color);
+    border-radius: 0.75em;
+    background: var(--bg-alt);
+    transition: all 0.3s ease;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-flow: column;
+    justify-content: space-between;
+}
+
+.planes-modal-plan-item:hover {
+    transform: translateY(-3px);
+}
+
+.planes-modal-plan-label input[type="radio"]:checked+.planes-modal-plan-item {
+    border-color: var(--brand-red);
+}
+
+.planes-modal-plan-label input[type="radio"]:checked+.planes-modal-plan-item .planes-modal-plan-days {
+    border-top: 1px solid var(--brand-red);
+}
+
+.planes-modal-plan-recommended {
+    background: var(--brand-red-alpha);
+    border: 1px solid var(--brand-red-alpha);
+}
+
+.planes-modal-plan-recommended .planes-modal-plan-name {
+    color: var(--text-red);
+}
+
+.planes-modal-plan-recommended .planes-modal-plan-days {
+    background: #ffd3d3;
+    border-top: 1px solid #ffd3d3;
+    color: var(--text-red);
+}
+
+.planes-modal-plan-recommended .planes-modal-plan-price {
+    border-top: 1px solid #ffd3d3;
+}
+
+
+.planes-modal-recommended-tag {
+    font-size: 0.875em;
+    line-height: 1em;
+    color: var(--text-white);
+    font-weight: 300;
+    background: var(--brand-red);
+    padding: 0.25em 0.75em;
+    border-radius: 3em;
+    font-style: normal;
+    display: flex;
+    align-items: center;
+    width: fit-content;
+    gap: 5px;
+    position: absolute;
+    right: 0;
+    border-bottom-right-radius: 0;
+    top: 0;
+}
+
+.planes-modal-recommended-tag i {
+    font-size: 1em;
+}
+
+.box-modal-plan-top {
+    padding: 2.5em 1.25em 1.5em 1.25em;
+}
+
+.planes-modal-plan-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+}
+
+.planes-modal-plan-name {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    line-height: 1;
+    padding: 0 0 0.25em 0;
+    letter-spacing: -0.5px;
+}
+
+.planes-modal-plan-price {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    border-top: 1px solid var(--border-color);
+    padding: 0.5em 1em;
+}
+
+.planes-modal-plan-price span {
+    font-size: 1.4em;
+    font-weight: 900;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.planes-modal-plan-price span i {
+    font-size: 0.6em;
+    font-style: normal;
+    font-weight: 300;
+}
+
+.planes-modal-plan-price p {
+    font-size: 0.95em;
+    line-height: 1;
+    color: var(--text-main);
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.planes-modal-plan-price p i {
+    font-weight: 300;
+    font-size: 0.95em;
+}
+
+
+
+.planes-modal-plan-days {
+    font-size: 0.95em;
+    color: var(--text-main);
+    font-weight: 300;
+    background: var(--bg-card);
+    padding: 0.6em 1em;
+    border-top: 1px solid var(--border-color);
+    border-bottom-left-radius: 0.75em;
+    border-bottom-right-radius: 0.75em;
+    gap: 0.25em;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.planes-modal-plan-days i {
+    font-size: 1.1em;
+}
+
+.planes-modal-plan-days b {
+    font-weight: 900;
+}
+
+.planes-modal-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.planes-modal-features li {
+    font-size: 0.925em;
+    color: var(--text-secondary);
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+}
+
+.planes-modal-features li i {
+    font-size: 1.1em;
+    flex-shrink: 0;
+}
+
+.planes-modal-features li.feat-disabled {
+    opacity: 0.25;
+}
+
+.planes-modal-features li.feat-disabled i {
+    color: var(--text-main);
+}
+
+.planes-modal-plan-recommended .planes-modal-features li {
+    color: var(--text-main);
+}
+
+
+/* ACCIONES */
+.planes-modal-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-top: 1em;
+}
+
+.text-modal {
+    font-size: 0.875em;
+    font-weight: 100;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.375em;
+    position: relative;
+}
+
+.text-modal i {
+    font-size: 1.3em;
+}
+
+.btn-planes-back {
+    background: none;
+    border: none;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1.25em;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.btn-planes-back:hover {
+    color: var(--text-main);
+}
+
+/* RESUMEN DEL PLAN */
+.modal-summary {
+    display: grid;
+    grid-template-columns: 0.35fr 1fr;
+    gap: 1em;
+    align-items: flex-start;
+}
+
+.planes-modal-summary-bar {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    background: var(--bg-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75em;
+    padding: 1em;
+}
+
+.planes-summary-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1em;
+}
+
+.planes-summary-label,
+#alcance-summary-km,
+#reactivar-summary-dias {
+    font-size: 0.9em;
+    line-height: 1.1;
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+.planes-summary-body h5 {
+    font-size: 1.1em;
+    font-weight: 900;
+    color: var(--text-main);
+    line-height: 1.1;
+    margin: 5px 0;
+}
+
+.planes-summary-price {
+    font-size: 1em;
+    font-weight: 900;
+    color: var(--text-main);
+}
+
+/* CONFIRMACIÓN */
+.planes-modal-confirm {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3em 10em;
+    gap: 1em;
+    min-height: 60vh;
+}
+
+.planes-modal-confirm:not(.style-hidden) {
+    display: flex;
+}
+
+/* Oculta el resto de la card (header, step-1, step-2) cuando el confirm está visible */
+.planes-modal-card:has(.planes-modal-confirm:not(.style-hidden))>*:not(.planes-modal-confirm) {
+    display: none;
+}
+
+.planes-modal-confirm h3 {
+    font-size: 1.8em;
+    font-weight: 900;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.planes-modal-confirm p {
+    font-size: 1em;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 28em;
+    margin: 0;
+    font-weight: 300;
+}
+
+.planes-modal-confirm p b {
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+.planes-confirm-bar {
+    height: 5px;
+    width: 0%;
+    background: var(--brand-red);
+    border-radius: 3em;
+}
+
+.planes-modal-confirm:not(.style-hidden) .planes-confirm-bar {
+    animation: confirmBar 4s linear forwards;
+}
+
+@keyframes confirmBar {
+    from {
+        width: 0%;
+    }
+
+    to {
+        width: 100%;
+    }
+}
+
+
+@media screen and (max-width: 760px) {
+
+    .planes-modal-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+
+    .text-modal {
+        align-items: flex-start;
+        padding-right: 1em;
+    }
+
+    .modal-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .payment-gateway-box {
+        padding: 1em;
+    }
+
+    .payment-methods-tabs {
+        grid-template-columns: 1fr;
+    }
+
+    .planes-modal-confirm {
+        padding: 3em;
+        bottom: 0;
+    }
+
+}

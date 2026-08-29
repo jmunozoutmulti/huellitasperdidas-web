@@ -1,179 +1,335 @@
 "use client";
+import PetDetailView from './home/PetDetailView';
+import PetCard from './home/PetCard';
+import SearchBox from './home/SearchBox';
+import '@/styles/page.css';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import Link from 'next/link';
+import { PetData } from '@/lib/pets';
+import { fetchReports, fetchReport } from '@/lib/api';
+import { reportToPetData } from '@/lib/transformers';
+import { useSearchParams, useRouter } from 'next/navigation';
 
-import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
-import ReportCard from "@/components/ReportCard";
-import { fetchReports, type Report, type PaginatedResponse } from "@/lib/api";
+interface SearchItem {
+  title: string;
+  subtitle: string;
+}
 
-const REPORT_TYPES = [
-  { value: "", label: "Todos" },
-  { value: "lost", label: "Perdidos" },
-  { value: "found", label: "Encontrados" },
-  { value: "adoption", label: "Adopción" },
-  { value: "sighting", label: "Avistamientos" },
-];
+function getPetCategory(badgeStyle: string): string {
+  if (badgeStyle === 'badge-urgent' || badgeStyle === 'badge-max-priority') return 'perdido';
+  if (badgeStyle === 'badge-found') return 'encontrado';
+  if (badgeStyle === 'badge-sight') return 'avistamiento';
+  if (badgeStyle === 'badge-adopt') return 'adopcion';
+  if (badgeStyle.startsWith('badge-ext-')) return 'externo';
+  return 'otro';
+}
 
-export default function HomePage() {
-  const [data, setData] = useState<PaginatedResponse<Report> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const [reportType, setReportType] = useState("");
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [page, setPage] = useState(1);
+function HomeContent() {
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchReports({
-        report_type: reportType || undefined,
-        search: search || undefined,
-        page,
-        limit: 24,
-      });
-      setData(result);
-    } catch {
-      setError("No se pudo conectar con la API. Verifica que esté corriendo.");
-    } finally {
-      setLoading(false);
+  const router = useRouter();
+
+  const searchParams = useSearchParams();
+
+  const [pets, setPets] = useState<PetData[]>([]);
+  const [isLoadingPets, setIsLoadingPets] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [noResultsFor, setNoResultsFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadPets() {
+      setIsLoadingPets(true);
+      setLoadError(null);
+      try {
+        const response = await fetchReports({
+          page: 1,
+          limit: 100,
+          search: searchQuery || undefined,
+        });
+        let transformed = response.items.map(reportToPetData);
+
+        if (transformed.length === 0 && searchQuery) {
+          // La búsqueda no encontró nada — mostramos el listado general
+          // en su lugar, en vez de dejar la pantalla vacía.
+          const fallback = await fetchReports({ page: 1, limit: 100 });
+          transformed = fallback.items.map(reportToPetData);
+          if (!isCancelled) {
+            setNoResultsFor(searchQuery);
+          }
+        } else if (!isCancelled) {
+          setNoResultsFor(null);
+        }
+
+        if (!isCancelled) {
+          setPets(transformed);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setLoadError('No pudimos cargar los avisos. Intenta de nuevo en unos minutos.');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingPets(false);
+        }
+      }
     }
-  }, [reportType, search, page]);
 
-  useEffect(() => { load(); }, [load]);
+    loadPets();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchInput);
-    setPage(1);
+    return () => {
+      isCancelled = true;
+    };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (!id) {
+      setSelectedPet(null);
+      setIsDetailActive(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function loadDetail() {
+      try {
+        const report = await fetchReport(id!);
+        if (!isCancelled) {
+          setSelectedPet(reportToPetData(report));
+          setIsDetailActive(true);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setSelectedPet(null);
+          setIsDetailActive(false);
+        }
+      }
+    }
+
+    loadDetail();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [searchParams]);
+
+
+  // ==========================================
+  // ESTADOS GENERALES Y DE FILTRADO
+  // ==========================================
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  // ==========================================
+  // MANEJADORES DE VISTA DETALLE
+  // ==========================================
+  const [selectedPet, setSelectedPet] = useState<PetData | null>(null);
+  const [isDetailActive, setIsDetailActive] = useState(false);
+
+  const openDetail = (pet: PetData) => {
+    if (pet.isExternal && pet.externalUrl) {
+      window.open(pet.externalUrl, '_blank');
+      return;
+    }
+
+    router.push(`/?id=${pet.id}`);
   };
 
+  const closeDetail = () => {
+    router.push('/');
+  };
+
+  // ==========================================
+  // MANEJADORES DE BÚSQUEDA Y FILTROS
+  // ==========================================
+  const handleFilterClick = (type: string) => {
+    setActiveFilter((prev) => (prev === type ? null : type));
+    if (isDetailActive) {
+      closeDetail();
+    }
+  };
+
+  const isCardVisible = (badgeStyle: string) => {
+    if (!activeFilter) return true;
+    const badgeStyleByType: Record<string, string> = {
+      perdido: 'badge-urgent',
+      encontrado: 'badge-found',
+      avistamiento: 'badge-sight',
+      adoptar: 'badge-adopt',
+    };
+
+    if (badgeStyle === 'badge-max-priority') {
+      return activeFilter === 'perdido';
+    }
+
+    return badgeStyle === badgeStyleByType[activeFilter];
+  };
+
+
+  const displayedPets = useMemo(() => {
+    if (!isDetailActive || !selectedPet) {
+      return pets;
+    }
+
+    const currentId = selectedPet.id;
+    const currentCategory = getPetCategory(selectedPet.badgeStyle);
+
+    const relacionados: PetData[] = [];
+    const resto: PetData[] = [];
+
+    pets.forEach((pet) => {
+      if (pet.id === currentId) return;
+
+      if (getPetCategory(pet.badgeStyle) === currentCategory) {
+        relacionados.push(pet);
+      } else {
+        resto.push(pet);
+      }
+    });
+
+    return [...relacionados, ...resto];
+  }, [isDetailActive, selectedPet, pets]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-bold text-gray-900">🐾 Huellitas Perdidas</h1>
-            <Link
-              href="/busqueda"
-              className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+    <main className="main-content">
+      <section id="view-home" className="tab-view animate-fade-in">
+        {/* ==========================================
+            SEARCH BOX WRAPPER
+           ========================================== */}
+        <div className="search-box-wrapper">
+          <div className="filter-buttons">
+            <button
+              data-type="perdido"
+              className={activeFilter === 'perdido' ? 'active' : ''}
+              onClick={() => handleFilterClick('perdido')}
             >
-              Buscar mi mascota
-            </Link>
-            <Link
-              href="/developer"
-              className="bg-gray-100 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+              Perdidos
+              {activeFilter === 'perdido' && <i className="ti ti-x filter-clear-icon"></i>}
+            </button>
+            <button
+              data-type="encontrado"
+              className={activeFilter === 'encontrado' ? 'active' : ''}
+              onClick={() => handleFilterClick('encontrado')}
             >
-              Dev
-            </Link>
-            <Link
-              href="/calculadora"
-              className="bg-gray-100 text-gray-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+              Encontrados
+              {activeFilter === 'encontrado' && <i className="ti ti-x filter-clear-icon"></i>}
+            </button>
+            <button
+              data-type="avistamiento"
+              className={activeFilter === 'avistamiento' ? 'active' : ''}
+              onClick={() => handleFilterClick('avistamiento')}
             >
-              Costos
-            </Link>
+              Avistamientos
+              {activeFilter === 'avistamiento' && <i className="ti ti-x filter-clear-icon"></i>}
+            </button>
+            <button
+              data-type="adoptar"
+              className={`btn-filter-adoption ${activeFilter === 'adoptar' ? 'active' : ''}`}
+              onClick={() => handleFilterClick('adoptar')}
+            >
+              <i className="fa-solid fa-heart"></i> Adopciones
+              {activeFilter === 'adoptar' && <i className="ti ti-x filter-clear-icon"></i>}
+            </button>
           </div>
-          <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
-            <input
-              type="text"
-              placeholder="Buscar por título o descripción..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
-            >
-              Buscar
-            </button>
-          </form>
-        </div>
-        <div className="max-w-6xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto">
-          {REPORT_TYPES.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => { setReportType(value); setPage(1); }}
-              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                reportType === value
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6 text-sm">
-            {error}
+          <SearchBox pets={pets} onSearch={setSearchQuery} />
+        </div>
+
+        {/* ==========================================
+            VISTA DETALLE (PET DETAIL VIEW)
+           ========================================== */}
+        <div
+          id="pet-detail-view"
+          className={`view-detail-container ${isDetailActive ? 'active-view' : 'hidden-view'}`}
+        >
+          {selectedPet && (
+            <PetDetailView pet={selectedPet} onClose={closeDetail} />
+          )}
+        </div>
+
+        {/* ==========================================
+            FILTROS MOBILE
+           ========================================== */}
+        <div className="filter-buttons filter-mobile">
+          <button
+            data-type="perdido"
+            className={activeFilter === 'perdido' ? 'active' : ''}
+            onClick={() => handleFilterClick('perdido')}
+          >
+            Perdidos
+            {activeFilter === 'perdido' && <i className="ti ti-x filter-clear-icon"></i>}
+          </button>
+          <button
+            data-type="encontrado"
+            className={activeFilter === 'encontrado' ? 'active' : ''}
+            onClick={() => handleFilterClick('encontrado')}
+          >
+            Encontrados
+            {activeFilter === 'encontrado' && <i className="ti ti-x filter-clear-icon"></i>}
+          </button>
+          <button
+            data-type="avistamiento"
+            className={activeFilter === 'avistamiento' ? 'active' : ''}
+            onClick={() => handleFilterClick('avistamiento')}
+          >
+            Vistos
+            {activeFilter === 'avistamiento' && <i className="ti ti-x filter-clear-icon"></i>}
+          </button>
+          <button
+            data-type="adoptar"
+            className={`btn-filter-adoption ${activeFilter === 'adoptar' ? 'active' : ''}`}
+            onClick={() => handleFilterClick('adoptar')}
+          >
+            <i className="fa-solid fa-heart"></i> Adopción
+            {activeFilter === 'adoptar' && <i className="ti ti-x filter-clear-icon"></i>}
+          </button>
+        </div>
+
+        {/* ==========================================
+            MASONRY GRID - TODAS LAS TARJETAS EXACTAS
+           ========================================== */}
+        {isLoadingPets && (
+          <div className="loading-state-centered">
+            <div className="loading-spinner"></div>
+            <p>Buscando...</p>
           </div>
         )}
 
-        {data && !loading && (
-          <p className="text-sm text-gray-500 mb-4">
-            {data.total} resultado{data.total !== 1 ? "s" : ""}
-            {search && <> para <strong>&ldquo;{search}&rdquo;</strong></>}
-          </p>
+        {loadError && (
+          <div className="error-state">
+            <p>{loadError}</p>
+          </div>
         )}
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="border border-gray-200 rounded-lg overflow-hidden animate-pulse bg-white">
-                <div className="h-48 bg-gray-200" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-1/3" />
-                  <div className="h-4 bg-gray-200 rounded w-full" />
-                  <div className="h-3 bg-gray-200 rounded w-2/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : data && data.items.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {data.items.map((report) => (
-                <ReportCard key={report.id} report={report} />
+        {!isLoadingPets && !loadError && (
+          <div className="masonry-grid">
+            {displayedPets
+              .filter((pet) => isCardVisible(pet.badgeStyle))
+              .map((pet) => (
+                <PetCard key={pet.id} pet={pet} onOpenDetail={openDetail} />
               ))}
-            </div>
-
-            {data.pages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-40 hover:bg-gray-100 transition-colors"
-                >
-                  ← Anterior
-                </button>
-                <span className="text-sm text-gray-600">
-                  Página {page} de {data.pages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
-                  disabled={page === data.pages}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-40 hover:bg-gray-100 transition-colors"
-                >
-                  Siguiente →
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          !error && (
-            <div className="text-center py-20 text-gray-400">
-              <div className="text-5xl mb-4">🐾</div>
-              <p className="text-lg font-medium">No se encontraron reportes</p>
-              <p className="text-sm mt-1">Prueba con otros filtros</p>
-            </div>
-          )
+          </div>
         )}
-      </main>
-    </div>
+      </section>
+
+      {/* MOBILE PUBLICAR */}
+      <div className="fab-publish-wrapper" id="fab-publish-wrapper">
+        <Link href="/publicar" className="fab-publish-btn">
+          <div className="fab-halo"></div>
+          <div className="fab-halo fab-halo-2"></div>
+          <i className="fa-solid fa-heart-crack"></i>
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

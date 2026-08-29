@@ -1,0 +1,711 @@
+.grid-publish-sighting {
+    display: grid;
+    align-items: start;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 2em;
+}
+
+.center-sighting {
+    background: var(--bg-card);
+    border-radius: 1em;
+    padding: 1.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+}
+
+.left-sighting,
+.right-sighting {
+    position: sticky;
+    top: 5em;
+}
+
+.btn-add>a {
+    color: var(--text-main);
+    background: var(--yellow-brand-alpha);
+    box-shadow: 0 6px 20px rgb(253 236 28 / 15%);
+}
+
+.btn-add>a:hover {
+    box-shadow: 0 6px 20px rgb(253 236 28 / 30%)
+}
+
+
+.btn-publish-avistamiento {
+    color: #000000;
+    border: 1px solid var(--yellow-brand);
+    background: var(--yellow-brand);
+    box-shadow: 0 6px 20px rgb(253 236 28 / 30%);
+    width: fit-content;
+    border: none;
+    padding: 0.85em 1em;
+    border-radius: 3em;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-publish-avistamiento:hover {
+    background: var(--yellow-hover);
+    box-shadow: 0 6px 20px rgb(253 236 28 / 60%)
+}
+
+.slogan-reach-item i {
+    font-size: 1.3em;
+}
+
+.sighting-upload-actions {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.sighting-dropzone-modern {
+    position: relative;
+    border: 1px dashed var(--border-color);
+    background: var(--bg-card);
+    border-radius: 0.75em;
+    aspect-ratio: 4/3;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sighting-dropzone-modern:hover {
+    border-color: var(--brand-main);
+}
+
+.sighting-dropzone-modern input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.sighting-corners .corner-sighting {
+    position: absolute;
+    width: 1em;
+    height: 1em;
+    border: 1px solid var(--brand-main);
+    pointer-events: none;
+    transition: all 0.35s ease;
+}
+
+.sighting-dropzone-modern:hover .sighting-corners .corner-sighting {
+    border-color: var(--brand-main);
+}
+
+.corner-sighting.tl {
+    top: 1em;
+    left: 1em;
+    border-right: none !important;
+    border-bottom: none !important;
+}
+
+.corner-sighting.tr {
+    top: 1em;
+    right: 1em;
+    border-left: none !important;
+    border-bottom: none !important;
+}
+
+.corner-sighting.bl {
+    bottom: 1em;
+    left: 1em;
+    border-right: none !important;
+    border-top: none !important;
+}
+
+.corner-sighting.br {
+    bottom: 1em;
+    right: 1em;
+    border-left: none !important;
+    border-top: none !important;
+}
+
+.sighting-pulse-radar {
+    background: var(--bg-input);
+    border-radius: 50%;
+    width: 4.5em;
+    height: 4.5em;
+    margin: 0 auto 1em auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.sighting-icon-photo {
+    font-size: 2em;
+    color: var(--text-main);
+    z-index: 2;
+    transition: color 0.3s ease;
+}
+
+
+.sighting-pulse-wave {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(71, 85, 105, 0.08);
+    z-index: 1;
+    animation: radarPulse 2.5s infinite ease-in-out;
+}
+
+.sighting-dropzone-modern:hover .sighting-pulse-wave {
+    background: var(--yellow-brand-alpha)
+}
+
+.sighting-dropzone-modern:hover .sighting-pulse-radar {
+    background: var(--yellow-brand-alpha)
+}
+
+@keyframes radarPulse {
+    0% {
+        transform: scale(0.9);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.3);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+.sighting-content-empty {
+    position: relative;
+    z-index: 3;
+    padding: 1em;
+}
+
+.sighting-main-title {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 0.4em 0;
+    font-weight: 700;
+}
+
+.sighting-sub-title {
+    font-size: 1em;
+    font-weight: 300;
+    color: var(--text-secondary);
+    margin: 0 0 1em 0;
+}
+
+.sighting-upload-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    background: var(--bg-input);
+    color: var(--text-main);
+    font-size: 1em;
+    font-weight: 500;
+    padding: 0.5em 1em;
+    border-radius: 3em;
+    transition: all 0.3s ease;
+}
+
+.sighting-dropzone-modern:hover .sighting-upload-badge {
+    background: var(--yellow-brand);
+    color: var(--text-main);
+}
+
+/* Preview foto */
+.sighting-preview-container {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 15;
+    border-radius: 0.75em;
+    overflow: hidden;
+}
+
+.sighting-img-element {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-clear-photo-fast {
+    position: absolute;
+    top: 0.75em;
+    right: 0.75em;
+    background: #000000;
+    color: var(--text-white);
+    border: none;
+    padding: 0.35em 0.85em;
+    font-size: 0.9em;
+    font-weight: 600;
+    border-radius: 2em;
+    cursor: pointer;
+    z-index: 20;
+}
+
+.btn-clear-photo-fast:hover {
+    background: var(--yellow-brand);
+    color: #000000;
+}
+
+
+
+/* ==========================================================================
+   THUMBS DE 4 FOTOS
+   ========================================================================== */
+.sighting-thumbs-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5em;
+}
+
+.sighting-thumb {
+    aspect-ratio: 1/1;
+    border: 1px dashed var(--border-color);
+    border-radius: 0.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.3s;
+    background: var(--bg-card);
+}
+
+.sighting-thumb:hover {
+    border-color: var(--brand-main);
+}
+
+.sighting-thumb i.icon {
+    font-size: 2em;
+    color: #4a55664d;
+}
+
+.sighting-thumb input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   FORM DERECHO
+   ========================================================================== */
+.toggle-switch-container {
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 3.4em;
+    height: 1.9em;
+}
+
+.toggle-switch-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-input);
+    transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 3em;
+    border: 1px solid var(--border-color);
+}
+
+.toggle-switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 1.5em;
+    width: 1.5em;
+    left: 0.2em;
+    bottom: 0.15em;
+    background-color: #fff;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+}
+
+.toggle-switch-checkbox:checked+.toggle-switch-slider {
+    background-color: var(--text-main);
+}
+
+.toggle-switch-checkbox:checked+.toggle-switch-slider:before {
+    transform: translateX(1.5em);
+}
+
+
+.sighting-form-card {
+    background: var(--bg-card);
+    border-radius: 1em;
+    padding: 1.3em;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    height: 100%;
+    min-width: 25em;
+}
+
+/* Ubicación + GPS en fila */
+.sighting-location-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.sighting-location-row .form-input {
+    flex: 1;
+    padding-right: 0.8em;
+}
+
+.sighting-gps-icon {
+    font-size: 1.1em;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    transition: color 0.3s;
+}
+
+.sighting-gps-icon.gps-active {
+    color: var(--brand-red);
+    animation: dotPulse 1.5s infinite ease-in-out;
+}
+
+
+.pill-multi-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.pill-multi-group.input-error {
+    border: 1px solid #dc2626;
+    border-radius: 5px;
+    padding: 5px 3px;
+}
+
+
+
+.pill-multi-btn {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    font-weight: 600;
+    padding: 0.35em 1em;
+    border-radius: 2em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    transition: all 0.2s ease;
+}
+
+.pill-multi-btn i {
+    font-size: 0.85em;
+}
+
+.pill-multi-btn:hover {
+    border-color: var(--bg-hover);
+}
+
+.pill-multi-btn.active {
+    background: var(--yellow-brand-alpha);
+    color: #000;
+    border-color: var(--yellow-brand);
+}
+
+
+
+@keyframes dotPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* Mapa GPS */
+.sighting-map-section {
+    width: 100%;
+}
+
+.sighting-capture-btn {
+    display: none;
+}
+
+.map-placeholder-avistamiento-container {
+    border-radius: 0.75em;
+    height: 12em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#sighting-map-preview {
+    color: var(--text-white);
+}
+
+#sighting-map-preview i {
+    font-size: 1.5em;
+    color: var(--yellow-brand);
+    display: block;
+    margin-bottom: 0.3em;
+}
+
+#sighting-map-preview p {
+    font-size: 0.95em;
+    color: var(--text-white);
+    margin: 0;
+}
+
+
+/* OVERLAY MODAL  */
+/* OVERLAY MODAL  */
+.sighting-status-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+.sighting-status-overlay:not(.style-hidden) {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.sighting-status-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(244 245 247 / 90%);
+}
+
+.sighting-status-overlay-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 35em;
+    background: var(--bg-card);
+    border-radius: 1em;
+    padding: 5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1em;
+    overflow: hidden;
+    box-shadow: 0 25px 150px rgba(0, 0, 0, 0.15);
+
+    transform: translateY(30px) scale(0.97);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sighting-status-overlay:not(.style-hidden) .sighting-status-overlay-card {
+    transform: translateY(0) scale(1);
+}
+
+.sighting-overlay-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 1em;
+    font-weight: 700;
+    background-color: var(--yellow-brand-alpha);
+    border: 1px solid var(--yellow-brand);
+    padding: 0.3em 0.75em;
+    border-radius: 3em;
+    justify-content: center;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+.sighting-overlay-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+}
+
+.sighting-status-overlay-card h3 {
+    font-size: 1.8em;
+    font-weight: 900;
+    color: var(--text-main);
+    line-height: 1.1em;
+    margin: 0;
+    padding: 0.25em 0;
+}
+
+.sighting-status-overlay-card p {
+    font-size: 1em;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    margin: 0;
+}
+
+.sighting-status-overlay-card p b {
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+.sighting-overlay-redirect-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.9em;
+    color: var(--yellow-brand);
+    padding-bottom: 0.5em;
+}
+
+.sighting-overlay-redirect-row i {
+    color: var(--yellow-brand);
+}
+
+.sighting-countdown-bar {
+    height: 5px;
+    background: var(--yellow-brand);
+    width: 0%;
+    animation: none;
+    border-radius: 3em;
+    margin-bottom: 1em;
+}
+
+.sighting-status-overlay:not(.style-hidden) .sighting-countdown-bar {
+    animation: shrinkBar 5s linear forwards;
+}
+
+.slogan-reach-item i {
+    font-size: 1.3em;
+}
+
+
+@keyframes shrinkBar {
+    from {
+        width: 0%;
+    }
+
+    to {
+        width: 100%;
+    }
+}
+
+
+@media screen and (max-width: 1030px) {
+
+    .grid-publish-sighting {
+        grid-template-columns: 1fr 22em;
+        grid-template-areas:
+            "left    left"
+            "center  right";
+        gap: 1em;
+    }
+
+    .sighting-thumb i.icon {
+        font-size: 1.4em;
+    }
+
+    .left-sighting {
+        grid-area: left;
+        position: relative;
+        top: inherit;
+    }
+
+    .center-sighting {
+        grid-area: center;
+    }
+
+    .right-sighting {
+        grid-area: right;
+        position: relative;
+        top: inherit;
+    }
+
+    .sighting-form-card {
+        min-width: 20em;
+    }
+
+    h1 {
+        margin-bottom: 0.5em;
+    }
+
+    h1 br {
+        display: none;
+    }
+
+    .slogan-paragraph {
+        display: none;
+    }
+
+
+}
+
+@media screen and (max-width: 760px) {
+    .sighting-capture-btn {
+        display: inline-flex;
+    }
+
+    .grid-publish-sighting {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "left"
+            "center"
+            "right";
+        gap: 1em;
+    }
+
+    .sighting-form-card {
+        min-width: 0;
+    }
+
+    .sighting-dropzone-modern {
+        aspect-ratio: 1/1;
+    }
+
+    h1 {
+        font-size: 1.6em;
+        margin-top: 0.25em;
+        margin-bottom: 0;
+    }
+
+    .center-sighting {
+        padding: 1.25em;
+    }
+
+    .sighting-status-overlay-card {
+        padding: 3em;
+    }
+
+}

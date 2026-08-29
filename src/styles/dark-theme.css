@@ -1,0 +1,249 @@
+[data-theme="dark"] {
+
+    --brand-secondary: #3B3D3E;
+
+    --bg-main: #090909;
+    --bg-card: #252728;
+    --bg-alt: #1C1C1D;
+    --bg-input: #3B3D3E;
+
+    --border-color: #373737;
+    --border-color-focus: #4B4F50;
+
+    --text-main: #ebebeb;
+    --text-secondary: #8e9197;
+    --text-placeholder: #8e9197;
+    --bg-hover: #e70808;
+
+    .photo-uploader-box:hover {
+        border: 1px dashed #ffffff85 !important;
+    }
+
+    .navbar {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-box-wrapper,
+    .view-detail-container {
+        border: 1px solid var(--border-color);
+    }
+
+    .reward-strip-clean {
+        background-color: var(--bg-alt);
+    }
+
+    .reward-container {
+        background-color: var(--bg-alt) !important;
+    }
+
+    .btn-add>button {
+        background: var(--bg-alt);
+    }
+
+    .search-box-wrapper i.search-icon,
+    .global-search-group i.search-icon,
+    .empty-search i {
+        filter: brightness(0) invert(1);
+    }
+
+    .spec-item,
+    .comment-dock-wrapper {
+        border: none;
+    }
+
+    .badge-max-priority,
+    .btn-yellow,
+    .badge-sight {
+        color: #000 !important;
+    }
+
+    .card-footer-external {
+        background: none;
+    }
+
+    .custom-select-dropdown li:hover {
+        background: var(--bg-alt);
+    }
+
+    .btn-tag-add {
+        color: #000000;
+        background: #ffffff;
+    }
+
+    .btn-tag-add:hover {
+        color: var(--text-main);
+        background: var(--brand-red);
+    }
+
+    .premium-notice-banner {
+        background: var(--bg-card);
+        border-color: var(--border-color);
+    }
+
+    .option-dominant-wrapper .plan-item-premium {
+        background: none !important;
+    }
+
+    .planes-modal-backdrop,
+    .app-modal-backdrop,
+    .status-overlay-backdrop,
+    .sighting-status-overlay-backdrop {
+        background: rgb(0 0 0 / 75%)
+    }
+
+    .planes-modal-summary-bar,
+    .payment-gateway-box,
+    .admin-info-box {
+        background: none;
+        border: 1px solid var(--border-color);
+    }
+
+    .planes-modal-plan-item {
+        background: none !important;
+    }
+
+    .pay-tab-btn {
+        background: none !important;
+    }
+
+    .planes-modal-plan-days {
+        background: var(--bg-input) !important;
+    }
+
+    .planes-modal-plan-recommended .planes-modal-plan-price,
+    .planes-modal-plan-recommended .planes-modal-plan-days {
+        border-top: 1px solid var(--border-color);
+    }
+
+    .planes-modal-plan-recommended {
+        border: 1px solid var(--border-color);
+    }
+
+    .pay-method-panel input {
+        background: var(--bg-input);
+    }
+
+    .user-dropdown,
+    .btn-add-dropdown {
+        border: 1px solid var(--border-color);
+    }
+
+    .main-loader-container {
+        background-color: var(--bg-input);
+        border: none;
+    }
+
+    .icon-loading {
+        filter: invert(1);
+        border-radius: 1em;
+    }
+
+    .photo-uploader-box {
+        border: 1px dashed #7f7f7f66;
+    }
+
+    .photo-uploader-box>i {
+        color: #7f7f7f66;
+    }
+
+    .scanner-corners .corner {
+        border-color: #7f7f7f66;
+    }
+
+
+    .btn-toggle-details .icon,
+    .btn-toggle-details.open .icon {
+        background: var(--brand-main);
+    }
+
+    .plan-item {
+        background: none !important;
+    }
+
+    .attributes-plan {
+        background: var(--bg-input);
+    }
+
+    .option-dominant-wrapper .plan-item-premium {
+        background: none;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    .option-dominant-wrapper .plan-item-premium .attributes-plan {
+        background: none;
+        border-top: 1px solid var(--border-color) !important;
+    }
+
+    .option-dominant-wrapper .plan-item-premium .plan-card {
+        border-top: 1px solid var(--border-color) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .step-status {
+        color: var(--text-secondary);
+    }
+
+    .pub-accordion-item.open .pub-accordion-chevron {
+        background: #000000;
+        border: none;
+    }
+
+    .sighting-dropzone-modern:hover .sighting-icon-photo,
+    .sighting-dropzone-modern:hover .sighting-upload-badge {
+        color: #000000 !important;
+    }
+
+    .sighting-dropzone-modern {
+        border: 1px dashed #7f7f7f66;
+    }
+
+    .sighting-dropzone-modern:hover {
+        border-color: var(--yellow-brand);
+    }
+
+    .sighting-corners .corner-sighting {
+        border: 1px dashed #7f7f7f66;
+    }
+
+    .sighting-dropzone-modern:hover .sighting-corners .corner-sighting,
+    .sighting-thumb:hover {
+        border-color: var(--yellow-brand);
+    }
+
+    .btn-add>button:hover,
+    .btn-add>button {
+        box-shadow: 0 0 0 rgb(0 0 0 / 15%) !important;
+    }
+
+    .btn-remove-photo {
+        color: #fff;
+    }
+
+    .btn-toggle-flyer-mobile.active {
+        background: var(--brand-red);
+        border-color: var(--brand-red);
+    }
+
+    .alcance-radar-preview,
+    .zona-option-item,
+    .tiempo-timeline-preview,
+    .upgrade-map-preview {
+        background: none !important;
+    }
+
+    .zona-precio {
+        background: var(--bg-input) !important;
+    }
+
+    .fvb-text p b {
+        color: #000;
+    }
+
+    body.theme-avistamiento .main-content .pill-multi-btn:hover {
+        border-color: var(--yellow-brand);
+    }
+
+    .sighting-thumb {
+        border: 1px dashed #7f7f7f66;
+    }
+}

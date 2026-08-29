@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import {
   analyzeImage,
   searchPets,
@@ -223,6 +224,9 @@ function ResultCard({ result }: { result: SearchResult }) {
 // ---------------------------------------------------------------------------
 
 export default function BusquedaPage() {
+
+  useRequireAuth();
+
   const [district, setDistrict] = useState("");
   const [text, setText] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);

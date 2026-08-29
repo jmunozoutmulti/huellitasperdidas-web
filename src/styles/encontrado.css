@@ -1,0 +1,18 @@
+body.theme-encontrado .main-content {
+    --brand-red: #109682;
+    --brand-red-hover: #0ea790;
+    --brand-red-alpha: #ABEBE1;
+    --text-red: #109682;
+}
+
+body.theme-encontrado .main-content .btn-publish {
+    box-shadow: 0 6px 20px rgb(15 142 123 / 30%);
+}
+
+body.theme-encontrado .main-content .btn-publish:hover {
+    box-shadow: 0 6px 20px rgb(15 142 123 / 60%);
+}
+
+body.theme-encontrado .main-content .btn-secondary:hover {
+    box-shadow: 0 6px 20px rgb(15 142 123 / 30%);
+}
