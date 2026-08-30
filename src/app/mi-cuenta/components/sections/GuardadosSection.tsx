@@ -16,11 +16,12 @@ export default function GuardadosSection() {
 
     useEffect(() => {
         if (!currentUser) return;
+        const userId = currentUser.id;
         let isCancelled = false;
 
         async function loadFavorites() {
             setIsLoading(true);
-            const ids = await getFavoriteIds(currentUser.id);
+            const ids = await getFavoriteIds(userId);
 
             const results = await Promise.all(
                 ids.map(async (id) => {
@@ -28,9 +29,7 @@ export default function GuardadosSection() {
                         const report = await fetchReport(id);
                         return reportToPetData(report);
                     } catch {
-                        // La publicación ya no existe en el backend (fue borrada,
-                        // rechazada, etc.) — limpiamos el favorito huérfano.
-                        await removeFavorite(currentUser.id, id);
+                        await removeFavorite(userId, id);
                         return null;
                     }
                 })

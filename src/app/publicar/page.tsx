@@ -1510,7 +1510,7 @@ export default function PublicarPerdidaPage() {
                                     </span>
                                     <span className="terms-checkbox-text">
                                         <small>Ajustar ubicación en el mapa  {isAdjustingMap && (
-                                            <i className="map-adjust-hint"><i class="ti ti-hand-finger"></i> Arrastra el círculo</i>
+                                            <i className="map-adjust-hint"><i className="ti ti-hand-finger"></i> Arrastra el círculo</i>
                                         )}</small>
                                     </span>
                                 </label>
