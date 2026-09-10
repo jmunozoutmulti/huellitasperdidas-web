@@ -3,7 +3,7 @@
 import { KeyboardEvent } from 'react';
 
 interface Mensaje {
-    id: number;
+    id: string;
     tipo: string;
     texto: string;
     hora: string;

@@ -24,12 +24,12 @@ interface PetDetailViewProps {
 export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
     const { currentUser, openAuthModal } = useApp();
     const [isLiked, setIsLiked] = useState(pet.hasLiked);
-    const [likeCount, setLikeCount] = useState(pet.likesCount);
+    const [likeCount, setLikeCount] = useState(pet.likesCount ?? 0);
     const [isFavorite, setIsFavorite] = useState(pet.isFavorited);
 
     useEffect(() => {
         setIsLiked(pet.hasLiked);
-        setLikeCount(pet.likesCount);
+        setLikeCount(pet.likesCount ?? 0);
         setIsFavorite(pet.isFavorited);
     }, [pet.id, pet.hasLiked, pet.likesCount, pet.isFavorited]);
 
@@ -143,7 +143,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
     // no expone un teléfono/canal distinto por usuario en el reporte).
     // Prefijo +51 fijo por ahora — pendiente de usar el país real del aviso.
     const buildWhatsAppLink = () => {
-        const digits = pet.contactPhone.replace(/\D/g, '');
+        const digits = (pet.contactPhone || '').replace(/\D/g, '');
         return digits ? `https://wa.me/51${digits}` : null;
     };
 
@@ -383,130 +383,130 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                 </span>
                             </div>
 
-                    {currentUser && (
-                            <div className="dropdown-menu-container detail-author-options" ref={authorMenuRef}>
-                                <button
-                                    type="button"
-                                    className="comment-action-icon-btn btn-trigger-dropdown"
-                                    id="btn-author-ellipsis"
-                                    onClick={() => setIsAuthorEllipsisOpen(!isAuthorEllipsisOpen)}
-                                >
-                                    <i className="fa-solid fa-ellipsis-vertical"></i>
-                                </button>
+                            {currentUser && (
+                                <div className="dropdown-menu-container detail-author-options" ref={authorMenuRef}>
+                                    <button
+                                        type="button"
+                                        className="comment-action-icon-btn btn-trigger-dropdown"
+                                        id="btn-author-ellipsis"
+                                        onClick={() => setIsAuthorEllipsisOpen(!isAuthorEllipsisOpen)}
+                                    >
+                                        <i className="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
 
-                                {isAuthorEllipsisOpen && (
-                                    <div className="comment-floating-menu author-floating-menu" style={{ display: 'block' }}>
-                                        <div className="menu-options-view">
-                                            <button
-                                                type="button"
-                                                className="menu-option-item btn-open-author-popover"
-                                                onClick={() => {
-                                                    setIsAuthorEllipsisOpen(false);
-                                                    setActiveAuthorPopover('message');
-                                                }}
-                                            >
-                                                Dejar un mensaje
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="menu-option-item option-danger btn-open-author-popover"
-                                                onClick={() => {
-                                                    setIsAuthorEllipsisOpen(false);
-                                                    setActiveAuthorPopover('report');
-                                                }}
-                                            >
-                                                Reportar publicación
-                                            </button>
+                                    {isAuthorEllipsisOpen && (
+                                        <div className="comment-floating-menu author-floating-menu" style={{ display: 'block' }}>
+                                            <div className="menu-options-view">
+                                                <button
+                                                    type="button"
+                                                    className="menu-option-item btn-open-author-popover"
+                                                    onClick={() => {
+                                                        setIsAuthorEllipsisOpen(false);
+                                                        setActiveAuthorPopover('message');
+                                                    }}
+                                                >
+                                                    Dejar un mensaje
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="menu-option-item option-danger btn-open-author-popover"
+                                                    onClick={() => {
+                                                        setIsAuthorEllipsisOpen(false);
+                                                        setActiveAuthorPopover('report');
+                                                    }}
+                                                >
+                                                    Reportar publicación
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {activeAuthorPopover === 'message' && (
-                                    <div className="author-inline-popover is-open" id="popover-author-message">
-                                        <textarea
-                                            className="author-popover-textarea"
-                                            placeholder="Añade un mensaje"
-                                            rows={3}
-                                            value={authorMessageInput}
-                                            onChange={(e) => setAuthorMessageInput(e.target.value)}
-                                        ></textarea>
-                                        <div className="author-popover-actions">
-                                            <button
-                                                type="button"
-                                                className="author-popover-cancel-btn"
-                                                onClick={() => {
-                                                    setAuthorMessageInput('');
-                                                    setActiveAuthorPopover(null);
-                                                }}
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`author-popover-submit-btn ${authorMessageInput.trim().length > 0 ? 'is-active' : ''}`}
-                                                onClick={async () => {
-                                                    if (authorMessageInput.trim()) {
-                                                        try {
-                                                            await startConversation(pet.id, authorMessageInput.trim());
-                                                            showToast('Mensaje enviado', 'success');
-                                                            setAuthorMessageInput('');
-                                                            setActiveAuthorPopover(null);
-                                                        } catch (err) {
-                                                            const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu mensaje. Intenta de nuevo.';
-                                                            showToast(message, 'error');
+                                    {activeAuthorPopover === 'message' && (
+                                        <div className="author-inline-popover is-open" id="popover-author-message">
+                                            <textarea
+                                                className="author-popover-textarea"
+                                                placeholder="Añade un mensaje"
+                                                rows={3}
+                                                value={authorMessageInput}
+                                                onChange={(e) => setAuthorMessageInput(e.target.value)}
+                                            ></textarea>
+                                            <div className="author-popover-actions">
+                                                <button
+                                                    type="button"
+                                                    className="author-popover-cancel-btn"
+                                                    onClick={() => {
+                                                        setAuthorMessageInput('');
+                                                        setActiveAuthorPopover(null);
+                                                    }}
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`author-popover-submit-btn ${authorMessageInput.trim().length > 0 ? 'is-active' : ''}`}
+                                                    onClick={async () => {
+                                                        if (authorMessageInput.trim()) {
+                                                            try {
+                                                                await startConversation(pet.id, authorMessageInput.trim());
+                                                                showToast('Mensaje enviado', 'success');
+                                                                setAuthorMessageInput('');
+                                                                setActiveAuthorPopover(null);
+                                                            } catch (err) {
+                                                                const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu mensaje. Intenta de nuevo.';
+                                                                showToast(message, 'error');
+                                                            }
                                                         }
-                                                    }
-                                                }}
-                                            >
-                                                Enviar
-                                            </button>
+                                                    }}
+                                                >
+                                                    Enviar
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {activeAuthorPopover === 'report' && (
-                                    <div className="author-inline-popover is-open" id="popover-author-report">
-                                        <textarea
-                                            className="author-popover-textarea"
-                                            placeholder="Explicar los motivos del reporte"
-                                            rows={3}
-                                            value={authorReportInput}
-                                            onChange={(e) => setAuthorReportInput(e.target.value)}
-                                        ></textarea>
-                                        <div className="author-popover-actions">
-                                            <button
-                                                type="button"
-                                                className="author-popover-cancel-btn"
-                                                onClick={() => {
-                                                    setAuthorReportInput('');
-                                                    setActiveAuthorPopover(null);
-                                                }}
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`author-popover-submit-btn btn-report-submit ${authorReportInput.trim().length > 0 ? 'is-active' : ''}`}
-                                                onClick={async () => {
-                                                    if (authorReportInput.trim()) {
-                                                        try {
-                                                            await flagReport(pet.id, authorReportInput.trim());
-                                                            showToast('Reporte enviado', 'success');
-                                                            setAuthorReportInput('');
-                                                            setActiveAuthorPopover(null);
-                                                        } catch (err) {
-                                                            const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu reporte. Intenta de nuevo.';
-                                                            showToast(message, 'error');
+                                    {activeAuthorPopover === 'report' && (
+                                        <div className="author-inline-popover is-open" id="popover-author-report">
+                                            <textarea
+                                                className="author-popover-textarea"
+                                                placeholder="Explicar los motivos del reporte"
+                                                rows={3}
+                                                value={authorReportInput}
+                                                onChange={(e) => setAuthorReportInput(e.target.value)}
+                                            ></textarea>
+                                            <div className="author-popover-actions">
+                                                <button
+                                                    type="button"
+                                                    className="author-popover-cancel-btn"
+                                                    onClick={() => {
+                                                        setAuthorReportInput('');
+                                                        setActiveAuthorPopover(null);
+                                                    }}
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`author-popover-submit-btn btn-report-submit ${authorReportInput.trim().length > 0 ? 'is-active' : ''}`}
+                                                    onClick={async () => {
+                                                        if (authorReportInput.trim()) {
+                                                            try {
+                                                                await flagReport(pet.id, authorReportInput.trim());
+                                                                showToast('Reporte enviado', 'success');
+                                                                setAuthorReportInput('');
+                                                                setActiveAuthorPopover(null);
+                                                            } catch (err) {
+                                                                const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu reporte. Intenta de nuevo.';
+                                                                showToast(message, 'error');
+                                                            }
                                                         }
-                                                    }
-                                                }}
-                                            >
-                                                Reportar
-                                            </button>
+                                                    }}
+                                                >
+                                                    Reportar
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     ) : (

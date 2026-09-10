@@ -241,7 +241,7 @@ export default function Header() {
                         <button
                             className="btn-login"
                             id="btn-open-login"
-                            onClick={openAuthModal}
+                            onClick={() => openAuthModal()}
                         >
                             <i className="ti ti-user"></i> <span>Ingresar</span>
                         </button>

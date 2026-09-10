@@ -35,7 +35,8 @@ export async function geocodeAddress(
     countryAbbr: string = 'PE'
 ): Promise<GeocodeResult | null> {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-    const countryName = getCountryByAbbr(countryAbbr).name;
+    const country = await getCountryByAbbr(countryAbbr);
+    const countryName = country?.name ?? countryAbbr;
     let bestResult: GeocodeResult | null = null;
 
     // 1. Nivel 1 (Departamento/Estado/Provincia/Región según el país)
@@ -77,7 +78,8 @@ export async function geocodeFreeText(query: string, countryAbbr: string = 'PE')
     if (!query.trim()) return null;
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-    const countryName = getCountryByAbbr(countryAbbr).name;
+    const country = await getCountryByAbbr(countryAbbr);
+    const countryName = country?.name ?? countryAbbr;
     const region = countryAbbr.toLowerCase();
 
     try {
