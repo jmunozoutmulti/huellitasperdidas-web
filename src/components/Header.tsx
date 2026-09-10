@@ -35,6 +35,8 @@ export default function Header() {
     // Extraemos estados y funciones de AppContext
     const {
         isAuthModalOpen,
+        authModalInitialMode,
+        authModalResetToken,
         openAuthModal,
         closeAuthModal,
         isLoggedIn,
@@ -54,7 +56,7 @@ export default function Header() {
     };
 
     useEffect(() => {
-        const faviconHref = getFavicon();
+        const faviconHref = `${getFavicon()}?v=${pathname}`;
         let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
         if (!link) {
             link = document.createElement('link');
@@ -321,7 +323,7 @@ export default function Header() {
 
             {/* Modal de Autenticación */}
             {isAuthModalOpen && (
-                <AuthModal onClose={closeAuthModal} />
+                <AuthModal onClose={closeAuthModal} initialMode={authModalInitialMode} resetToken={authModalResetToken} />
             )}
         </>
     );

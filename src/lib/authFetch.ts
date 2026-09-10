@@ -1,4 +1,4 @@
-import { getAccessToken, clearAuthUser, clearAccessToken } from './auth';
+import { getAccessToken, clearAccessToken } from './auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -26,7 +26,7 @@ export async function authFetch(
 ): Promise<Response> {
     const token = getAccessToken();
     const headers = new Headers(options.headers);
-    if (!headers.has('Content-Type') && options.body) {
+    if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
         headers.set('Content-Type', 'application/json');
     }
     if (token) {
@@ -41,7 +41,6 @@ export async function authFetch(
         // Sin esto, la UI seguía "creyendo" que había sesión hasta el próximo
         // recargue, y cualquier llamada siguiente fallaba con "Token requerido"
         // sin que el usuario entendiera por qué.
-        clearAuthUser();
         clearAccessToken();
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('auth:unauthorized'));

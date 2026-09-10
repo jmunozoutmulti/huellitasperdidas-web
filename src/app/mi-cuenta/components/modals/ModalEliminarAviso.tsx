@@ -1,15 +1,31 @@
 'use client';
 
+import { useState } from 'react';
 import { showToast } from '@/components/global/Toast';
 
 interface ModalEliminarAvisoProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm: () => Promise<void>;
 }
 
 export default function ModalEliminarAviso({ isOpen, onClose, onConfirm }: ModalEliminarAvisoProps) {
+    const [isProcessing, setIsProcessing] = useState(false);
+
     if (!isOpen) return null;
+
+    const handleConfirm = async () => {
+        setIsProcessing(true);
+        try {
+            await onConfirm();
+            onClose();
+            showToast('El anuncio fue eliminado permanentemente.', 'success');
+        } catch (err) {
+            showToast('No pudimos eliminar el anuncio. Intenta de nuevo.', 'error');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     return (
         <div className="app-modal open" id="modal-eliminar-aviso">
@@ -34,13 +50,10 @@ export default function ModalEliminarAviso({ isOpen, onClose, onConfirm }: Modal
                         type="button"
                         className="btn-danger-account"
                         id="btn-confirmar-eliminar-aviso"
-                        onClick={() => {
-                            onConfirm();
-                            onClose();
-                            showToast('El anuncio fue eliminado permanentemente.', 'success');
-                        }}
+                        disabled={isProcessing}
+                        onClick={handleConfirm}
                     >
-                        <i className="ti ti-trash"></i> Sí, eliminar definitivamente
+                        <i className="ti ti-trash"></i> {isProcessing ? 'Eliminando...' : 'Sí, eliminar definitivamente'}
                     </button>
                 </div>
             </div>

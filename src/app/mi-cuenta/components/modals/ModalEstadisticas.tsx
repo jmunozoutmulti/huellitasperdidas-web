@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPublicationById, getDiasRestantes, type MockPublication } from '@/lib/publications';
-import { getPlanById } from '@/lib/plans';
+import { fetchReport, type ReportDetail } from '@/lib/api';
+import { getPackages } from '@/lib/packagesApi';
 
 interface ModalEstadisticasProps {
     isOpen: boolean;
@@ -10,27 +10,45 @@ interface ModalEstadisticasProps {
     onClose: () => void;
 }
 
+function getDiasRestantes(expiresAt: string | null): number {
+    if (!expiresAt) return 0;
+    const diffMs = new Date(expiresAt).getTime() - Date.now();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / 86400000);
+}
+
 export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadisticasProps) {
-    const [pub, setPub] = useState<MockPublication | null>(null);
+    const [pub, setPub] = useState<ReportDetail | null>(null);
+    const [diasTotales, setDiasTotales] = useState(0);
 
     useEffect(() => {
         if (!isOpen || !id) return;
         setPub(null);
-        getPublicationById(id).then(setPub);
+        setDiasTotales(0);
+        fetchReport(id).then(async (report) => {
+            setPub(report);
+            if (report.package_slug && report.country) {
+                const pkgs = await getPackages(report.country);
+                const pkg = pkgs.find((p) => p.slug === report.package_slug);
+                setDiasTotales(pkg?.days ?? 0);
+            }
+        });
     }, [isOpen, id]);
 
     if (!isOpen) return null;
 
+    const stats = pub?.statistics_ads;
+
+    const reachActual = stats?.reach_actual ?? 0;
+    const reachProjected = stats?.reach_projected ?? 0;
+    const impressions = stats?.impressions ?? 0;
+    const clicks = stats?.clicks ?? 0;
+    const frequency = stats?.frequency ?? 0;
+
     const diasRestantes = pub ? getDiasRestantes(pub.expires_at) : 0;
-    const diasTotales = pub ? getPlanById(pub.plan, pub.country || 'PE').dias : 0;
-    const ctr =
-        pub && pub.statistics_ads.impressions > 0
-            ? ((pub.statistics_ads.clicks / pub.statistics_ads.impressions) * 100).toFixed(1)
-            : '0.0';
-    const progresoAlcance =
-        pub && pub.statistics_ads.reach_projected > 0
-            ? Math.min(100, Math.round((pub.statistics_ads.reach_actual / pub.statistics_ads.reach_projected) * 100))
-            : 0;
+    const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : '0.0';
+    const progresoAlcance = reachProjected > 0 ? Math.min(100, Math.round((reachActual / reachProjected) * 100)) : 0;
+    const hasAdsData = !!stats && (reachProjected > 0 || impressions > 0);
 
     return (
         <div className="app-modal open" id="modal-estadisticas">
@@ -51,45 +69,53 @@ export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadist
                     ) : (
                         <>
                             <div className="stats-grid">
-                                <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Alcance real</span>
-                                    <h3 className="stat-metric-value">{pub.statistics_ads.reach_actual.toLocaleString('es-PE')}</h3>
-                                    <span className="stat-metric-sub">de {pub.statistics_ads.reach_projected.toLocaleString('es-PE')} proyectados</span>
-                                    <div className="stat-progress-bar">
-                                        <div className="stat-progress-fill" style={{ width: `${progresoAlcance}%` }}></div>
+                                {hasAdsData ? (
+                                    <>
+                                        <div className="stat-metric-card">
+                                            <span className="stat-metric-label">Alcance real</span>
+                                            <h3 className="stat-metric-value">{reachActual.toLocaleString('es-PE')}</h3>
+                                            <span className="stat-metric-sub">de {reachProjected.toLocaleString('es-PE')} proyectados</span>
+                                            <div className="stat-progress-bar">
+                                                <div className="stat-progress-fill" style={{ width: `${progresoAlcance}%` }}></div>
+                                            </div>
+                                        </div>
+                                        <div className="stat-metric-card">
+                                            <span className="stat-metric-label">Impresiones</span>
+                                            <h3 className="stat-metric-value">{impressions.toLocaleString('es-PE')}</h3>
+                                            <span className="stat-metric-sub">veces mostrado</span>
+                                        </div>
+                                        <div className="stat-metric-card">
+                                            <span className="stat-metric-label">Clicks (CTR)</span>
+                                            <h3 className="stat-metric-value">{ctr}%</h3>
+                                            <span className="stat-metric-sub">{clicks.toLocaleString('es-PE')} clicks totales</span>
+                                        </div>
+                                        <div className="stat-metric-card">
+                                            <span className="stat-metric-label">Frecuencia</span>
+                                            <h3 className="stat-metric-value">{frequency.toFixed(2)}</h3>
+                                            <span className="stat-metric-sub">veces por persona</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="admin-info-box" style={{ gridColumn: '1 / -1' }}>
+                                        <i className="ti ti-info-circle"></i>
+                                        <p>Las métricas de alcance publicitario todavía no están disponibles para este aviso.</p>
                                     </div>
-                                </div>
+                                )}
                                 <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Impresiones</span>
-                                    <h3 className="stat-metric-value">{pub.statistics_ads.impressions.toLocaleString('es-PE')}</h3>
-                                    <span className="stat-metric-sub">veces mostrado</span>
-                                </div>
-                                <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Clicks (CTR)</span>
-                                    <h3 className="stat-metric-value">{ctr}%</h3>
-                                    <span className="stat-metric-sub">{pub.statistics_ads.clicks.toLocaleString('es-PE')} clicks totales</span>
-                                </div>
-                                <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Frecuencia</span>
-                                    <h3 className="stat-metric-value">{pub.statistics_ads.frequency.toFixed(2)}</h3>
-                                    <span className="stat-metric-sub">veces por persona</span>
+                                    <span className="stat-metric-label">Vistas</span>
+                                    <h3 className="stat-metric-value">{pub.views_count.toLocaleString('es-PE')}</h3>
                                 </div>
                                 <div className="stat-metric-card">
                                     <span className="stat-metric-label">Compartidos</span>
-                                    <h3 className="stat-metric-value">{pub.statistics.shares}</h3>
-                                    <span className="stat-metric-sub">en Facebook / Instagram</span>
+                                    <h3 className="stat-metric-value">{pub.shares_count}</h3>
                                 </div>
-                                <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Días restantes</span>
-                                    <h3 className="stat-metric-value">{diasRestantes}</h3>
-                                    <span className="stat-metric-sub">de {diasTotales} días del plan</span>
-                                </div>
+                                
                             </div>
 
                             <div className="admin-info-box">
                                 <i className="ti ti-info-circle"></i>
                                 <p>
-                                    Las estadísticas se actualizan cada <b>2 horas</b> mientras tu aviso esté activo.
+                                    Las estadísticas se actualizan cada <b>6 horas</b> mientras tu aviso esté activo.
                                 </p>
                             </div>
                         </>

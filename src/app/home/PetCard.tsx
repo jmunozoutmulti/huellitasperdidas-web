@@ -59,7 +59,47 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
         );
     }
 
-    // 2. TARJETA PREMIUM / URGENTE ROJA
+    // 2b. TARJETA PREMIUM DE ADOPCIÓN (morada, sin recompensa)
+    if (pet.isPremium && pet.badgeStyle === 'badge-adopt-premium') {
+        return (
+            <div className="masonry-item">
+                <div
+                    className="pet-card pet-card-adoptar-premium"
+                    data-id={pet.id}
+                    onClick={() => onOpenDetail(pet)}
+                >
+                    <div className="card-badges">
+                        <span className="badge badge-adopt">
+                            <i className="fa-solid fa-heart"></i> {pet.badge}
+                        </span>
+                    </div>
+
+                    <a href="#" onClick={(e) => e.preventDefault()}>
+                        <img src={pet.imgSrc} className="card-img" alt={pet.title} />
+                    </a>
+
+                    <div className="card-body">
+                        <div className="card-meta">
+                            <span><i className="ti ti-pin"></i> {pet.district}</span>
+                            <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                        </div>
+                        {pet.title && <h3 className="card-title">{pet.title}</h3>}
+
+                        <div className="reward-container-premium">
+                            <div>
+                                <span className="reward-amount-premium">ADOPCIÓN</span>
+                            </div>
+                            <button type="button" className="btn-purple">
+                                ¡VER!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // 2. TARJETA PREMIUM / URGENTE ROJA (Perdidos)
     if (pet.isPremium) {
         return (
             <div className="masonry-item">
@@ -83,15 +123,19 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                             <span><i className="ti ti-pin"></i> {pet.district}</span>
                             <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
                         </div>
-                        <h3 className="card-title">{pet.title}</h3>
+                        {pet.title && <h3 className="card-title">{pet.title}</h3>}
 
                         <div className="reward-container-premium">
                             <div>
-                                <span className="reward-label-premium">Recompensa</span>
-                                <span className="reward-amount-premium">{pet.reward}</span>
+                                <span className="reward-label-premium">
+                                    {pet.rewardVisible ? 'Recompensa' : 'Se ofrece:'}
+                                </span>
+                                <span className="reward-amount-premium">
+                                    {pet.rewardVisible ? pet.reward : 'RECOMPENSA'}
+                                </span>
                             </div>
                             <button type="button" className="btn-yellow">
-                                ¡LO VI!
+                                ¡VER!
                             </button>
                         </div>
                     </div>
@@ -120,24 +164,26 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                         <button type="button" className="btn-purple">¡ADOPTAR!</button>
                     ) : pet.badgeStyle === 'badge-found' ? (
                         <button type="button" className="btn-green">
-                            <i className="ti ti-heart-question"></i> Consultar mascota
+                            <i className="ti ti-heart-question"></i> Ver mascota
                         </button>
                     ) : pet.badgeStyle === 'badge-sight' ? (
                         <button type="button" className="btn-yellow">¡VER!</button>
                     ) : (
-                        <button type="button" className="btn-primary">¡LO VI!</button>
+                        <button type="button" className="btn-primary">¡VER!</button>
                     )}
                 </div>
 
                 <img src={pet.imgSrc} className="card-img" alt={pet.title} />
 
-                <div className="card-body">
-                    <div className="card-meta">
-                        <span><i className="ti ti-pin"></i> {pet.district}</span>
-                        <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                {pet.badgeStyle !== 'badge-sight' && (
+                    <div className="card-body">
+                        <div className="card-meta">
+                            <span><i className="ti ti-pin"></i> {pet.district}</span>
+                            <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                        </div>
+                        {pet.title && <h3 className="card-title">{pet.title}</h3>}
                     </div>
-                    <h3 className="card-title">{pet.title}</h3>
-                </div>
+                )}
 
                 <div className="card-footer">
                     <span><i className="ti ti-share"></i> {pet.shares} <b>Compartidos</b></span>

@@ -3,8 +3,6 @@
 interface AjustesSectionProps {
     isDarkMode: boolean;
     toggleTheme: () => void;
-    notifModo: 'email' | 'whatsapp';
-    onSetNotifModo: (modo: 'email' | 'whatsapp') => void;
     notifTipos: Record<string, boolean>;
     onToggleNotifTipo: (tipo: string) => void;
     onOpenBajaCuenta: () => void;
@@ -13,8 +11,6 @@ interface AjustesSectionProps {
 export default function AjustesSection({
     isDarkMode,
     toggleTheme,
-    notifModo,
-    onSetNotifModo,
     notifTipos,
     onToggleNotifTipo,
     onOpenBajaCuenta,
@@ -24,7 +20,7 @@ export default function AjustesSection({
             <div className="dashboard-recent-header">
                 <h2 className="dashboard-subsection-title">Ajustes</h2>
                 <p>
-                    <i className="ti ti-exclamation-circle"></i> Personaliza tu experiencia
+                    <i className="ti ti-info-circle"></i> Personaliza tu experiencia
                 </p>
             </div>
 
@@ -56,39 +52,10 @@ export default function AjustesSection({
 
                 <div className="ajuste-row ajuste-col">
                     <div className="ajuste-info">
-                        <span className="ajuste-title">Modo de notificación</span>
-                        <span className="ajuste-desc">¿Cómo quieres recibir alertas?</span>
-                    </div>
-                    <div className="ajuste-options-row">
-                        <label className={`ajuste-option-btn ${notifModo === 'email' ? 'active' : ''}`}>
-                            <input
-                                type="radio"
-                                name="notif-modo"
-                                value="email"
-                                checked={notifModo === 'email'}
-                                onChange={() => onSetNotifModo('email')}
-                            />
-                            <i className="ti ti-mail"></i> Correo
-                        </label>
-                        <label className={`ajuste-option-btn ${notifModo === 'whatsapp' ? 'active' : ''}`}>
-                            <input
-                                type="radio"
-                                name="notif-modo"
-                                value="whatsapp"
-                                checked={notifModo === 'whatsapp'}
-                                onChange={() => onSetNotifModo('whatsapp')}
-                            />
-                            <i className="ti ti-brand-whatsapp"></i> WhatsApp
-                        </label>
-                    </div>
-                </div>
-
-                <div className="ajuste-divider"></div>
-
-                <div className="ajuste-row ajuste-col">
-                    <div className="ajuste-info">
                         <span className="ajuste-title">Notificarme solo de</span>
-                        <span className="ajuste-desc">Filtra los tipos de alertas que recibes</span>
+                        <span className="ajuste-desc">
+                            Filtra los tipos de alertas que recibes por correo — si desactivas todas, no se te enviará ningún aviso
+                        </span>
                     </div>
                     <div className="ajuste-options-row">
                         <label className={`ajuste-check-btn ${notifTipos.lost ? 'active' : ''}`}>

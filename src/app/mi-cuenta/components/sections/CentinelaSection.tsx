@@ -105,17 +105,16 @@ export default function CentinelaSection() {
                     </div>
                     <div className="centinela-hallazgo-actions">
                         {h.linkHref.startsWith('/') ? (
-                            <Link href={h.linkHref} className="pub-btn pub-btn-secondary">
-                                <i className="ti ti-external-link"></i> Ver publicación
+                            <Link href={h.linkHref}>
+                                <i className="ti ti-external-link"></i>
                             </Link>
                         ) : (
-                            <a href={h.linkHref} className="pub-btn pub-btn-secondary">
-                                <i className="ti ti-external-link"></i> Ver publicación
+                            <a href={h.linkHref}>
+                                <i className="ti ti-external-link"></i>
                             </a>
                         )}
                         <button
                             type="button"
-                            className="centinela-descartar-btn"
                             onClick={() => handleDescartar(h.id)}
                         >
                             <i className="ti ti-x"></i>

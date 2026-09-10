@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
-import { useApp } from '@/context/AppContext';
-import { purchaseExtraReach } from '@/lib/publications';
+import { fetchReport, type ReportDetail } from '@/lib/api';
+import { purchaseExtraReach, ReportsApiError } from '@/lib/reportsApi';
+import { getPackages, type PackageOption, type ReachOption } from '@/lib/packagesApi';
 import { getCountryByAbbr } from '@/lib/countries';
 
 interface ModalAlcanceProps {
@@ -13,94 +14,100 @@ interface ModalAlcanceProps {
     onPurchased: () => void;
 }
 
-interface AlcanceTier {
-    km: string;
-    personas: string;
-    precio: number;
-    level: number;
-}
-
-const ALCANCE_TIERS_BY_COUNTRY: Record<string, Record<string, AlcanceTier>> = {
-    PE: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 30, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 50, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 90, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 130, level: 4 },
-    },
-    AR: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 13600, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 22700, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 40900, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 59100, level: 4 },
-    },
-    CL: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 8300, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 13900, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 25000, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 36100, level: 4 },
-    },
-    CO: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 27300, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 45500, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 81800, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 118200, level: 4 },
-    },
-    MX: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 152, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 253, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 455, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 657, level: 4 },
-    },
-    UY: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 360, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 600, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 1080, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 1560, level: 4 },
-    },
-    EC: {
-        '5km': { km: '5 km', personas: '+2,000', precio: 9, level: 1 },
-        '10km': { km: '10 km', personas: '+5,000', precio: 15, level: 2 },
-        '20km': { km: '20 km', personas: '+10,000', precio: 27, level: 3 },
-        '50km': { km: '50 km', personas: '+20,000', precio: 39, level: 4 },
-    },
-};
-
-function getAlcanceTiers(country: string): Record<string, AlcanceTier> {
-    return ALCANCE_TIERS_BY_COUNTRY[country] ?? ALCANCE_TIERS_BY_COUNTRY['PE'];
-}
-
 export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: ModalAlcanceProps) {
-    const { currentUser } = useApp();
-    const country = currentUser?.country || 'PE';
-    const currencySymbol = getCountryByAbbr(country).currency.symbol;
-    const tiers = getAlcanceTiers(country);
+    const [pub, setPub] = useState<ReportDetail | null>(null);
+    const [pkg, setPkg] = useState<PackageOption | null>(null);
+    const [currencySymbol, setCurrencySymbol] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
 
     const [step, setStep] = useState<1 | 2>(1);
-    const [val, setVal] = useState('10km');
+    const [radiusKm, setRadiusKm] = useState<number | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<'card' | 'yape'>('card');
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        if (isOpen) {
-            setStep(1);
-            setVal('10km');
-            setPaymentMethod('card');
-            setAcceptTerms(false);
-        }
-    }, [isOpen]);
+        if (!isOpen || !id) return;
+        setStep(1);
+        setRadiusKm(null);
+        setPaymentMethod('card');
+        setAcceptTerms(false);
+        setPub(null);
+        setPkg(null);
+        setIsLoading(true);
+
+        fetchReport(id).then(async (report) => {
+            setPub(report);
+            if (report.package_slug && report.country) {
+                const [pkgs, country] = await Promise.all([
+                    getPackages(report.country),
+                    getCountryByAbbr(report.country),
+                ]);
+                const foundPkg = pkgs.find((p) => p.slug === report.package_slug) ?? null;
+                setPkg(foundPkg);
+                setCurrencySymbol(country?.currencySymbol ?? '');
+                setRadiusKm(foundPkg?.reachOptions[0]?.radiusKm ?? null);
+            }
+            setIsLoading(false);
+        });
+    }, [isOpen, id]);
 
     if (!isOpen) return null;
 
-    const tier = tiers[val] || tiers['10km'];
+    if (isLoading) {
+        return (
+            <div id="alcance-modal-overlay" className="planes-modal-overlay">
+                <div className="planes-modal-backdrop" onClick={onClose}></div>
+                <div className="planes-modal-card">
+                    <div className="admin-info-box info-box-revision">
+                        <i className="ti ti-loader"></i>
+                        <p>Cargando...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currencySymbol || !pkg || pkg.reachOptions.length === 0) {
+        return (
+            <div id="alcance-modal-overlay" className="planes-modal-overlay">
+                <div className="planes-modal-backdrop" onClick={onClose}></div>
+                <div className="planes-modal-card">
+                    <div className="planes-modal-header">
+                        <div>
+                            <span className="planes-modal-eyebrow">
+                                <i className="ti ti-trending-up"></i> Llegar a más personas
+                            </span>
+                        </div>
+                        <button type="button" className="planes-modal-close" onClick={onClose}>
+                            <i className="ti ti-x"></i>
+                        </button>
+                    </div>
+                    <div className="admin-info-box">
+                        <i className="ti ti-info-circle"></i>
+                        <p>Este plan todavía no tiene opciones de alcance extra configuradas para tu país. Vuelve más tarde.</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const tier: ReachOption | undefined = pkg.reachOptions.find((t) => t.radiusKm === radiusKm) ?? pkg.reachOptions[0];
 
     const handlePagar = async () => {
+        if (!tier) return;
         setIsProcessing(true);
-        await purchaseExtraReach(id, val);
-        setIsProcessing(false);
-        onClose();
-        onPurchased();
-        showToast('Tu alcance fue ampliado correctamente', 'success');
+        try {
+            await purchaseExtraReach(id, tier.radiusKm);
+            onClose();
+            onPurchased();
+            showToast('¡Listo! Validaremos la solicitud y ampliaremos el alcance de tu aviso.', 'success');
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos procesar tu compra. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -118,12 +125,12 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                     </button>
                 </div>
 
-                {step === 1 && (
+                {step === 1 && tier && (
                     <div id="alcance-modal-step-1">
                         <div className="alcance-radar-preview">
                             <div className="alcance-radar-box">
                                 <div className="alcance-radar-ring-base"></div>
-                                <div className={`alcance-radar-ring-growth level-${tier.level}`}></div>
+                                <div className={`alcance-radar-ring-growth level-${pkg.reachOptions.findIndex((t) => t.radiusKm === tier.radiusKm) + 1}`}></div>
 
                                 <div className="alcance-radar-center">
                                     <div className="alcance-radar-pin">
@@ -136,32 +143,36 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                             </div>
                             <p className="alcance-radar-caption">
                                 <i className="ti ti-trending-up"></i>
-                                Incrementas tu alcance a un radio de <b>{tier.km}</b> <b>(hasta {tier.personas} personas)</b>
+                                Incrementas tu alcance a un radio de <b>{tier.radiusKm} km</b>
                             </p>
                         </div>
 
                         <div className="zona-options-grid">
-                            {Object.entries(tiers).map(([tierKey, t]) => (
-                                <label key={tierKey} className="zona-option-label">
+                            {pkg.reachOptions.map((t) => (
+                                <label key={t.radiusKm} className="zona-option-label">
                                     <input
                                         type="radio"
                                         name="alcance-extra"
-                                        value={tierKey}
-                                        checked={val === tierKey}
-                                        onChange={() => setVal(tierKey)}
+                                        value={t.radiusKm}
+                                        checked={radiusKm === t.radiusKm}
+                                        onChange={() => setRadiusKm(t.radiusKm)}
                                     />
                                     <div className="zona-option-item">
                                         <div className="zona-option-top">
                                             <div className="zona-icon">
                                                 <i className="ti ti-radar-2"></i>
                                             </div>
-                                            <span className="zona-km">{t.km}</span>
+                                            <span className="zona-km">{t.radiusKm} km</span>
                                             <span className="zona-reach">
-                                                Hasta <b>{t.personas}</b> personas
+                                                {t.estimatedReach && (
+                                                    <>
+                                                        Hasta <b>{Number(t.estimatedReach).toLocaleString('es-PE')}</b> personas
+                                                    </>
+                                                )}
                                             </span>
                                         </div>
                                         <div className="zona-precio">
-                                            <span><i>{currencySymbol}</i> {t.precio}</span>
+                                            <span><i>{currencySymbol}</i> {t.price}</span>
                                         </div>
                                     </div>
                                 </label>
@@ -179,16 +190,15 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                     </div>
                 )}
 
-                {step === 2 && (
+                {step === 2 && tier && (
                     <div id="alcance-modal-step-2">
                         <div className="modal-summary">
                             <div className="planes-modal-summary-bar">
                                 <div className="planes-summary-body">
                                     <span className="planes-summary-label">Alcance seleccionado</span>
-                                    <h5>{tier.personas} Personas</h5>
-                                    <span>({tier.km} adicionales)</span>
+                                    <h5>{tier.radiusKm} km adicionales</h5>
                                 </div>
-                                <div className="planes-summary-price">{currencySymbol} {tier.precio}</div>
+                                <div className="planes-summary-price">{currencySymbol} {tier.price}</div>
                             </div>
 
                             <div className="payment-gateway-box">
@@ -284,6 +294,6 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

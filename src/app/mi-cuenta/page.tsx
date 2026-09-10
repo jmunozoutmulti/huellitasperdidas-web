@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { showToast } from '@/components/global/Toast';
 import PlanesModal from '@/components/global/PlanesModal';
+import { getMyConversations, getConversationMessages, replyToConversation, getMyFiledReports, getUnreadMessagesCount, markMessagesSeen, type ConversationSummary, type ConversationMessage } from '@/lib/messagesApi';
 import { useApp } from '@/context/AppContext';
 import AlertBanner from '@/components/global/AlertBanner';
 import GuardadosSection from './components/sections/GuardadosSection';
@@ -11,12 +12,13 @@ import DatosSection from './components/sections/DatosSection';
 import AjustesSection from './components/sections/AjustesSection';
 import DashboardSection from './components/sections/AvisosSection';
 import DevAvisosPanel from './components/DevAvisosPanel';
-import { deletePublication, getMyPublications, isExpiringSoon, getDiasRestantes, reportTypeLabel, type MockPublication } from '@/lib/publications';
-import { getUserSettings, saveUserSettings, type UserSettings } from '@/lib/userSettings';
+import { getMyPublications, isExpiringSoon, getDiasRestantes, reportTypeLabel, type MockPublication } from '@/lib/publications';
+import { getMySettings, updateMySettings, type UserSettings } from '@/lib/authApi';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import PhoneReminderBanner from '@/components/global/PhoneReminderBanner';
 import { AuthApiError } from '@/lib/authApi';
 import { resizeImageFile } from '@/lib/resizeImage';
+import { deleteReport } from '@/lib/reportsApi';
 
 import dynamic from 'next/dynamic';
 const ModalAgregarNumero = dynamic(() => import('@/components/global/ModalAgregarNumero'), { ssr: false });
@@ -39,7 +41,9 @@ export default function MiCuentaPage() {
 
     useRequireAuth();
 
-    const { isDarkMode, toggleTheme, currentUser, updateCurrentUser, updateProfile } = useApp();
+    const { isDarkMode, toggleTheme, currentUser, updateCurrentUser, updateProfile, updateAvatar } = useApp();
+
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
     // ==========================================
     // NAVEGACIÓN DE SECCIONES (SIDEBAR)
@@ -99,103 +103,142 @@ export default function MiCuentaPage() {
     // ==========================================
     // ESTADOS DE MIS MENSAJES
     // ==========================================
-    const [hilos, setHilos] = useState([
-        {
-            id: 'hilo-1',
-            nombre: 'Javier Ramos',
-            aviso: 'Luna',
-            preview: '¡Hola! Sí, sigue perdida. ¿Me puedes contar más o compartir una foto?',
-            tiempo: 'Hoy, 4:10 pm',
-            unread: true,
-            thumb: '/uploads/publicaciones/dog-7.jpg',
-            isOpen: false,
-            mensajes: [
-                {
-                    id: 1,
-                    tipo: 'recibido',
-                    texto: 'Hola, creo que vi a tu mascota cerca del parque de Miraflores, ¿sigue perdida?',
-                    hora: '3:40 pm',
-                },
-                {
-                    id: 2,
-                    tipo: 'enviado',
-                    texto: '¡Hola! Sí, sigue perdida. ¿Me puedes contar más o compartir una foto?',
-                    hora: '4:10 pm',
-                },
-            ],
-            replyInput: '',
-        },
-        {
-            id: 'hilo-2',
-            nombre: 'Carla Torres',
-            aviso: 'Luna',
-            preview: 'Perfecto, gracias por avisar. Cualquier novedad te escribo.',
-            tiempo: 'Ayer, 6:02 pm',
-            unread: false,
-            thumb: '/uploads/publicaciones/dog-12.jpg',
-            isOpen: false,
-            mensajes: [
-                {
-                    id: 1,
-                    tipo: 'recibido',
-                    texto: 'Vi un aviso similar en Surco, no sé si te sirva revisar por esa zona también.',
-                    hora: '5:45 pm',
-                },
-                {
-                    id: 2,
-                    tipo: 'enviado',
-                    texto: 'Perfecto, gracias por avisar. Cualquier novedad te escribo.',
-                    hora: '6:02 pm',
-                },
-            ],
-            replyInput: '',
-        },
-    ]);
+    interface Hilo {
+        id: string;
+        nombre: string;
+        aviso: string;
+        preview: string;
+        tiempo: string;
+        unread: boolean;
+        thumb: string;
+        otherUserId: string;
+        isOpen: boolean;
+        isBlocked: boolean;
+        adminReply?: string | null;
+        mensajes: { id: string; tipo: 'enviado' | 'recibido'; texto: string; hora: string }[];
+        replyInput: string;
+        loaded: boolean;
+    }
 
-    const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+    const [hilos, setHilos] = useState<Hilo[]>([]);
+    const [isLoadingHilos, setIsLoadingHilos] = useState(true);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        Promise.all([getMyConversations(), getMyFiledReports()])
+            .then(([convs, reports]) => {
+                setHilos(
+                    convs.map((c) => {
+                        const misReportes = reports.filter(
+                            (r) => r.target_user_id === c.other_user_id && r.admin_reply
+                        );
+                        const ultimoConRespuesta = misReportes[misReportes.length - 1];
+                        return {
+                            id: c.id,
+                            nombre: c.other_user_name,
+                            aviso: c.report_title || 'Aviso',
+                            preview: c.last_message,
+                            tiempo: new Date(c.last_message_at).toLocaleString('es-PE', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                            }),
+                            unread: false,
+                            thumb: c.report_cover_image_url || '/uploads/publicaciones/placeholder.jpg',
+                            otherUserId: c.other_user_id,
+                            isOpen: false,
+                            isBlocked: c.is_blocked,
+                            adminReply: ultimoConRespuesta?.admin_reply ?? null,
+                            mensajes: [],
+                            replyInput: '',
+                            loaded: false,
+                        };
+                    })
+                );
+            })
+            .finally(() => setIsLoadingHilos(false));
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        getUnreadMessagesCount().then(setUnreadMessagesCount);
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (activeSection === 'mensajes') {
+            markMessagesSeen();
+            setUnreadMessagesCount(0);
+        }
+    }, [activeSection]);
 
     const handleToggleHilo = (id: string) => {
-        setHilos((prev) =>
-            prev.map((h) => {
-                if (h.id === id) {
-                    return {
-                        ...h,
-                        isOpen: !h.isOpen,
-                        unread: false,
-                    };
-                }
-                return h;
-            })
-        );
+        setHilos((prev) => prev.map((h) => (h.id === id ? { ...h, isOpen: !h.isOpen } : h)));
+
+        const hilo = hilos.find((h) => h.id === id);
+        if (hilo && !hilo.loaded) {
+            getConversationMessages(id).then((msgs: ConversationMessage[]) => {
+                setHilos((prev) =>
+                    prev.map((h) =>
+                        h.id === id
+                            ? {
+                                  ...h,
+                                  loaded: true,
+                                  mensajes: msgs.map((m) => ({
+                                      id: m.id,
+                                      tipo: m.sender_id === currentUser?.id ? 'enviado' : 'recibido',
+                                      texto: m.body,
+                                      hora: new Date(m.created_at).toLocaleTimeString('es-PE', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                      }),
+                                  })),
+                              }
+                            : h
+                    )
+                );
+            });
+        }
     };
 
-    const handleSendReply = (hiloId: string) => {
-        setHilos((prev) =>
-            prev.map((h) => {
-                if (h.id === hiloId && h.replyInput.trim()) {
-                    const horaActual = new Date().toLocaleTimeString('es-PE', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                    });
-                    const newMsg = {
-                        id: Date.now(),
-                        tipo: 'enviado',
-                        texto: h.replyInput.trim(),
-                        hora: horaActual,
-                    };
-                    return {
-                        ...h,
-                        mensajes: [...h.mensajes, newMsg],
-                        preview: h.replyInput.trim(),
-                        tiempo: 'Ahora',
-                        replyInput: '',
-                    };
-                }
-                return h;
-            })
-        );
-        showToast('Mensaje enviado', 'success');
+    const handleSendReply = async (hiloId: string) => {
+        const hilo = hilos.find((h) => h.id === hiloId);
+        if (!hilo || !hilo.replyInput.trim()) return;
+        const texto = hilo.replyInput.trim();
+
+        try {
+            const nuevo = await replyToConversation(hiloId, texto);
+            setHilos((prev) =>
+                prev.map((h) =>
+                    h.id === hiloId
+                        ? {
+                              ...h,
+                              mensajes: [
+                                  ...h.mensajes,
+                                  {
+                                      id: nuevo.id,
+                                      tipo: 'enviado',
+                                      texto: nuevo.body,
+                                      hora: new Date(nuevo.created_at).toLocaleTimeString('es-PE', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                      }),
+                                  },
+                              ],
+                              preview: texto,
+                              tiempo: 'Ahora',
+                              replyInput: '',
+                          }
+                        : h
+                )
+            );
+            showToast('Mensaje enviado', 'success');
+        } catch {
+            showToast('No pudimos enviar tu mensaje. Intenta de nuevo.', 'error');
+        }
     };
+
+    const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
 
     // ==========================================
     // ESTADOS DE MIS DATOS
@@ -252,9 +295,6 @@ export default function MiCuentaPage() {
 
     const handleSaveDatos = async () => {
         try {
-            // El país sale de currentUser.country — hoy se define en duro/vía
-            // panel de pruebas, nunca lo edita el usuario a mano. Se manda
-            // igual que el resto, ya que el backend ya lo soporta.
             await updateProfile({
                 name: dNombre,
                 last_name_paterno: dApellidoPaterno,
@@ -263,8 +303,15 @@ export default function MiCuentaPage() {
                 region: dDepartamento,
                 province: dProvincia,
                 district: dDistrito,
-                avatar: avatarSrc || undefined,
             });
+
+            // El avatar va por su propio endpoint — solo se toca si de
+            // verdad cambió, para no llamar innecesariamente cuando el
+            // usuario solo editó texto.
+            if (avatarSrc !== initialDatos.current.avatar) {
+                await updateAvatar(avatarSrc);
+            }
+
             initialDatos.current = {
                 nombre: dNombre,
                 apellidoPaterno: dApellidoPaterno,
@@ -303,13 +350,11 @@ export default function MiCuentaPage() {
         isOpen: boolean;
         id: string;
         tipo: 'lost' | 'adoption' | 'found';
-        corregirCampos: string[];
         isUnlocked: boolean;
     }>({
         isOpen: false,
         id: '',
         tipo: 'lost',
-        corregirCampos: [],
         isUnlocked: false,
     });
 
@@ -348,12 +393,17 @@ export default function MiCuentaPage() {
     const [modalCambiarClave, setModalCambiarClave] = useState(false);
 
     const [modalBajaCuenta, setModalBajaCuenta] = useState(false);
-    const [modalReportarUsuario, setModalReportarUsuario] = useState(false);
+    const [modalReportarUsuario, setModalReportarUsuario] = useState<{ isOpen: boolean; userId: string; conversationId?: string }>({
+        isOpen: false,
+        userId: '',
+        conversationId: undefined,
+    });
     const [modalBloquearUsuario, setModalBloquearUsuario] = useState<{
         isOpen: boolean;
         nombre: string;
-        hiloId: string;
-    }>({ isOpen: false, nombre: '', hiloId: '' });
+        userId: string;
+        isBlocked: boolean;
+    }>({ isOpen: false, nombre: '', userId: '', isBlocked: false });
 
     const [modalEliminarMensaje, setModalEliminarMensaje] = useState<{
         isOpen: boolean;
@@ -374,25 +424,28 @@ export default function MiCuentaPage() {
     const [notifTipos, setNotifTipos] = useState<Record<string, boolean>>({
         lost: true,
         found: true,
-        sighting: false,
-        adoption: false,
+        sighting: true,
+        adoption: true,
     });
 
     const toggleNotifTipo = (tipo: string) => {
         setNotifTipos((prev) => ({ ...prev, [tipo]: !prev[tipo] }));
     };
 
-    const [notifModo, setNotifModo] = useState<'email' | 'whatsapp'>('email');
-
     const [settingsLoaded, setSettingsLoaded] = useState(false);
 
     useEffect(() => {
         if (currentUser) {
-            getUserSettings(currentUser.id).then((settings) => {
-                setNotifModo(settings.notification_mode);
-                setNotifTipos(settings.notification_types);
-                setSettingsLoaded(true);
-            });
+            getMySettings()
+                .then((settings) => {
+                    setNotifTipos(settings.notification_types);
+                })
+                .catch(() => {
+                    // Si falla la carga, seguimos con los defaults (todos activos)
+                })
+                .finally(() => {
+                    setSettingsLoaded(true);
+                });
         }
     }, [currentUser]);
 
@@ -401,7 +454,6 @@ export default function MiCuentaPage() {
     useEffect(() => {
         if (currentUser && settingsLoaded) {
             const settings: UserSettings = {
-                notification_mode: notifModo,
                 notification_types: {
                     lost: !!notifTipos.lost,
                     found: !!notifTipos.found,
@@ -409,15 +461,20 @@ export default function MiCuentaPage() {
                     adoption: !!notifTipos.adoption,
                 },
             };
-            saveUserSettings(currentUser.id, settings);
-
-            if (hasShownFirstSaveRef.current) {
-                showToast('Ajustes guardados', 'success');
-            } else {
-                hasShownFirstSaveRef.current = true;
-            }
+            updateMySettings(settings)
+                .then(() => {
+                    if (hasShownFirstSaveRef.current) {
+                        showToast('Ajustes guardados', 'success');
+                    } else {
+                        hasShownFirstSaveRef.current = true;
+                    }
+                })
+                .catch((err) => {
+                    const message = err instanceof AuthApiError ? err.message : 'No pudimos guardar tus ajustes.';
+                    showToast(message, 'error');
+                });
         }
-    }, [notifModo, notifTipos, currentUser, settingsLoaded]);
+    }, [notifTipos, currentUser, settingsLoaded]);
 
     // Cierre de menús flotantes al hacer clic en pantalla
     useEffect(() => {
@@ -435,19 +492,12 @@ export default function MiCuentaPage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleOpenEditarAviso = (
-        id: string,
-        tipo: 'lost' | 'adoption' | 'found',
-        corregir?: string
-    ) => {
-        const campos = corregir ? corregir.split(',').map((s) => s.trim()) : [];
-
+    const handleOpenEditarAviso = (id: string, tipo: 'lost' | 'adoption' | 'found') => {
         setModalEditar({
             isOpen: true,
             id,
             tipo,
-            corregirCampos: campos,
-            isUnlocked: campos.length > 0,
+            isUnlocked: false,
         });
     };
 
@@ -531,7 +581,6 @@ export default function MiCuentaPage() {
                                         <i className="ti ti-stack-2"></i>
                                     </span>
                                     <span>Mis avisos</span>
-                                    <span className="cuenta-nav-badge">1</span>
                                 </button>
 
                                 <button
@@ -547,7 +596,6 @@ export default function MiCuentaPage() {
                                         <i className="ti ti-bookmark"></i>
                                     </span>
                                     <span>Favoritos</span>
-                                    <span className="cuenta-nav-badge">0</span>
                                 </button>
 
                                 <button
@@ -579,9 +627,9 @@ export default function MiCuentaPage() {
                                         <i className="ti ti-message-circle"></i>
                                     </span>
                                     <span>Mis mensajes</span>
-                                    <span className="cuenta-nav-badge" id="mensajes-nav-badge">
-                                        {hilos.filter((h) => h.unread).length}
-                                    </span>
+                                    {unreadMessagesCount > 0 && (
+                                        <span className="cuenta-nav-badge">{unreadMessagesCount}</span>
+                                    )}
                                 </button>
 
                                 <button
@@ -674,7 +722,7 @@ export default function MiCuentaPage() {
                         {/* SECCIÓN 3: CENTINELA IA */}
                         {activeSection === 'centinela' && <CentinelaSection />}
 
-                        {/* SECCIÓN 4: MIS MENSAJES */}
+                     {/* SECCIÓN 4: MIS MENSAJES */}
                         {activeSection === 'mensajes' && (
                             <MensajesSection
                                 hilos={hilos}
@@ -687,10 +735,14 @@ export default function MiCuentaPage() {
                                     );
                                 }}
                                 onSendReply={handleSendReply}
-                                onReportarUsuario={() => setModalReportarUsuario(true)}
-                                onBloquearUsuario={(nombre, hiloId) =>
-                                    setModalBloquearUsuario({ isOpen: true, nombre, hiloId })
-                                }
+                                onReportarUsuario={(hiloId) => {
+                                    const hilo = hilos.find((h) => h.id === hiloId);
+                                    if (hilo) setModalReportarUsuario({ isOpen: true, userId: hilo.otherUserId, conversationId: hiloId });
+                                }}
+                                onBloquearUsuario={(nombre, hiloId) => {
+                                    const hilo = hilos.find((h) => h.id === hiloId);
+                                    if (hilo) setModalBloquearUsuario({ isOpen: true, nombre, userId: hilo.otherUserId, isBlocked: hilo.isBlocked });
+                                }}
                                 onEliminarMensaje={(hiloId) => setModalEliminarMensaje({ isOpen: true, hiloId })}
                             />
                         )}
@@ -730,8 +782,6 @@ export default function MiCuentaPage() {
                                     toggleTheme();
                                     showToast('Ajustes guardados', 'success');
                                 }}
-                                notifModo={notifModo}
-                                onSetNotifModo={setNotifModo}
                                 notifTipos={notifTipos}
                                 onToggleNotifTipo={toggleNotifTipo}
                                 onOpenBajaCuenta={() => setModalBajaCuenta(true)}
@@ -746,7 +796,6 @@ export default function MiCuentaPage() {
                 isOpen={modalEditar.isOpen}
                 id={modalEditar.id}
                 tipo={modalEditar.tipo}
-                corregirCampos={modalEditar.corregirCampos}
                 isUnlocked={modalEditar.isUnlocked}
                 onSaved={() => setAvisosRefreshKey((k) => k + 1)}
                 onClose={() => setModalEditar((prev) => ({ ...prev, isOpen: false }))}
@@ -772,23 +821,32 @@ export default function MiCuentaPage() {
             />
 
             <ModalReportarUsuario
-                isOpen={modalReportarUsuario}
-                onClose={() => setModalReportarUsuario(false)}
+                isOpen={modalReportarUsuario.isOpen}
+                userId={modalReportarUsuario.userId}
+                conversationId={modalReportarUsuario.conversationId}
+                onClose={() => setModalReportarUsuario({ isOpen: false, userId: '', conversationId: undefined })}
             />
 
             <ModalBloquearUsuario
                 isOpen={modalBloquearUsuario.isOpen}
+                userId={modalBloquearUsuario.userId}
                 nombre={modalBloquearUsuario.nombre}
-                onClose={() => setModalBloquearUsuario({ isOpen: false, nombre: '', hiloId: '' })}
-                onConfirm={() => {
-                    setHilos((prev) => prev.filter((h) => h.id !== modalBloquearUsuario.hiloId));
+                isBlocked={modalBloquearUsuario.isBlocked}
+                onClose={() => setModalBloquearUsuario({ isOpen: false, nombre: '', userId: '', isBlocked: false })}
+                onBlocked={() => {
+                    setHilos((prev) =>
+                        prev.map((h) =>
+                            h.otherUserId === modalBloquearUsuario.userId ? { ...h, isBlocked: !h.isBlocked } : h
+                        )
+                    );
                 }}
             />
 
             <ModalEliminarMensaje
                 isOpen={modalEliminarMensaje.isOpen}
+                conversationId={modalEliminarMensaje.hiloId}
                 onClose={() => setModalEliminarMensaje({ isOpen: false, hiloId: '' })}
-                onConfirm={() => {
+                onDeleted={() => {
                     setHilos((prev) => prev.filter((h) => h.id !== modalEliminarMensaje.hiloId));
                 }}
             />
@@ -811,7 +869,7 @@ export default function MiCuentaPage() {
                 onClose={() => setModalEliminarAviso({ isOpen: false, id: '' })}
                 onConfirm={async () => {
                     if (modalEliminarAviso.id) {
-                        await deletePublication(modalEliminarAviso.id);
+                        await deleteReport(modalEliminarAviso.id);
                         setAvisosRefreshKey((k) => k + 1);
                     }
                 }}

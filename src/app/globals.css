@@ -90,6 +90,31 @@ a {
   min-height: 100%;
 }
 
+.loading-state-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+  padding: 5em 1em;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 5em;
+  height: 5em;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--brand-red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .navbar {
   position: sticky;
   top: 0;
@@ -1269,6 +1294,7 @@ input:checked+.ui-slider-btn:before {
   color: var(--text-white) !important;
 }
 
+.badge.badge-adopt-premium,
 .badge.badge-adopt,
 .badge-horizontal.badge-adopt {
   background-color: var(--purple-brand) !important;
@@ -1399,7 +1425,7 @@ h1 {
   border-color: var(--border-color-focus);
 }
 
-.custom-select-wrapper.open i {
+.custom-select-wrapper.open .custom-select-trigger i {
   transform-origin: center;
   transform: rotate(-180deg);
   transition: all .15s;
@@ -1440,7 +1466,7 @@ h1 {
   border-top: none;
   border-radius: 0 0 8px 8px;
   z-index: 99;
-  max-height: 7em;
+  max-height: 9em;
   overflow-y: auto;
   list-style: none;
   margin: 0;
@@ -1473,6 +1499,30 @@ h1 {
   margin-left: 0.5em;
 }
 
+
+.custom-select-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.5em 0.7em;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.custom-select-search i {
+  color: var(--text-placeholder)
+}
+
+.custom-select-search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.9em;
+  background: transparent;
+}
+
+.pointernone {
+  cursor: initial !important;
+}
 
 
 /* ==========================================================================
@@ -1707,7 +1757,7 @@ h1 {
   line-height: 1em;
   color: var(--text-secondary);
   margin-bottom: 0.375em;
-  font-weight: 300;
+  font-weight: 500;
 }
 
 .form-group>label b {
@@ -2552,7 +2602,7 @@ h1 {
   }
 
   .main-content {
-    width: 92.5% !important;
+    width: 90% !important;
     padding: 1em 0;
   }
 

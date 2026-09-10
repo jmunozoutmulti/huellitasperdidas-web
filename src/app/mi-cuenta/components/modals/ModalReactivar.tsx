@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
-import { getPublicationById, updatePublication, planLabel, type MockPublication } from '@/lib/publications';
-import { getPlanById } from '@/lib/plans';
+import { fetchReport, type ReportDetail } from '@/lib/api';
+import { reactivateReport, ReportsApiError } from '@/lib/reportsApi';
+import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr } from '@/lib/countries';
 
 interface ModalReactivarProps {
@@ -14,7 +15,9 @@ interface ModalReactivarProps {
 }
 
 export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: ModalReactivarProps) {
-    const [pub, setPub] = useState<MockPublication | null>(null);
+    const [pub, setPub] = useState<ReportDetail | null>(null);
+    const [pkg, setPkg] = useState<PackageOption | null>(null);
+    const [currencySymbol, setCurrencySymbol] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'card' | 'yape'>('card');
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -22,27 +25,39 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
     useEffect(() => {
         if (!isOpen || !id) return;
         setPub(null);
+        setPkg(null);
+        setCurrencySymbol('');
         setPaymentMethod('card');
         setAcceptTerms(false);
-        getPublicationById(id).then(setPub);
+        fetchReport(id).then(async (report) => {
+            setPub(report);
+            if (report.package_slug && report.country) {
+                const [pkgs, country] = await Promise.all([
+                    getPackages(report.country),
+                    getCountryByAbbr(report.country),
+                ]);
+                setPkg(pkgs.find((p) => p.slug === report.package_slug) ?? null);
+                setCurrencySymbol(country?.currencySymbol ?? '');
+            }
+        });
     }, [isOpen, id]);
 
     if (!isOpen) return null;
 
-    // Reactivar reutiliza el mismo monto que ya pagó originalmente — no se recalcula
-    // contra el precio actual del plan (que pudo cambiar desde entonces).
-    const precio = pub?.amount_paid ?? 0;
-    const planNombre = pub ? planLabel(pub.plan, pub.country || 'PE') : '';
-    const diasTotales = pub ? getPlanById(pub.plan, pub.country || 'PE').dias : 0;
-    const currencySymbol = pub ? getCountryByAbbr(pub.country || 'PE').currency.symbol : '';
-
     const handlePagar = async () => {
+        if (!pub?.package_slug) return;
         setIsProcessing(true);
-        await updatePublication(id, { stopped_by_user: false });
-        setIsProcessing(false);
-        onClose();
-        onReactivated();
-        showToast('Tu aviso fue reactivado correctamente', 'success');
+        try {
+            await reactivateReport(id, pub.package_slug);
+            onClose();
+            onReactivated();
+            showToast('Tu solicitud fue registrada. Un administrador confirmará el pago y aprobará la reactivación.', 'success');
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos reactivar tu aviso. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -67,7 +82,7 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                     </p>
                 </div>
 
-                {!pub ? (
+                {!pub || !pkg ? (
                     <div className="admin-info-box">
                         <i className="ti ti-loader"></i>
                         <p>Cargando datos del aviso...</p>
@@ -78,10 +93,10 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                             <div className="planes-modal-summary-bar">
                                 <div className="planes-summary-body">
                                     <span className="planes-summary-label">Reactivas con</span>
-                                    <h5>{planNombre}</h5>
-                                    <span>{diasTotales ? `${diasTotales} días de difusión` : ''}</span>
+                                    <h5>{pkg.name}</h5>
+                                    <span>{pkg.days} días de difusión</span>
                                 </div>
-                                <div className="planes-summary-price">{currencySymbol} {precio}</div>
+                                <div className="planes-summary-price">{currencySymbol} {pkg.price}</div>
                             </div>
 
                             <div className="payment-gateway-box">
@@ -162,7 +177,7 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
 
                         <div className="planes-modal-actions">
                             <div className="text-modal">
-                                <i className="ti ti-clock"></i> Se activará en máximo 30 minutos
+                                <i className="ti ti-clock"></i> Reactivaremos tu aviso en un máximo de 30 minutos.
                             </div>
                             <button
                                 type="button"

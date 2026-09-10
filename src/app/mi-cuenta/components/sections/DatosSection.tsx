@@ -1,10 +1,15 @@
 'use client';
 
-import { ChangeEvent } from 'react';
+import { ChangeEvent, useState, useEffect } from 'react';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { useApp } from '@/context/AppContext';
-import { getCountryByAbbr } from '@/lib/countries';
+import { getCountryByAbbr, type Country } from '@/lib/countries';
 import { getLevel1Options, getLevel2Options, getLevel3Options } from '@/lib/locations';
+
+interface SelectOption {
+    value: string;
+    label: string;
+}
 
 interface DatosSectionProps {
     avatarSrc: string | null;
@@ -54,16 +59,70 @@ export default function DatosSection({
     onOpenCambiarClave,
 }: DatosSectionProps) {
     const { currentUser } = useApp();
-    const country = currentUser?.country || 'PE';
-    const [labelNivel1, labelNivel2, labelNivel3] = getCountryByAbbr(country).locationLabels;
-    const nivel1Options = getLevel1Options(country);
-    const nivel2Options = getLevel2Options(country, dDepartamento);
-    const nivel3Options = getLevel3Options(country, dDepartamento, dProvincia);
+    const countryCode = currentUser?.country || 'PE';
+
+    const [country, setCountry] = useState<Country | null>(null);
+    const [isLoadingCountry, setIsLoadingCountry] = useState(true);
+
+    const [nivel1Options, setNivel1Options] = useState<SelectOption[]>([]);
+    const [nivel2Options, setNivel2Options] = useState<SelectOption[]>([]);
+    const [nivel3Options, setNivel3Options] = useState<SelectOption[]>([]);
+
+    // Datos del país (para las etiquetas de ubicación)
+    useEffect(() => {
+        let isCancelled = false;
+        setIsLoadingCountry(true);
+        getCountryByAbbr(countryCode).then((c) => {
+            if (!isCancelled) {
+                setCountry(c);
+                setIsLoadingCountry(false);
+            }
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode]);
+
+    // Nivel 1 (Departamento/Estado/Región) — depende solo del país
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel1Options(countryCode).then((opts) => {
+            if (!isCancelled) setNivel1Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode]);
+
+    // Nivel 2 — depende del país + lo elegido en nivel 1
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel2Options(countryCode, dDepartamento).then((opts) => {
+            if (!isCancelled) setNivel2Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode, dDepartamento]);
+
+    // Nivel 3 — depende del país + nivel 1 + nivel 2
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel3Options(countryCode, dDepartamento, dProvincia).then((opts) => {
+            if (!isCancelled) setNivel3Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode, dDepartamento, dProvincia]);
+
+    const locationLabels = country?.locationLabels;
+    const isCountryConfigured = !isLoadingCountry && !!locationLabels;
 
     return (
         <div className="cuenta-section active" id="section-datos">
             <div className="dashboard-recent-header">
-                <h2 className="dashboard-subsection-title">Datos de cuenta</h2>
+                <h2 className="dashboard-subsection-title">Mis datos</h2>
                 <p>
                     <i className="ti ti-info-circle"></i> Actualiza tu información personal
                 </p>
@@ -144,35 +203,48 @@ export default function DatosSection({
                             Ubicación{' '}
                             <span className="form-label-note">— Se usa para mostrarte avisos cerca de ti</span>
                         </label>
-                        <div className="grid-3col">
-                            <div className="form-group">
-                                <CustomSelect
-                                    id="d-departamento"
-                                    placeholder={labelNivel1}
-                                    value={dDepartamento}
-                                    onChange={onSetDepartamento}
-                                    options={nivel1Options}
-                                />
+
+                        {isLoadingCountry ? (
+                            <p className="form-label-note">Cargando...</p>
+                        ) : !isCountryConfigured ? (
+                            <div className="admin-info-box">
+                                <i className="ti ti-info-circle"></i>
+                                <p>Este país aún no está configurado. Vuelve más tarde.</p>
                             </div>
-                            <div className="form-group">
-                                <CustomSelect
-                                    id="d-provincia"
-                                    placeholder={labelNivel2}
-                                    value={dProvincia}
-                                    onChange={onSetProvincia}
-                                    options={nivel2Options}
-                                />
+                        ) : (
+                            <div className="grid-3col">
+                                <div className="form-group">
+                                    <CustomSelect
+                                        id="d-departamento"
+                                        placeholder={locationLabels![0]}
+                                        value={dDepartamento}
+                                        onChange={onSetDepartamento}
+                                        options={nivel1Options}
+                                        searchable={true}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <CustomSelect
+                                        id="d-provincia"
+                                        placeholder={locationLabels![1]}
+                                        value={dProvincia}
+                                        onChange={onSetProvincia}
+                                        options={nivel2Options}
+                                        searchable={true}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <CustomSelect
+                                        id="d-distrito"
+                                        placeholder={locationLabels![2]}
+                                        value={dDistrito}
+                                        onChange={onSetDistrito}
+                                        options={nivel3Options}
+                                        searchable={true}
+                                    />
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <CustomSelect
-                                    id="d-distrito"
-                                    placeholder={labelNivel3}
-                                    value={dDistrito}
-                                    onChange={onSetDistrito}
-                                    options={nivel3Options}
-                                />
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 

@@ -9,29 +9,11 @@ export interface AuthUser {
     province?: string;
     district?: string;
     avatar?: string; // foto de perfil en base64 (mock, sin subir a servidor real)
-    country?: string; // 'PE', 'MX', etc. — código de countries.ts. Simulado por ahora (sin servicio real de detección aún); default 'PE' al crear la cuenta.
+    country?: string; // 'PE', 'MX', etc. — código de countries.ts
 }
 
-const STORAGE_KEY = 'authUser';
 const TOKEN_KEY = 'accessToken';
-
-export function saveAuthUser(user: AuthUser) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-}
-
-export function getAuthUser(): AuthUser | null {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    try {
-        return JSON.parse(raw) as AuthUser;
-    } catch {
-        return null;
-    }
-}
-
-export function clearAuthUser() {
-    localStorage.removeItem(STORAGE_KEY);
-}
+const DETECTED_COUNTRY_KEY = 'detectedCountry';
 
 // El backend real usa JWT Bearer — no hay cookies de sesión. Este token se
 // guarda aparte del resto de los datos del usuario, y debe mandarse en el
@@ -46,4 +28,17 @@ export function getAccessToken(): string | null {
 
 export function clearAccessToken() {
     localStorage.removeItem(TOKEN_KEY);
+}
+
+// País detectado ANTES de que exista una cuenta — es el único dato que se
+// captura sin login (vía el servicio de detección, aún pendiente de elegir).
+// Vive separado del usuario a propósito: tiene que existir incluso para
+// visitantes sin sesión, para poder filtrar Explorar por país.
+export function saveDetectedCountry(country: string) {
+    localStorage.setItem(DETECTED_COUNTRY_KEY, country);
+}
+
+export function getDetectedCountry(): string | null {
+    if (typeof window === 'undefined') return null; // se ejecuta también en el servidor (SSR) — ahí no existe localStorage
+    return localStorage.getItem(DETECTED_COUNTRY_KEY);
 }

@@ -4,40 +4,27 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
-import { getFavoriteIds, removeFavorite } from '@/lib/favorites';
-import { fetchReport } from '@/lib/api';
-import { reportToPetData } from '@/lib/transformers';
-import { PetData } from '@/lib/pets';
+import { getMyFavorites, unfavoriteReport } from '@/lib/socialApi';
+import { favoriteToCardData, type FavoriteCardData } from '@/lib/transformers';
 
 export default function GuardadosSection() {
     const { currentUser } = useApp();
-    const [pets, setPets] = useState<PetData[]>([]);
+    const [pets, setPets] = useState<FavoriteCardData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         if (!currentUser) return;
-        const userId = currentUser.id;
         let isCancelled = false;
 
         async function loadFavorites() {
             setIsLoading(true);
-            const ids = await getFavoriteIds(userId);
-
-            const results = await Promise.all(
-                ids.map(async (id) => {
-                    try {
-                        const report = await fetchReport(id);
-                        return reportToPetData(report);
-                    } catch {
-                        await removeFavorite(userId, id);
-                        return null;
-                    }
-                })
-            );
-
-            if (!isCancelled) {
-                setPets(results.filter((p): p is PetData => p !== null));
-                setIsLoading(false);
+            try {
+                const favorites = await getMyFavorites();
+                if (!isCancelled) {
+                    setPets(favorites.map(favoriteToCardData));
+                }
+            } finally {
+                if (!isCancelled) setIsLoading(false);
             }
         }
 
@@ -48,10 +35,13 @@ export default function GuardadosSection() {
     }, [currentUser]);
 
     const handleRemove = async (petId: string) => {
-        if (!currentUser) return;
-        await removeFavorite(currentUser.id, petId);
-        setPets((prev) => prev.filter((p) => p.id !== petId));
-        showToast('Publicación quitada de guardados.', 'info');
+        try {
+            await unfavoriteReport(petId);
+            setPets((prev) => prev.filter((p) => p.id !== petId));
+            showToast('Publicación quitada de guardados.', 'info');
+        } catch {
+            showToast('No pudimos quitar el favorito. Intenta de nuevo.', 'error');
+        }
     };
 
     return (
@@ -64,7 +54,13 @@ export default function GuardadosSection() {
             </div>
 
             <div className="guardados-list">
-                {isLoading && <p style={{ padding: '24px 0', opacity: 0.6 }}>Cargando guardados...</p>}
+
+                {isLoading && (
+                    <div className="loading-state-centered">
+                        <div className="loading-spinner"></div>
+                        <p>Cargando guardados...</p>
+                    </div>
+                )}
 
                 {!isLoading && pets.length === 0 && (
                     <div className="pub-empty-state">
@@ -80,23 +76,24 @@ export default function GuardadosSection() {
                             </div>
                             <div className="guardado-grid">
                                 <div className="guardado-main">
-                                    <h5 className="guardado-title">{pet.title}</h5>
+                                    <h5 className="guardado-title">{pet.title || pet.badge}</h5>
                                     <div className="guardado-meta">
-                                        <span>
-                                            <i className="ti ti-pin"></i> {pet.district}
-                                        </span>
+                                        {pet.badgeStyle !== 'badge-sight' && (
+                                            <span>
+                                                <i className="ti ti-pin"></i> {pet.district}
+                                            </span>
+                                        )}
                                         <span>
                                             <b>Publicado:</b> {pet.date}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="guardado-actions">
-                                    <Link href={`/?id=${pet.id}`} className="pub-btn pub-btn-secondary">
-                                        <i className="ti ti-external-link"></i> Ver publicación
+                                    <Link href={`/?id=${pet.id}`}>
+                                        <i className="ti ti-external-link"></i>
                                     </Link>
                                     <button
                                         type="button"
-                                        className="guardado-remove-btn"
                                         aria-label="Quitar de favoritos"
                                         onClick={() => handleRemove(pet.id)}
                                     >

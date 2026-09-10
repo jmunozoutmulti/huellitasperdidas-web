@@ -1,3 +1,4 @@
+import { getAccessToken } from './auth';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export interface Image {
@@ -7,6 +8,7 @@ export interface Image {
   width: number | null;
   height: number | null;
   detected_pet_type: string | null;
+  is_flyer: boolean;
 }
 
 export interface ReportMeta {
@@ -16,26 +18,29 @@ export interface ReportMeta {
   breed: string | null;
   color: string | null;
   age: string | null;
+  reward: string | null;
+  reward_visible: boolean;
+  adoption_extras: string | null;
+  adoption_extras_visible: boolean;
 }
 
-export interface ReportMetaDetail extends ReportMeta {
-  last_seen_location: string | null;
-  reward: string | null;
-  adoption_extras: string | null;
-}
+export interface ReportMetaDetail extends ReportMeta { }
 
 export interface Report {
   id: string;
   report_type: string;
+  package_slug: string | null;
   source_type: string;
   pet_type: string | null;
   title: string | null;
   description: string | null;
   district: string | null;
+  province: string | null;
   region: string | null;
   country: string | null;
-  lat: number | null;
-  lng: number | null;
+  address_hint: string | null;
+  lat: number | string | null;
+  lng: number | string | null;
   event_date: string | null;
   published_at: string | null;
   source_url: string | null;
@@ -44,19 +49,54 @@ export interface Report {
   created_at: string;
   meta: ReportMeta;
   images: Image[];
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  contact_url: string | null;
+  likes_count: number;
+  has_liked: boolean;
+  is_favorited: boolean;
+  views_count: number;
+  shares_count: number;
+  user_id: string | null;
+  author_name: string | null;
+  author_avatar: string | null;
+  rejection_reason: string | null;
+  stopped_by_user: boolean | null;
+  expires_at: string | null;
+  amount_paid: number | null;
+  extra_reach: string | null;
+  refund_amount: number | null;
+  refund_status: string | null; // 'pending' | 'processed' | null
+  stopped_at: string | null;
+  reactivated_at: string | null;
+  extra_reach_purchased_at: string | null;
+  pending_reason: string | null;
+  statistics_ads: {
+    reach_actual?: number;
+    reach_projected?: number;
+    impressions?: number;
+    clicks?: number;
+    frequency?: number;
+    facebook_post_url?: string;
+  };
 }
 
 export interface ReportDetail extends Omit<Report, "meta"> {
-  contact_name: string | null;
-  contact_phone: string | null;
-  contact_url: string | null;
   normalized_text: string | null;
   confidence_score: number | null;
   extracted_features: Record<string, unknown>;
-  address_hint: string | null;
   meta: ReportMetaDetail;
   package_name: string | null;
-  package_slug: string | null;
+}
+
+export interface FavoriteReportOut {
+  id: string;
+  report_type: string;
+  title: string | null;
+  district: string | null;
+  published_at: string;
+  cover_image_url: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -74,6 +114,12 @@ export interface Stats {
   by_district: Record<string, number>;
 }
 
+
+function optionalAuthHeaders(): HeadersInit {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function fetchReports(params: {
   report_type?: string;
   pet_type?: string;
@@ -81,6 +127,8 @@ export async function fetchReports(params: {
   search?: string;
   page?: number;
   limit?: number;
+  country_code?: string;
+  status?: string;
 }): Promise<PaginatedResponse<Report>> {
   const qs = new URLSearchParams();
   if (params.report_type) qs.set("report_type", params.report_type);
@@ -89,14 +137,22 @@ export async function fetchReports(params: {
   if (params.search) qs.set("search", params.search);
   if (params.page) qs.set("page", String(params.page));
   if (params.limit) qs.set("limit", String(params.limit));
+  if (params.country_code) qs.set("country_code", params.country_code);
+  if (params.status) qs.set("status", params.status);
 
-  const res = await fetch(`${API_BASE}/v1/reports?${qs}`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/v1/reports?${qs}`, {
+    cache: "no-store",
+    headers: optionalAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
 
 export async function fetchReport(id: string): Promise<ReportDetail> {
-  const res = await fetch(`${API_BASE}/v1/reports/${id}`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/v1/reports/${id}`, {
+    cache: "no-store",
+    headers: optionalAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -106,6 +162,21 @@ export async function fetchStats(): Promise<Stats> {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export async function registerReportView(id: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/v1/reports/${id}/view`, { method: 'POST' });
+  } catch {
+  }
+}
+
+export async function registerReportShare(id: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/v1/reports/${id}/share`, { method: 'POST' });
+  } catch {
+  }
+}
+
 
 export interface AnalyzeImageResult {
   is_pet: boolean;
@@ -242,5 +313,20 @@ export async function searchPets(req: SearchRequest): Promise<SearchResponse> {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail ?? `API error: ${res.status}`);
   }
+  return res.json();
+}
+
+
+// "Mis avisos" — requiere sesión, trae TODOS los estados (menos deleted),
+// a diferencia de fetchReports (público, solo trae 'active'). Nunca usar
+// fetchReports con un filtro de usuario para esto — no expone avisos que
+// no sean 'active', por diseño (evita enumerar avisos ajenos en revisión).
+export async function fetchMyReports(status?: string): Promise<Report[]> {
+  const qs = status ? `?status=${status}` : '';
+  const res = await fetch(`${API_BASE}/v1/users/me/reports${qs}`, {
+    cache: "no-store",
+    headers: optionalAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }

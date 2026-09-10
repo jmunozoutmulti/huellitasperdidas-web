@@ -20,8 +20,6 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
         setRecentSearches(getRecentSearches());
     }, []);
 
-
-
     useEffect(() => {
         const handleClickOutsideSearch = (e: MouseEvent) => {
             if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {

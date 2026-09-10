@@ -1,91 +1,72 @@
-// Tabla maestra de países soportados. Reemplaza a lib/phoneCountries.ts
-// (que queda eliminado) — cualquier dato que dependa del país (teléfono,
-// precios, ubicación) sale de acá, para no duplicar la lista en varios
-// archivos.
-//
-//    (Perú, Argentina, Chile, Colombia, México, Ecuador)
-//    confirmados; Uruguay usa "Localidad" como 3er nivel informal, ya
-//    que oficialmente el país solo tiene 2 niveles de gobierno reales
-//    — Departamento y Municipio — y los municipios ni cubren todo el
-//    territorio).
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 export interface Country {
-    abbr: string; // 'PE'
+    id: number;
+    code: string; // 'PE'
     name: string; // 'Perú'
-    dialCode: string; // '+51'
-    phoneDigits: number; // dígitos del número, sin el código de país
-    currency: {
-        code: string; // 'PEN'
-        symbol: string; // 'S/.'
+    currency: string | null; // 'PEN' — null si el país no está configurado en el admin todavía
+    currencySymbol: string | null; // 'S/.'
+    dialCode: string | null; // '+51'
+    phoneDigits: number | null;
+    locationLabels: [string, string, string] | null; // ['Departamento','Provincia','Distrito']
+}
+
+function mapCountry(raw: any): Country {
+    return {
+        id: raw.id,
+        code: raw.code,
+        name: raw.name,
+        currency: raw.currency ?? null,
+        currencySymbol: raw.currency_symbol ?? null,
+        dialCode: raw.dial_code ?? null,
+        phoneDigits: raw.phone_digits ?? null,
+        locationLabels: raw.location_labels ?? null,
     };
-    locationLabels: [string, string, string]; // [nivel1, nivel2, nivel3] — siempre 3
 }
 
-export const COUNTRIES: Country[] = [
-    {
-        abbr: 'PE',
-        name: 'Perú',
-        dialCode: '+51',
-        phoneDigits: 9,
-        currency: { code: 'PEN', symbol: 'S/.' },
-        locationLabels: ['Departamento', 'Provincia', 'Distrito'],
-    },
-    {
-        abbr: 'AR',
-        name: 'Argentina',
-        dialCode: '+54',
-        phoneDigits: 10,
-        currency: { code: 'ARS', symbol: '$' },
-        locationLabels: ['Provincia', 'Partido', 'Localidad'],
-    },
-    {
-        abbr: 'CL',
-        name: 'Chile',
-        dialCode: '+56',
-        phoneDigits: 9,
-        currency: { code: 'CLP', symbol: '$' },
-        locationLabels: ['Región', 'Provincia', 'Comuna'],
-    },
-    {
-        abbr: 'CO',
-        name: 'Colombia',
-        dialCode: '+57',
-        phoneDigits: 10,
-        currency: { code: 'COP', symbol: '$' },
-        locationLabels: ['Departamento', 'Municipio', 'Corregimiento'],
-    },
-    {
-        abbr: 'MX',
-        name: 'México',
-        dialCode: '+52',
-        phoneDigits: 10,
-        currency: { code: 'MXN', symbol: '$' },
-        locationLabels: ['Estado', 'Municipio', 'Localidad'],
-    },
-    {
-        abbr: 'UY',
-        name: 'Uruguay',
-        dialCode: '+598',
-        phoneDigits: 8,
-        currency: { code: 'UYU', symbol: '$' },
-        locationLabels: ['Departamento', 'Municipio', 'Localidad'],
-    },
-    {
-        abbr: 'EC',
-        name: 'Ecuador',
-        dialCode: '+593',
-        phoneDigits: 9,
-        currency: { code: 'USD', symbol: '$' },
-        locationLabels: ['Provincia', 'Cantón', 'Parroquia'],
-    },
-];
+// Caché simple en memoria — se pide una sola vez por carga de la app,
+// cualquier componente que lo llame después reutiliza el mismo resultado.
+let cachedCountries: Country[] | null = null;
+let pendingFetch: Promise<Country[]> | null = null;
 
-export const DEFAULT_COUNTRY: Country = COUNTRIES.find((c) => c.abbr === 'PE')!;
+export async function getCountries(): Promise<Country[]> {
+    if (cachedCountries) return cachedCountries;
+    if (pendingFetch) return pendingFetch;
 
-export function getCountryByAbbr(abbr: string): Country {
-    return COUNTRIES.find((c) => c.abbr === abbr) ?? DEFAULT_COUNTRY;
+    pendingFetch = fetch(`${API_BASE}/v1/countries?with_territories=true`)
+        .then((res) => {
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            return res.json();
+        })
+        .then((data: any[]) => {
+            cachedCountries = data.map(mapCountry);
+            return cachedCountries;
+        })
+        .finally(() => {
+            pendingFetch = null;
+        });
+
+    return pendingFetch;
 }
 
-export function getCountryByDialCode(dialCode: string): Country | null {
-    return COUNTRIES.find((c) => c.dialCode === dialCode) ?? null;
+// Versión síncrona — NO hace ninguna llamada de red, solo lee lo que ya
+// está en caché. Úsala en lugares que se ejecutan muchas veces seguidas
+// (como dentro de un .map()), donde no tiene sentido esperar una promesa
+// por cada elemento. Requiere que getCountries() ya se haya llamado antes
+// al menos una vez (el caché ya esté "caliente").
+export function getCountryByAbbrSync(abbr: string): Country | null {
+    if (!cachedCountries) return null;
+    return cachedCountries.find((c) => c.code === abbr) ?? null;
+}
+
+export const DEFAULT_COUNTRY_CODE = 'PE';
+
+export async function getCountryByAbbr(abbr: string): Promise<Country | null> {
+    const countries = await getCountries();
+    return countries.find((c) => c.code === abbr) ?? null;
+}
+
+export async function getDefaultCountry(): Promise<Country> {
+    const countries = await getCountries();
+    return countries.find((c) => c.code === DEFAULT_COUNTRY_CODE) ?? countries[0];
 }

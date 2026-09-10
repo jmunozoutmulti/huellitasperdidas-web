@@ -5,13 +5,16 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr } from '@/lib/countries';
-import { getPublicationById, updatePublication } from '@/lib/publications';
+import { fetchReport, type ReportDetail } from '@/lib/api';
+import { updateReport, uploadReportImage, deleteReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { validateText } from '@/lib/textValidation';
+import AutocompleteInput from '@/components/ui/AutocompleteInput';
+import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
 
 interface ModalEditarAvisoProps {
     isOpen: boolean;
     id: string;
     tipo: 'lost' | 'adoption' | 'found';
-    corregirCampos: string[];
     isUnlocked: boolean;
     onClose: () => void;
     onToggleUnlock: (unlocked: boolean) => void;
@@ -21,21 +24,18 @@ interface ModalEditarAvisoProps {
 const editarModalConfig = {
     lost: {
         fechaPlaceholder: 'Fecha de la pérdida',
-        direccionPlaceholder: 'Dirección donde fue vista por última vez',
         observacionesLabel: 'Observaciones',
         observacionesPlaceholder: 'Ej: Lleva collar azul, tiene una mancha negra en el ojo izquierdo...',
         castradoLabel: '¿Está castrado?',
     },
     adoption: {
         fechaPlaceholder: 'Fecha',
-        direccionPlaceholder: 'Lugar de entrega',
         observacionesLabel: 'Descripción',
         observacionesPlaceholder: 'Ej: Es muy cariñoso, le encanta jugar, fue rescatado de la calle...',
         castradoLabel: '¿Está castrado?',
     },
     found: {
         fechaPlaceholder: 'Fecha en que lo encontraste',
-        direccionPlaceholder: '¿Dónde lo encontraste exactamente?',
         observacionesLabel: 'Descripción',
         observacionesPlaceholder: "Ej: Tiene una placa con el nombre 'Toby', se ve sano, lleva collar rojo...",
         castradoLabel: '¿Se nota castrado?',
@@ -48,18 +48,58 @@ const mesesCompletos: Record<string, string> = {
     '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre',
 };
 
-// event_date se guarda como "YYYY-MM-DD" (ver wizards). Lo separamos para los 3 selects.
 function parseEventDate(eventDate: string | null): { dia: string; mes: string; anio: string } {
     if (!eventDate) return { dia: '', mes: '', anio: '' };
-    const [anio, mes, dia] = eventDate.split('-');
+    const [anio, mes, dia] = eventDate.split('T')[0].split('-');
     return { dia: dia ?? '', mes: mes ?? '', anio: anio ?? '' };
 }
+
+// Traducción código real (API) → etiqueta en español (UI)
+function sexFromApi(sex: string | null): '' | 'Macho' | 'Hembra' {
+    if (sex === 'male') return 'Macho';
+    if (sex === 'female') return 'Hembra';
+    return '';
+}
+function petTypeFromApi(petType: string | null): string {
+    if (petType === 'dog') return 'Perro';
+    if (petType === 'cat') return 'Gato';
+    if (petType === 'bird') return 'Ave';
+    return '';
+}
+function sizeFromApi(size: string | null): string {
+    if (size === 'small') return 'Pequeño';
+    if (size === 'medium') return 'Mediano';
+    if (size === 'large') return 'Grande';
+    return '';
+}
+
+// Traducción etiqueta en español (UI) → código real (API)
+function sexToApi(sex: string): string | null {
+    if (sex === 'Macho') return 'male';
+    if (sex === 'Hembra') return 'female';
+    return null;
+}
+function petTypeToApi(petType: string): string {
+    if (petType === 'Perro') return 'dog';
+    if (petType === 'Gato') return 'cat';
+    if (petType === 'Ave') return 'bird';
+    return 'other';
+}
+function sizeToApi(size: string): string | null {
+    if (size === 'Pequeño') return 'small';
+    if (size === 'Mediano') return 'medium';
+    if (size === 'Grande') return 'large';
+    return null;
+}
+
+// Cada slot de foto es una existente (con id real, para poder borrarla) o
+// una nueva (base64, recién elegida, todavía sin subir).
+type PhotoSlot = { type: 'existing'; id: string; url: string } | { type: 'new'; dataUrl: string } | null;
 
 export default function ModalEditarAviso({
     isOpen,
     id,
     tipo,
-    corregirCampos,
     isUnlocked,
     onClose,
     onToggleUnlock,
@@ -67,12 +107,31 @@ export default function ModalEditarAviso({
 }: ModalEditarAvisoProps) {
     const { currentUser } = useApp();
     const country = currentUser?.country || 'PE';
-    const currencySymbol = getCountryByAbbr(country).currency.symbol;
+    const [currencySymbol, setCurrencySymbol] = useState('');
+
+    useEffect(() => {
+        let isCancelled = false;
+        getCountryByAbbr(country).then((c) => {
+            if (!isCancelled) setCurrencySymbol(c?.currencySymbol ?? '');
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
-    const [editFotos, setEditFotos] = useState<(string | null)[]>([null, null, null, null]);
+    // Ubicación — solo lectura, nunca editable (confirmado con backend)
+    const [readOnlyDistrict, setReadOnlyDistrict] = useState('');
+    const [readOnlyProvince, setReadOnlyProvince] = useState('');
+    const [readOnlyRegion, setReadOnlyRegion] = useState('');
+    const [readOnlyAddressHint, setReadOnlyAddressHint] = useState('');
+
+    const [editFotos, setEditFotos] = useState<PhotoSlot[]>([null, null, null, null]);
+    const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+
     const [editNombre, setEditNombre] = useState('');
     const [editFechaDia, setEditFechaDia] = useState('');
     const [editFechaMes, setEditFechaMes] = useState('');
@@ -84,7 +143,6 @@ export default function ModalEditarAviso({
     const [editTamano, setEditTamano] = useState('');
     const [editRaza, setEditRaza] = useState('');
     const [editColor, setEditColor] = useState('');
-    const [editDireccion, setEditDireccion] = useState('');
     const [editObservaciones, setEditObservaciones] = useState('');
     const [editRecompensa, setEditRecompensa] = useState('');
     const [editOcultarMonto, setEditOcultarMonto] = useState(false);
@@ -94,42 +152,53 @@ export default function ModalEditarAviso({
 
     const dateGroupRef = useRef<HTMLDivElement>(null);
 
-    // Carga los datos reales de la publicación al abrir (en vez de resetear a blanco)
+    // Carga los datos reales del aviso al abrir
     useEffect(() => {
         if (!isOpen || !id) return;
 
         setIsLoading(true);
-        getPublicationById(id).then((pub) => {
-            if (!pub) {
+        setRemovedImageIds([]);
+        fetchReport(id)
+            .then((pub: ReportDetail) => {
+                const { dia, mes, anio } = parseEventDate(pub.event_date);
+                const normalPhotos = pub.images.filter((img) => !img.is_flyer);
+
+                const slots: PhotoSlot[] = [0, 1, 2, 3].map((i) => {
+                    const img = normalPhotos[i];
+                    return img ? { type: 'existing', id: img.id, url: img.image_url } : null;
+                });
+
+                setEditFotos(slots);
+                setEditNombre(tipo !== 'found' ? pub.title || '' : '');
+                setEditFechaDia(dia);
+                setEditFechaMes(mes);
+                setEditFechaAnio(anio);
+                setEditDatePopoverOpen(false);
+                setEditSexo(sexFromApi(pub.meta.sex));
+                setEditCastrado(!!pub.meta.is_neutered);
+                setEditTipoMascota(petTypeFromApi(pub.pet_type));
+                setEditTamano(sizeFromApi(pub.meta.size));
+                setEditRaza(pub.meta.breed || '');
+                setEditColor(pub.meta.color || '');
+                setEditObservaciones(pub.description || '');
+                setEditRecompensa(pub.meta.reward || '');
+                setEditOcultarMonto(!pub.meta.reward_visible);
+                setEditExtras(pub.meta.adoption_extras || '');
+                setEditOcultarExtras(!pub.meta.adoption_extras_visible);
+                setEditEdad(pub.meta.age || '');
+                setRejectionReason(pub.rejection_reason);
+
+                setReadOnlyDistrict(pub.district || '');
+                setReadOnlyProvince(pub.province || '');
+                setReadOnlyRegion(pub.region || '');
+                setReadOnlyAddressHint(pub.address_hint || '');
+
+                setIsLoading(false);
+            })
+            .catch(() => {
                 showToast('No se encontró el aviso a editar.', 'error');
                 onClose();
-                return;
-            }
-
-            const fotosExistentes = [0, 1, 2, 3].map((i) => pub.images[i] ?? null);
-            const { dia, mes, anio } = parseEventDate(pub.event_date);
-
-            setEditFotos(fotosExistentes);
-            setEditNombre(tipo !== 'found' ? pub.title || '' : '');
-            setEditFechaDia(dia);
-            setEditFechaMes(mes);
-            setEditFechaAnio(anio);
-            setEditDatePopoverOpen(false);
-            setEditSexo((pub.sex as '' | 'Macho' | 'Hembra') || '');
-            setEditCastrado(!!pub.is_neutered);
-            setEditTipoMascota(pub.pet_type || '');
-            setEditTamano(pub.size || '');
-            setEditRaza(pub.breed || '');
-            setEditColor(pub.color || '');
-            setEditDireccion(pub.address_hint || '');
-            setEditObservaciones(pub.description || '');
-            setEditRecompensa(pub.reward != null ? String(pub.reward) : '');
-            setEditOcultarMonto(!pub.reward_visible);
-            setEditExtras(pub.adoption_extras || '');
-            setEditOcultarExtras(!pub.adoption_extras_visible);
-            setEditEdad(pub.age || '');
-            setIsLoading(false);
-        });
+            });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, id]);
 
@@ -164,7 +233,7 @@ export default function ModalEditarAviso({
         reader.onload = (ev) => {
             setEditFotos((prev) => {
                 const next = [...prev];
-                next[idx] = ev.target?.result as string;
+                next[idx] = { type: 'new', dataUrl: ev.target?.result as string };
                 return next;
             });
         };
@@ -173,6 +242,10 @@ export default function ModalEditarAviso({
 
     const handleRemoveEditFoto = (idx: number) => {
         setEditFotos((prev) => {
+            const slot = prev[idx];
+            if (slot?.type === 'existing') {
+                setRemovedImageIds((ids) => [...ids, slot.id]);
+            }
             const next = [...prev];
             next[idx] = null;
             return next;
@@ -180,38 +253,101 @@ export default function ModalEditarAviso({
     };
 
     const handleGuardar = async () => {
+        if (tipo !== 'found') {
+            const check = validateText(editNombre, 3, 'El nombre');
+            if (!check.valid) {
+                showToast(check.error!, 'error');
+                return;
+            }
+        }
+        if (editRaza.trim()) {
+            const check = validateText(editRaza, 3, 'La raza');
+            if (!check.valid) {
+                showToast(check.error!, 'error');
+                return;
+            }
+        }
+        if (editColor.trim()) {
+            const check = validateText(editColor, 3, 'El color');
+            if (!check.valid) {
+                showToast(check.error!, 'error');
+                return;
+            }
+        }
+        if (editObservaciones.trim()) {
+            const check = validateText(editObservaciones, 15, tipo === 'lost' ? 'Las observaciones' : 'La descripción');
+            if (!check.valid) {
+                showToast(check.error!, 'error');
+                return;
+            }
+        }
+        if (tipo === 'adoption' && editExtras.trim()) {
+            const check = validateText(editExtras, 3, 'Lo que incluye');
+            if (!check.valid) {
+                showToast(check.error!, 'error');
+                return;
+            }
+        }
+
         setIsSaving(true);
         const eventDate =
             editFechaDia && editFechaMes && editFechaAnio ? `${editFechaAnio}-${editFechaMes}-${editFechaDia}` : null;
 
-        await updatePublication(id, {
-            title: tipo !== 'found' ? editNombre || null : null,
-            images: editFotos.filter((f): f is string => !!f),
-            event_date: eventDate,
-            sex: editSexo || null,
-            is_neutered: editCastrado,
-            pet_type: editTipoMascota || null,
-            size: editTamano || null,
-            breed: editRaza || null,
-            color: editColor || null,
-            address_hint: editDireccion || null,
-            description: editObservaciones || null,
-            reward: tipo === 'lost' ? (editRecompensa ? Number(editRecompensa) : null) : null,
-            reward_visible: !editOcultarMonto,
-            adoption_extras: tipo === 'adoption' ? editExtras || null : null,
-            adoption_extras_visible: !editOcultarExtras,
-            age: tipo !== 'found' ? editEdad || null : null,
-        });
+        try {
+            // Ubicación NUNCA se manda — es inmutable, confirmado con backend.
+            await updateReport(id, {
+                title: tipo !== 'found' ? editNombre || null : null,
+                event_date: eventDate,
+                pet_type: petTypeToApi(editTipoMascota),
+                description: editObservaciones || null,
+                meta: {
+                    sex: sexToApi(editSexo),
+                    is_neutered: editCastrado,
+                    size: sizeToApi(editTamano),
+                    breed: editRaza || null,
+                    color: editColor || null,
+                    reward: tipo === 'lost' ? editRecompensa || null : null,
+                    reward_visible: !editOcultarMonto,
+                    adoption_extras: tipo === 'adoption' ? editExtras || null : null,
+                    adoption_extras_visible: !editOcultarExtras,
+                    age: tipo !== 'found' ? editEdad || null : null,
+                },
+            });
 
-        setIsSaving(false);
-        onClose();
-        onSaved();
-        showToast('Tu edición fue enviada a revisión.', 'info');
+            // Fotos: primero borrar las quitadas, luego subir las nuevas.
+            // Si alguna falla, seguimos con el resto — no revertimos nada.
+            for (const imgId of removedImageIds) {
+                try {
+                    await deleteReportImage(id, imgId);
+                } catch (err) {
+                    console.error('No se pudo borrar una foto', err);
+                }
+            }
+            for (const slot of editFotos) {
+                if (slot?.type === 'new') {
+                    try {
+                        await uploadReportImage(id, slot.dataUrl, false);
+                    } catch (err) {
+                        console.error('No se pudo subir una foto nueva', err);
+                    }
+                }
+            }
+
+            onClose();
+            onSaved();
+            showToast('Tu edición fue enviada a revisión.', 'info');
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos guardar los cambios. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!isOpen) return null;
 
     const c = editarModalConfig[tipo];
+    const ubicacionCompleta = [readOnlyDistrict, readOnlyProvince, readOnlyRegion].filter(Boolean).join(', ');
 
     return (
         <div className="app-modal open" id="modal-editar-aviso">
@@ -231,13 +367,9 @@ export default function ModalEditarAviso({
                             <div className="admin-info-box info-box-revision">
                                 <i className="ti ti-info-circle"></i>
                                 <p>
-                                    {corregirCampos.length > 0 ? (
+                                    {rejectionReason ? (
                                         <>
-                                            Tu aviso fue <b>rechazado</b>. Corrige los campos marcados con{' '}
-                                            <span className="corregir-tag show" style={{ marginLeft: 0 }}>
-                                                corregir
-                                            </span>{' '}
-                                            y vuelve a enviarlo.
+                                            Tu aviso fue <b>rechazado</b>: {rejectionReason}. Corrige y vuelve a enviarlo.
                                         </>
                                     ) : (
                                         <>
@@ -246,6 +378,17 @@ export default function ModalEditarAviso({
                                     )}
                                 </p>
                             </div>
+
+                            {/*ubicacionCompleta && (
+                                
+                                <div className="admin-info-box">
+                                    <i className="ti ti-map-pin"></i>
+                                    <p>
+                                        <b>Ubicación:</b> {ubicacionCompleta}
+                                        {readOnlyAddressHint && <> — {readOnlyAddressHint}</>}. La ubicación no se puede editar después de publicado.
+                                    </p>
+                                </div>
+                            )*/}
 
                             <div className="edit-toggle-wrap">
                                 <span className="edit-toggle-label">Editar campos</span>
@@ -267,66 +410,65 @@ export default function ModalEditarAviso({
                             >
                                 {/* FOTOS */}
                                 <div className="groups form-group">
-                                    <label>
-                                        Fotos de la mascota (Máx. 4){' '}
-                                        {corregirCampos.includes('fotos') && (
-                                            <span className="corregir-tag show">Corregir</span>
-                                        )}
-                                    </label>
+                                    <label>Fotos de la mascota (Máx. 4)</label>
                                     <div className="photo-upload-grid">
-                                        {[0, 1, 2, 3].map((idx) => (
-                                            <div
-                                                key={idx}
-                                                className="photo-uploader-box"
-                                                style={{
-                                                    position: 'relative',
-                                                    ...(editFotos[idx]
-                                                        ? {
-                                                            backgroundImage: `url('${editFotos[idx]}')`,
-                                                            backgroundSize: 'cover',
-                                                            backgroundPosition: 'center',
-                                                        }
-                                                        : {}),
-                                                }}
-                                            >
-                                                {!editFotos[idx] && <i className="ti ti-camera-plus"></i>}
+                                        {[0, 1, 2, 3].map((idx) => {
+                                            const slot = editFotos[idx];
+                                            const previewUrl = slot?.type === 'existing' ? slot.url : slot?.type === 'new' ? slot.dataUrl : null;
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className="photo-uploader-box"
+                                                    style={{
+                                                        position: 'relative',
+                                                        ...(previewUrl
+                                                            ? {
+                                                                backgroundImage: `url('${previewUrl}')`,
+                                                                backgroundSize: 'cover',
+                                                                backgroundPosition: 'center',
+                                                            }
+                                                            : {}),
+                                                    }}
+                                                >
+                                                    {!previewUrl && <i className="ti ti-camera-plus"></i>}
 
-                                                {!editFotos[idx] && (
-                                                    <input
-                                                        type="file"
-                                                        className="pet-photo-input"
-                                                        accept="image/*"
-                                                        style={{
-                                                            position: 'absolute',
-                                                            inset: 0,
-                                                            opacity: 0,
-                                                            cursor: 'pointer',
-                                                            zIndex: 1,
-                                                        }}
-                                                        onChange={(e) => handleEditFotoChange(idx, e)}
-                                                    />
-                                                )}
+                                                    {!previewUrl && (
+                                                        <input
+                                                            type="file"
+                                                            className="pet-photo-input"
+                                                            accept="image/*"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                inset: 0,
+                                                                opacity: 0,
+                                                                cursor: 'pointer',
+                                                                zIndex: 1,
+                                                            }}
+                                                            onChange={(e) => handleEditFotoChange(idx, e)}
+                                                        />
+                                                    )}
 
-                                                {editFotos[idx] && (
-                                                    <button
-                                                        type="button"
-                                                        className="btn-remove-photo"
-                                                        style={{
-                                                            position: 'absolute',
-                                                            top: '4px',
-                                                            right: '4px',
-                                                            zIndex: 2,
-                                                        }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleRemoveEditFoto(idx);
-                                                        }}
-                                                    >
-                                                        <i className="ti ti-x"></i>
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
+                                                    {previewUrl && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn-remove-photo"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: '4px',
+                                                                right: '4px',
+                                                                zIndex: 2,
+                                                            }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleRemoveEditFoto(idx);
+                                                            }}
+                                                        >
+                                                            <i className="ti ti-x"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -474,14 +616,8 @@ export default function ModalEditarAviso({
 
                                     {/* RAZA / ESPECIE (dinámico según tipo de mascota) */}
                                     <div className="form-group">
-                                        <label>
-                                            {editTipoMascota === 'Ave' ? 'Especie' : 'Raza'}{' '}
-                                            {corregirCampos.includes('raza-especie') && (
-                                                <span className="corregir-tag show">Corregir</span>
-                                            )}
-                                        </label>
-                                        <input
-                                            type="text"
+                                        <label>{editTipoMascota === 'Ave' ? 'Especie' : 'Raza'}</label>
+                                        <AutocompleteInput
                                             className="form-input"
                                             placeholder={
                                                 editTipoMascota === 'Ave'
@@ -491,47 +627,32 @@ export default function ModalEditarAviso({
                                                         : 'Ej: Labrador'
                                             }
                                             value={editRaza}
-                                            onChange={(e) => setEditRaza(e.target.value)}
+                                            onChange={setEditRaza}
+                                            suggestions={
+                                                editTipoMascota === 'Ave'
+                                                    ? ESPECIES_AVE
+                                                    : editTipoMascota === 'Gato'
+                                                        ? RAZAS_GATO
+                                                        : RAZAS_PERRO
+                                            }
                                         />
                                     </div>
 
                                     {/* COLOR (dinámico según tipo de mascota) */}
                                     <div className="form-group">
-                                        <label>
-                                            {editTipoMascota === 'Ave' ? 'Color del plumaje' : 'Color del pelaje'}{' '}
-                                            {corregirCampos.includes('color-pelaje') && (
-                                                <span className="corregir-tag show">Corregir</span>
-                                            )}
-                                        </label>
-                                        <input
-                                            type="text"
+                                        <label>{editTipoMascota === 'Ave' ? 'Color del plumaje' : 'Color del pelaje'}</label>
+                                        <AutocompleteInput
                                             className="form-input"
                                             placeholder="Ej: Blanco con manchas"
                                             value={editColor}
-                                            onChange={(e) => setEditColor(e.target.value)}
-                                        />
-                                    </div>
-
-                                    {/* DIRECCIÓN */}
-                                    <div className="form-group grid-1col">
-                                        {corregirCampos.includes('direccion') && (
-                                            <span className="corregir-tag show">Corregir</span>
-                                        )}
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder={c.direccionPlaceholder}
-                                            value={editDireccion}
-                                            onChange={(e) => setEditDireccion(e.target.value)}
+                                            onChange={setEditColor}
+                                            suggestions={editTipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
                                         />
                                     </div>
                                 </div>
 
                                 {/* OBSERVACIONES */}
                                 <div className="groups form-group">
-                                    {corregirCampos.includes('observaciones') && (
-                                        <span className="corregir-tag show">Corregir</span>
-                                    )}
                                     <label>{c.observacionesLabel}</label>
                                     <textarea
                                         rows={3}
@@ -546,9 +667,9 @@ export default function ModalEditarAviso({
                                     {/* RECOMPENSA — solo perdido */}
                                     {tipo === 'lost' && (
                                         <div className="form-group">
-                                            <label>Recompensa ({currencySymbol})</label>
+                                            <label>Recompensa{currencySymbol ? ` (${currencySymbol})` : ''}</label>
                                             <input
-                                                type="number"
+                                                type="text"
                                                 className="form-input"
                                                 value={editRecompensa}
                                                 onChange={(e) => setEditRecompensa(e.target.value)}

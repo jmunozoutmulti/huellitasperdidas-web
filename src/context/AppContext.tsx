@@ -2,28 +2,30 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
-import { AuthUser, saveAuthUser, clearAuthUser, saveAccessToken, getAccessToken, clearAccessToken } from '@/lib/auth';
-import { loginUser, registerUser, getMe, updateMe, deleteMe, AuthApiError } from '@/lib/authApi';
+import { AuthUser, saveAccessToken, getAccessToken, clearAccessToken, saveDetectedCountry, getDetectedCountry } from '@/lib/auth';
+import { detectCountry } from '@/lib/detectCountry';
+import { loginUser, registerUser, getMe, updateMe, deleteMe, uploadAvatar, deleteAvatar, loginWithGoogleToken, AuthApiError } from '@/lib/authApi';
 
 interface AppContextType {
     isDarkMode: boolean;
     toggleTheme: (isDark?: boolean) => void;
     isAuthModalOpen: boolean;
-    openAuthModal: () => void;
+    authModalInitialMode: 'login' | 'register' | 'recover' | 'forgot' | 'reset';
+    authModalResetToken: string | null;
+    openAuthModal: (options?: { mode?: 'login' | 'register' | 'recover' | 'forgot' | 'reset'; token?: string }) => void;
     closeAuthModal: () => void;
     isLoggedIn: boolean;
     currentUser: AuthUser | null;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, name: string) => Promise<string>;
-    // Google no tiene endpoint real confirmado todavía (pendiente con backend) —
-    // sigue siendo 100% local/mock mientras tanto.
-    loginWithGoogle: (data: { email: string; name: string; last_name_paterno?: string }) => void;
+    loginWithGoogle: (idToken: string) => Promise<void>;
     logout: () => void;
     usuarioTienePublicacionActiva: boolean;
     centinelaEstaActivo: boolean;
     isAuthChecked: boolean;
     updateCurrentUser: (patch: Partial<AuthUser>) => void;
-    updateProfile: (patch: { name?: string; last_name_paterno?: string; last_name_materno?: string; phone?: string; country?: string; region?: string; province?: string; district?: string; avatar?: string; password?: string; current_password?: string }) => Promise<void>;
+    updateProfile: (patch: { name?: string; last_name_paterno?: string; last_name_materno?: string; phone?: string; country?: string; region?: string; province?: string; district?: string; password?: string; current_password?: string }) => Promise<void>;
+    updateAvatar: (avatarDataUrl: string | null) => Promise<void>;
     deleteAccount: (password: string) => Promise<void>;
 }
 
@@ -32,6 +34,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authModalInitialMode, setAuthModalInitialMode] = useState<'login' | 'register' | 'recover' | 'forgot' | 'reset'>('login');
+    const [authModalResetToken, setAuthModalResetToken] = useState<string | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
@@ -44,6 +48,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const isDark = savedTheme === 'dark';
         setIsDarkMode(isDark);
         document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+
+        // País detectado — una sola vez por dispositivo (si ya hay uno
+        // guardado, no se vuelve a pedir). Corre para cualquier visitante,
+        // tenga sesión o no — es lo que filtra Explorar antes de que exista
+        // una cuenta.
+        if (!getDetectedCountry()) {
+            detectCountry().then(saveDetectedCountry);
+        }
 
         async function restoreSession() {
             const token = getAccessToken();
@@ -62,19 +74,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     last_name_paterno: apiUser.last_name_paterno || '',
                     last_name_materno: apiUser.last_name_materno || '',
                     phone: apiUser.phone || '',
-                    country: apiUser.country || 'PE',
+                    country: apiUser.country || getDetectedCountry() || 'PE',
                     region: apiUser.region || '',
                     province: apiUser.province || '',
                     district: apiUser.district || '',
                     avatar: apiUser.avatar || '',
                 };
-                saveAuthUser(user);
                 setCurrentUser(user);
                 setIsLoggedIn(true);
             } catch {
                 // Token inválido o vencido — cerramos sesión en silencio,
                 // sin mostrar ningún error (es un estado normal, no una falla).
-                clearAuthUser();
                 clearAccessToken();
             } finally {
                 setIsAuthChecked(true);
@@ -104,8 +114,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('theme', newDarkState ? 'dark' : 'light');
     };
 
-    const openAuthModal = () => setIsAuthModalOpen(true);
-    const closeAuthModal = () => setIsAuthModalOpen(false);
+    const openAuthModal = (options?: { mode?: 'login' | 'register' | 'recover' | 'forgot' | 'reset'; token?: string }) => {
+        setAuthModalInitialMode(options?.mode || 'login');
+        setAuthModalResetToken(options?.token || null);
+        setIsAuthModalOpen(true);
+    };
+    const closeAuthModal = () => {
+        setIsAuthModalOpen(false);
+        setAuthModalInitialMode('login');
+        setAuthModalResetToken(null);
+    };
 
     // Login real contra el backend. Lanza el error (AuthApiError) para que
     // quien llame (AuthModal) decida cómo mostrarlo — por ejemplo, el caso
@@ -121,7 +139,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             last_name_paterno: apiUser.last_name_paterno || '',
             last_name_materno: apiUser.last_name_materno || '',
             phone: apiUser.phone || '',
-            country: apiUser.country || 'PE',
+            country: apiUser.country || getDetectedCountry() || 'PE',
             region: apiUser.region || '',
             province: apiUser.province || '',
             district: apiUser.district || '',
@@ -129,7 +147,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
 
         saveAccessToken(res.access_token);
-        saveAuthUser(user);
         setCurrentUser(user);
         setIsLoggedIn(true);
         closeAuthModal();
@@ -143,25 +160,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return res.message;
     };
 
-    // Google sigue siendo 100% local — no hay endpoint real confirmado
-    // todavía. No genera access_token real, no debería usarse para llamadas
-    // autenticadas reales al backend hasta que esto se resuelva.
-    const loginWithGoogle = (data: { email: string; name: string; last_name_paterno?: string }) => {
+    // Login/registro real con Google — el backend decide solo si es cuenta
+    // nueva o existente. Manda el id_token de Google tal cual, sin decodificarlo
+    // nosotros (eso lo hace el propio backend, que además lo valida).
+    const loginWithGoogle = async (idToken: string) => {
+        const res = await loginWithGoogleToken(idToken);
+        const apiUser = res.user;
+
         const user: AuthUser = {
-            id: crypto.randomUUID(),
-            email: data.email,
-            name: data.name,
-            last_name_paterno: data.last_name_paterno || '',
-            last_name_materno: '',
-            phone: '',
-            country: 'PE',
-            region: '',
-            province: '',
-            district: '',
-            avatar: '',
+            id: apiUser.id,
+            email: apiUser.email,
+            name: apiUser.name,
+            last_name_paterno: apiUser.last_name_paterno || '',
+            last_name_materno: apiUser.last_name_materno || '',
+            phone: apiUser.phone || '',
+            country: apiUser.country || getDetectedCountry() || 'PE',
+            region: apiUser.region || '',
+            province: apiUser.province || '',
+            district: apiUser.district || '',
+            avatar: apiUser.avatar || '',
         };
 
-        saveAuthUser(user);
+        saveAccessToken(res.access_token);
         setCurrentUser(user);
         setIsLoggedIn(true);
         closeAuthModal();
@@ -169,7 +189,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const logout = () => {
-        clearAuthUser();
         clearAccessToken();
         setCurrentUser(null);
         setIsLoggedIn(false);
@@ -179,9 +198,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updateCurrentUser = (patch: Partial<AuthUser>) => {
         setCurrentUser((prev) => {
             if (!prev) return prev;
-            const updated = { ...prev, ...patch };
-            saveAuthUser(updated);
-            return updated;
+            return { ...prev, ...patch };
         });
     };
 
@@ -196,7 +213,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         region?: string;
         province?: string;
         district?: string;
-        avatar?: string;
         password?: string;
         current_password?: string;
     }) => {
@@ -215,8 +231,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 district: apiUser.district || '',
                 avatar: apiUser.avatar || '',
             };
-            saveAuthUser(updated);
             return updated;
+        });
+    };
+
+    // Sube o quita el avatar por separado — PUT /me ya no lo acepta desde
+    // que existen estos 2 endpoints dedicados.
+    const updateAvatar = async (avatarDataUrl: string | null) => {
+        const apiUser = avatarDataUrl ? await uploadAvatar(avatarDataUrl) : await deleteAvatar();
+        setCurrentUser((prev) => {
+            if (!prev) return prev;
+            return { ...prev, avatar: apiUser.avatar || '' };
         });
     };
 
@@ -224,7 +249,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // de identidad (el backend la exige, ver deleteMe).
     const deleteAccount = async (password: string) => {
         await deleteMe(password);
-        clearAuthUser();
         clearAccessToken();
         setCurrentUser(null);
         setIsLoggedIn(false);
@@ -237,6 +261,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 isDarkMode,
                 toggleTheme,
                 isAuthModalOpen,
+                authModalInitialMode,
+                authModalResetToken,
                 openAuthModal,
                 closeAuthModal,
                 isLoggedIn,
@@ -250,6 +276,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 isAuthChecked,
                 updateCurrentUser,
                 updateProfile,
+                updateAvatar,
                 deleteAccount
             }}
         >

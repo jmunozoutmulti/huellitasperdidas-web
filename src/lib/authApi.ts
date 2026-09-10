@@ -1,4 +1,5 @@
 import { authFetch, authFetchJson, ApiError } from './authFetch';
+import { dataUrlToBlob } from './reportsApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -111,7 +112,6 @@ export interface UpdateMePayload {
     region?: string;
     province?: string;
     district?: string;
-    avatar?: string;
     password?: string;
     current_password?: string;
 }
@@ -154,4 +154,108 @@ export async function deleteMe(password: string): Promise<void> {
         const data = await res.json().catch(() => ({}));
         throw new AuthApiError(res.status, data.detail || 'No pudimos eliminar tu cuenta.');
     }
+}
+
+export interface UserSettings {
+    notification_types: {
+        lost: boolean;
+        found: boolean;
+        sighting: boolean;
+        adoption: boolean;
+    };
+}
+
+export async function getMySettings(): Promise<UserSettings> {
+    try {
+        return await authFetchJson<UserSettings>('/v1/users/me/settings', { method: 'GET' });
+    } catch (err) {
+        if (err instanceof ApiError) throw new AuthApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+export async function updateMySettings(settings: UserSettings): Promise<UserSettings> {
+    try {
+        return await authFetchJson<UserSettings>('/v1/users/me/settings', {
+            method: 'PUT',
+            body: JSON.stringify(settings),
+        });
+    } catch (err) {
+        if (err instanceof ApiError) throw new AuthApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+
+// Sube el avatar como archivo real — reemplaza el campo avatar de PUT /me,
+// que ya no lo acepta. Reutiliza dataUrlToBlob de reportsApi.ts (mismo
+// patrón que ya usamos para subir fotos de avisos).
+export async function uploadAvatar(avatarDataUrl: string): Promise<AuthApiUser> {
+    const blob = dataUrlToBlob(avatarDataUrl);
+    const form = new FormData();
+    const ext = blob.type.split('/')[1] || 'jpg';
+    form.append('file', blob, `avatar.${ext}`);
+    try {
+        return await authFetchJson<AuthApiUser>('/v1/auth/me/avatar', {
+            method: 'POST',
+            body: form,
+        });
+    } catch (err) {
+        if (err instanceof ApiError) throw new AuthApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+export async function deleteAvatar(): Promise<AuthApiUser> {
+    try {
+        return await authFetchJson<AuthApiUser>('/v1/auth/me/avatar', { method: 'DELETE' });
+    } catch (err) {
+        if (err instanceof ApiError) throw new AuthApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+// Login/registro con Google — el backend decide solo si es cuenta nueva o
+// existente según el correo/google_id. Responde igual que loginUser.
+export async function loginWithGoogleToken(idToken: string): Promise<LoginResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: idToken }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new AuthApiError(res.status, data.detail || 'No pudimos iniciar sesión con Google.');
+    }
+    return data;
+}
+
+// Siempre responde igual exista o no la cuenta — mismo criterio de
+// seguridad que resendVerification. No intentar distinguir casos aquí.
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE}/v1/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new AuthApiError(res.status, data.detail || 'No pudimos procesar la solicitud.');
+    }
+    return data;
+}
+
+// El token viene de la URL (?token=...) del correo que manda forgotPassword.
+// Vence en 1 hora del lado del backend.
+export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE}/v1/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new AuthApiError(res.status, data.detail || 'No pudimos restablecer tu contraseña. El enlace puede haber vencido.');
+    }
+    return data;
 }

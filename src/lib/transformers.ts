@@ -1,5 +1,6 @@
 import { PetData } from './pets';
-import { Report } from './api';
+import { Report, FavoriteReportOut } from './api';
+import { getCountryByAbbrSync } from './countries';
 
 function hashSeed(id: string): number {
     let hash = 0;
@@ -10,33 +11,27 @@ function hashSeed(id: string): number {
     return Math.abs(hash);
 }
 
-const RAZAS = ['Mestizo', 'Labrador', 'Poodle', 'Pastor Alemán', 'Criollo', 'Golden Retriever'];
-const EDADES = ['Menos de 1 año', '1 a 3 años', '4 a 7 años', '8 años o más'];
-
-function fillBreed(id: string): string {
-    return RAZAS[hashSeed(id) % RAZAS.length];
+function genderLabel(sex: string | null, isNeutered: boolean | null): string {
+    if (!sex) return '';
+    const sexoLabel = sex === 'male' ? 'Macho' : sex === 'female' ? 'Hembra' : sex;
+    return `${sexoLabel}${isNeutered ? ' (Esterilizado)' : ''}`;
 }
 
-function fillAge(id: string): string {
-    return EDADES[hashSeed(id + 'age') % EDADES.length];
+function sizeLabel(size: string | null): string {
+    if (size === 'small') return 'Pequeño';
+    if (size === 'medium') return 'Mediano';
+    if (size === 'large') return 'Grande';
+    return '';
 }
 
-function fillGender(id: string): string {
-    const sexo = hashSeed(id + 'sex') % 2 === 0 ? 'Macho' : 'Hembra';
-    const castrado = hashSeed(id + 'neutered') % 2 === 0;
-    return `${sexo}${castrado ? ' (Castrado)' : ''}`;
+function isPremiumReport(report: Report): boolean {
+    return (report.report_type === 'lost' || report.report_type === 'adoption') && report.package_slug === 'urgente';
 }
 
-
-function fillReward(reportType: string, id: string): string {
-    if (reportType !== 'lost') return '';
-    const amounts = ['', '', 'S/. 200', 'S/. 500', 'S/. 1,000'];
-    return amounts[hashSeed(id + 'reward') % amounts.length];
-}
-
-function fillIsPremium(reportType: string, id: string): boolean {
-    if (reportType !== 'lost') return false;
-    return hashSeed(id + 'premium') % 4 === 0;
+function parseCoord(val: number | string | null): number | null {
+    if (val === null) return null;
+    const n = typeof val === 'string' ? parseFloat(val) : val;
+    return Number.isFinite(n) ? n : null;
 }
 
 interface BadgeInfo {
@@ -53,7 +48,9 @@ function getBadgeInfo(reportType: string, isPremium: boolean): BadgeInfo {
         case 'found':
             return { badge: 'Encontrado', badgeStyle: 'badge-found' };
         case 'adoption':
-            return { badge: 'En adopción', badgeStyle: 'badge-adopt' };
+            return isPremium
+                ? { badge: 'Urgente', badgeStyle: 'badge-adopt-premium' }
+                : { badge: 'En adopción', badgeStyle: 'badge-adopt' };
         case 'sighting':
             return { badge: 'Avistamiento', badgeStyle: 'badge-sight' };
         case 'unknown':
@@ -74,6 +71,13 @@ function formatDate(isoDate: string | null): string {
     });
 }
 
+function formatReward(report: Report): string {
+    if (!report.meta.reward || Number(report.meta.reward) <= 0) return '';
+    const symbol = getCountryByAbbrSync(report.country || 'PE')?.currencySymbol;
+    // Si no sabemos el símbolo (país sin configurar, o caché aún no lista),
+    // mostramos el monto sin inventar un símbolo — más honesto que adivinar.
+    return symbol ? `${symbol} ${report.meta.reward}` : report.meta.reward;
+}
 
 function detectExternalType(sourceUrl: string | null): 'facebook' | 'instagram' | 'tiktok' | 'google' {
     if (!sourceUrl) return 'google';
@@ -89,7 +93,7 @@ export function reportToPetData(report: Report): PetData {
 
     const isExternal = report.source_type === 'website';
 
-    const isPremium = fillIsPremium(report.report_type, id);
+    const isPremium = isPremiumReport(report);
     const externalType = isExternal ? detectExternalType(report.source_url) : undefined;
 
     let badge: string;
@@ -112,25 +116,54 @@ export function reportToPetData(report: Report): PetData {
 
     return {
         id,
-        title: report.title ?? 'Sin título',
+        title: report.title ?? '',
         badge,
         badgeStyle,
         district: report.district ?? '',
-        features: '',
-        date: formatDate(report.event_date ?? report.published_at),
+        province: report.province ?? '',
+        region: report.region ?? '',
+        features: report.meta.color ?? '',
+        date: formatDate(
+            report.event_date ??
+            (report.report_type === 'adoption'
+                ? (report.source_type === 'user' ? (report.published_at ?? report.created_at) : report.created_at)
+                : report.report_type === 'sighting'
+                    ? report.created_at
+                    : (report.published_at ?? report.created_at))
+        ),
+        sourceType: report.source_type,
+        createdAtDisplay: formatDate(report.created_at),
+        publishedAtDisplay: report.published_at ? formatDate(report.published_at) : '',
+        lat: parseCoord(report.lat),
+        lng: parseCoord(report.lng),
+        contactPhone: report.contact_phone ?? '',
+        likesCount: report.likes_count ?? 0,
+        hasLiked: report.has_liked ?? false,
+        isFavorited: report.is_favorited ?? false,
 
-        age: fillAge(id),
-        race: fillBreed(id),
-        gender: fillGender(id),
-        reward: fillReward(report.report_type, id),
+        age: report.meta.age ?? '',
+        race: report.meta.breed ?? '',
+        size: sizeLabel(report.meta.size),
+        petType: report.pet_type ?? '',
+        gender: genderLabel(report.meta.sex, report.meta.is_neutered),
+        reward: formatReward(report),
+        rewardVisible: report.meta.reward_visible,
+        lastSeenLocation: report.address_hint ?? '',
+        adoptionExtras: report.meta.adoption_extras ?? '',
+        adoptionExtrasVisible: report.meta.adoption_extras_visible,
 
-        views: '0',
-        shares: '0',
+        views: String(report.views_count ?? 0),
+        shares: String(report.shares_count ?? 0),
 
         desc: report.description ?? '',
 
-        imgSrc: report.images[0]?.image_url ?? 'https://placehold.co/600x400?text=Sin+foto',
-        images: report.images.map((img) => img.image_url),
+        imgSrc: report.images.find((img) => !img.is_flyer)?.image_url ?? 'https://placehold.co/600x400?text=Sin+foto',
+        images: report.images.filter((img) => !img.is_flyer).map((img) => img.image_url),
+        flyerUrl: report.images.find((img) => img.is_flyer)?.image_url ?? null,
+        authorName: report.author_name,
+        authorAvatar: report.author_avatar,
+        rejectionReason: report.rejection_reason,
+        status: report.status,
 
         isPremium,
         isExternal,
@@ -139,3 +172,25 @@ export function reportToPetData(report: Report): PetData {
     };
 }
 
+export interface FavoriteCardData {
+    id: string;
+    title: string;
+    badge: string;
+    badgeStyle: string;
+    district: string;
+    date: string;
+    imgSrc: string;
+}
+
+export function favoriteToCardData(fav: FavoriteReportOut): FavoriteCardData {
+    const info = getBadgeInfo(fav.report_type, false);
+    return {
+        id: fav.id,
+        title: fav.title ?? '',
+        badge: info.badge,
+        badgeStyle: info.badgeStyle,
+        district: fav.district ?? '',
+        date: formatDate(fav.published_at),
+        imgSrc: fav.cover_image_url ?? 'https://placehold.co/600x400?text=Sin+foto',
+    };
+}

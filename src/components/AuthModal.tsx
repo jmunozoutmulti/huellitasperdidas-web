@@ -4,18 +4,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { showToast } from '@/components/global/Toast';
-import { AuthApiError, resendVerification } from '@/lib/authApi';
+import { AuthApiError, resendVerification, forgotPassword, resetPassword } from '@/lib/authApi';
+
+type AuthMode = 'login' | 'register' | 'recover' | 'forgot' | 'reset';
 
 interface AuthModalProps {
     onClose: () => void;
+    initialMode?: AuthMode;
+    resetToken?: string | null;
 }
 
-type AuthMode = 'login' | 'register' | 'recover';
-
-export default function AuthModal({ onClose }: AuthModalProps) {
+export default function AuthModal({ onClose, initialMode = 'login', resetToken = null }: AuthModalProps) {
     const { login, register, loginWithGoogle } = useApp();
 
-    const [mode, setMode] = useState<AuthMode>('login');
+    const [mode, setMode] = useState<AuthMode>(initialMode);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Login / Registro
@@ -25,26 +27,28 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
-    // Recuperar cuenta
+    // Reenviar verificación (cuenta sin verificar)
     const [recoverEmail, setRecoverEmail] = useState('');
     const [isSubmittingRecover, setIsSubmittingRecover] = useState(false);
 
-    const handleGoogleCredential = (response: { credential: string }) => {
-        const base64Url = response.credential.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-            atob(base64)
-                .split('')
-                .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
-                .join('')
-        );
-        const payload = JSON.parse(jsonPayload);
+    // Olvidé mi contraseña (cuenta ya verificada)
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
 
-        loginWithGoogle({
-            email: payload.email,
-            name: payload.given_name || payload.name,
-            last_name_paterno: payload.family_name || '',
-        });
+    // Restablecer contraseña (viene del link del correo, con token)
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+    const [isResetDone, setIsResetDone] = useState(false);
+
+    const handleGoogleCredential = async (response: { credential: string }) => {
+        try {
+            await loginWithGoogle(response.credential);
+        } catch (err) {
+            const message = err instanceof AuthApiError ? err.message : 'No pudimos iniciar sesión con Google. Intenta de nuevo.';
+            showToast(message, 'error');
+        }
     };
 
     useEffect(() => {
@@ -55,6 +59,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
             callback: handleGoogleCredential,
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleLogin = async () => {
@@ -88,9 +93,6 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         setIsSubmittingRecover(true);
         try {
             const res = await resendVerification(recoverEmail);
-            // El backend siempre devuelve el mismo mensaje genérico a propósito
-            // (no revela si el correo existe o ya está verificado) — se muestra
-            // tal cual, sin que el frontend intente adivinar cuál caso fue.
             showToast(res.message, 'success');
         } catch (err) {
             const message = err instanceof AuthApiError ? err.message : 'No pudimos procesar la solicitud.';
@@ -100,8 +102,41 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         }
     };
 
+    const handleForgotPassword = async () => {
+        setIsSubmittingForgot(true);
+        try {
+            const res = await forgotPassword(forgotEmail);
+            showToast(res.message, 'success');
+            setForgotEmail('');
+        } catch (err) {
+            const message = err instanceof AuthApiError ? err.message : 'No pudimos procesar la solicitud.';
+            showToast(message, 'error');
+        } finally {
+            setIsSubmittingForgot(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!resetToken) return;
+        setIsSubmittingReset(true);
+        try {
+            await resetPassword(resetToken, newPassword);
+            setIsResetDone(true);
+            showToast('Tu contraseña fue actualizada correctamente.', 'success');
+        } catch (err) {
+            const message =
+                err instanceof AuthApiError
+                    ? err.message
+                    : 'No pudimos restablecer tu contraseña. El enlace puede haber vencido.';
+            showToast(message, 'error');
+        } finally {
+            setIsSubmittingReset(false);
+        }
+    };
+
     const canSubmitLogin = email.includes('@') && password.length >= 8;
     const canSubmitRegister = email.includes('@') && password.length >= 8 && name.trim().length > 0;
+    const canSubmitReset = newPassword.length >= 8 && newPassword === confirmNewPassword;
 
     return (
         <div className="app-modal open" id="modal-auth">
@@ -157,6 +192,11 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                                 </button>
                             </div>
                         </div>
+
+                        <button type="button" className="auth-modal-link" onClick={() => setMode('forgot')} style={{ marginBottom: '0.75em' }}>
+                            ¿Olvidaste tu contraseña?
+                        </button>
+
                         <button
                             type="button"
                             className="auth-btn auth-btn-primary"
@@ -257,7 +297,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                     </div>
                 )}
 
-                {/* ============ RECUPERAR CUENTA ============ */}
+                {/* ============ REENVIAR VERIFICACIÓN (cuenta sin verificar) ============ */}
                 {mode === 'recover' && (
                     <div className="auth-step active" data-auth-step="recover">
                         <div className="auth-modal-icon">
@@ -288,9 +328,140 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                             {isSubmittingRecover ? 'Enviando...' : 'Enviar enlace de verificación'}
                         </button>
 
+                        <button type="button" className="auth-modal-link" onClick={() => setMode('forgot')}>
+                            ¿Ya verificaste tu cuenta pero olvidaste tu contraseña?
+                        </button>
+
                         <button type="button" className="auth-modal-link" onClick={() => setMode('login')}>
                             Volver a iniciar sesión
                         </button>
+                    </div>
+                )}
+
+                {/* ============ OLVIDÉ MI CONTRASEÑA (cuenta ya verificada) ============ */}
+                {mode === 'forgot' && (
+                    <div className="auth-step active" data-auth-step="forgot">
+                        <div className="auth-modal-icon">
+                            <Image src="/images/logo.svg" alt="Huellas Perdidas" width={120} height={40} />
+                        </div>
+                        <h3 className="auth-modal-title">Restablece tu contraseña</h3>
+                        <p className="auth-modal-desc">
+                            Ingresa tu correo y te enviaremos un enlace para crear una contraseña nueva.
+                        </p>
+
+                        <div className="form-group">
+                            <input
+                                type="email"
+                                className="form-input auth-input"
+                                placeholder="email@example.com"
+                                value={forgotEmail}
+                                onChange={(e) => setForgotEmail(e.target.value)}
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            className="auth-btn auth-btn-primary"
+                            disabled={!forgotEmail.includes('@') || isSubmittingForgot}
+                            onClick={handleForgotPassword}
+                        >
+                            {isSubmittingForgot ? 'Enviando...' : 'Enviar enlace'}
+                        </button>
+
+                        <button type="button" className="auth-modal-link" onClick={() => setMode('recover')}>
+                            ¿Nunca verificaste tu cuenta?
+                        </button>
+
+                        <button type="button" className="auth-modal-link" onClick={() => setMode('login')}>
+                            Volver a iniciar sesión
+                        </button>
+                    </div>
+                )}
+
+                {/* ============ RESTABLECER CONTRASEÑA (llegó desde el link del correo) ============ */}
+                {mode === 'reset' && (
+                    <div className="auth-step active" data-auth-step="reset">
+                        <div className="auth-modal-icon">
+                            <Image src="/images/logo.svg" alt="Huellas Perdidas" width={120} height={40} />
+                        </div>
+
+                        {!resetToken ? (
+                            <>
+                                <h3 className="auth-modal-title">Enlace inválido</h3>
+                                <p className="auth-modal-desc">
+                                    Este enlace no es válido o está incompleto. Solicita uno nuevo.
+                                </p>
+                                <button type="button" className="auth-btn auth-btn-primary" onClick={() => setMode('forgot')}>
+                                    Solicitar nuevo enlace
+                                </button>
+                            </>
+                        ) : isResetDone ? (
+                            <>
+                                <h3 className="auth-modal-title">¡Listo!</h3>
+                                <p className="auth-modal-desc">
+                                    Tu contraseña fue actualizada. Ya puedes iniciar sesión con tu nueva contraseña.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="auth-btn auth-btn-primary"
+                                    onClick={() => {
+                                        setIsResetDone(false);
+                                        setMode('login');
+                                    }}
+                                >
+                                    Iniciar sesión
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="auth-modal-title">Crea tu nueva contraseña</h3>
+                                <p className="auth-modal-desc">Este enlace vence en 1 hora desde que lo recibiste.</p>
+
+                                <div className="form-auth">
+                                    <div className="field-auth auth-password-group">
+                                        <input
+                                            type={showNewPassword ? 'text' : 'password'}
+                                            className="auth-input"
+                                            placeholder="Nueva contraseña (mínimo 8 caracteres)"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="auth-password-toggle"
+                                            onClick={() => setShowNewPassword((v) => !v)}
+                                            aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                        >
+                                            <i className={showNewPassword ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                                        </button>
+                                    </div>
+                                    <div className="field-auth">
+                                        <input
+                                            type={showNewPassword ? 'text' : 'password'}
+                                            className="auth-input"
+                                            placeholder="Confirma tu nueva contraseña"
+                                            value={confirmNewPassword}
+                                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {confirmNewPassword && newPassword !== confirmNewPassword && (
+                                    <p style={{ color: 'var(--brand-red)', fontSize: '0.85em', marginTop: '-0.5em', marginBottom: '0.5em' }}>
+                                        Las contraseñas no coinciden.
+                                    </p>
+                                )}
+
+                                <button
+                                    type="button"
+                                    className="auth-btn auth-btn-primary"
+                                    disabled={!canSubmitReset || isSubmittingReset}
+                                    onClick={handleResetPassword}
+                                >
+                                    {isSubmittingReset ? 'Guardando...' : 'Restablecer contraseña'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

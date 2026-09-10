@@ -1,9 +1,11 @@
 // Configuración de notificaciones del usuario (mock en localStorage).
 // Cuando exista GET/PUT /v1/users/me/settings, esta capa se reemplaza
 // por llamadas reales al API, sin tocar AjustesSection.tsx ni page.tsx.
+//
+// Solo hay correo (se quitó la opción WhatsApp) — si el usuario desactiva
+// los 4 tipos, simplemente no se le manda ningún aviso.
 
 export interface UserSettings {
-    notification_mode: 'email' | 'whatsapp';
     notification_types: {
         lost: boolean;
         found: boolean;
@@ -13,12 +15,11 @@ export interface UserSettings {
 }
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
-    notification_mode: 'email',
     notification_types: {
         lost: true,
         found: true,
-        sighting: false,
-        adoption: false,
+        sighting: true,
+        adoption: true,
     },
 };
 

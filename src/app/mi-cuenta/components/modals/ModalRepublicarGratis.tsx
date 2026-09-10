@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { showToast } from '@/components/global/Toast';
-import { updatePublication } from '@/lib/publications';
+import { updateReport, ReportsApiError } from '@/lib/reportsApi';
 
 interface ModalRepublicarGratisProps {
     isOpen: boolean;
@@ -25,11 +25,20 @@ export default function ModalRepublicarGratis({
 
     const handlePublicarGratis = async () => {
         setIsProcessing(true);
-        await updatePublication(id, { stopped_by_user: false });
-        setIsProcessing(false);
-        onClose();
-        onRepublished();
-        showToast('Tu aviso fue enviado a revisión nuevamente', 'info');
+        try {
+            // PUT vacío — confirmado con backend: alcanza para reabrir un
+            // aviso finalizado (spam/resolved), lo manda a pending_approval
+            // sin necesitar cambiar ningún campo.
+            await updateReport(id, {});
+            onClose();
+            onRepublished();
+            showToast('Tu aviso fue enviado a revisión nuevamente', 'info');
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos volver a publicar tu aviso. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (

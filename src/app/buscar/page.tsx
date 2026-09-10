@@ -334,7 +334,7 @@ export default function BuscarIAPage() {
 
                                 {/* DROPDOWN DE BÚSQUEDA */}
                                 <div
-                                    className={`search-dropdown-results ${isSearchDropdownOpen ? 'is-visible' : ''
+                                    className={`search-dropdown-results search-ia ${isSearchDropdownOpen ? 'is-visible' : ''
                                         }`}
                                     id="ia-search-dropdown"
                                 >

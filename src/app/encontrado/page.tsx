@@ -4,13 +4,16 @@ import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/encontrado.css';
 import { useApp } from '@/context/AppContext';
-import { createPublication } from '@/lib/publications';
+import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
 import { generateFlyerImage } from '@/lib/flyerExport';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
+import AutocompleteInput from '@/components/ui/AutocompleteInput';
+import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
+import { validateText } from '@/lib/textValidation';
 import { showToast } from '@/components/global/Toast';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import ModalAgregarNumero from '@/components/global/ModalAgregarNumero';
-import { getCountryByAbbr } from '@/lib/countries';
+import { getCountryByAbbr, type Country } from '@/lib/countries';
 import { getLevel1Options, getLevel2Options, getLevel3Options } from '@/lib/locations';
 
 export default function PublicarEncontradoPage() {
@@ -20,7 +23,25 @@ export default function PublicarEncontradoPage() {
     const { currentUser, isAuthChecked, isLoggedIn } = useApp();
 
     const country = currentUser?.country || 'PE';
-    const [labelNivel1, labelNivel2, labelNivel3] = getCountryByAbbr(country).locationLabels;
+    const [countryInfo, setCountryInfo] = useState<Country | null>(null);
+    const [isLoadingWizardData, setIsLoadingWizardData] = useState(true);
+
+    useEffect(() => {
+        let isCancelled = false;
+        setIsLoadingWizardData(true);
+        getCountryByAbbr(country).then((c) => {
+            if (!isCancelled) {
+                setCountryInfo(c);
+                setIsLoadingWizardData(false);
+            }
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
+    const isCountryReady = !isLoadingWizardData && !!countryInfo?.locationLabels;
+    const [labelNivel1, labelNivel2, labelNivel3] = countryInfo?.locationLabels ?? ['Departamento', 'Provincia', 'Distrito'];
 
     // ==========================================
     // ESTADOS DEL WIZARD (MULTIPASO - 2 PASOS)
@@ -50,13 +71,39 @@ export default function PublicarEncontradoPage() {
     const [provincia, setProvincia] = useState('');
     const [distrito, setDistrito] = useState('');
 
-    const nivel1Options = getLevel1Options(country);
-    const nivel2Options = getLevel2Options(country, departamento);
-    const nivel3Options = getLevel3Options(country, departamento, provincia);
+    const [nivel1Options, setNivel1Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel2Options, setNivel2Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel3Options, setNivel3Options] = useState<{ value: string; label: string }[]>([]);
 
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel1Options(country).then((opts) => {
+            if (!isCancelled) setNivel1Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
 
-    const [zonaDisplay, setZonaDisplay] = useState('');
-    const [isZonePopoverOpen, setIsZonePopoverOpen] = useState(false);
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel2Options(country, departamento).then((opts) => {
+            if (!isCancelled) setNivel2Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country, departamento]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel3Options(country, departamento, provincia).then((opts) => {
+            if (!isCancelled) setNivel3Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country, departamento, provincia]);
 
     const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false);
     const [descripcion, setDescripcion] = useState('');
@@ -82,7 +129,6 @@ export default function PublicarEncontradoPage() {
     const [isFlyerMobileVisible, setIsFlyerMobileVisible] = useState(false);
 
     const datePopoverRef = useRef<HTMLDivElement>(null);
-    const zonePopoverRef = useRef<HTMLDivElement>(null);
 
     // ==========================================
     // EFECTOS DE POPOVERS Y EVENTOS
@@ -95,12 +141,6 @@ export default function PublicarEncontradoPage() {
             ) {
                 setIsDatePopoverOpen(false);
             }
-            if (
-                zonePopoverRef.current &&
-                !zonePopoverRef.current.contains(e.target as Node)
-            ) {
-                setIsZonePopoverOpen(false);
-            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -112,11 +152,6 @@ export default function PublicarEncontradoPage() {
         }
     }, [fechaDia, fechaMes, fechaAnio]);
 
-    useEffect(() => {
-        if (departamento && provincia && distrito) {
-            setIsZonePopoverOpen(false);
-        }
-    }, [departamento, provincia, distrito]);
 
     // Formatear Fecha Display
     useEffect(() => {
@@ -142,15 +177,6 @@ export default function PublicarEncontradoPage() {
             setFechaDisplay('');
         }
     }, [fechaDia, fechaMes, fechaAnio]);
-
-    // Formatear Zona Display
-    useEffect(() => {
-        if (departamento && provincia && distrito) {
-            setZonaDisplay(`${provincia}, ${departamento} , ${distrito}`);
-        } else {
-            setZonaDisplay('');
-        }
-    }, [departamento, provincia, distrito]);
 
     // ==========================================
     // CARGA Y REMOCIÓN DE IMÁGENES
@@ -198,26 +224,75 @@ export default function PublicarEncontradoPage() {
         return value.replace(/<[^>]*>?/gm, '').trim();
     }
 
+    function tipoMascotaToApi(valor: string): string {
+        if (valor === 'Perro') return 'dog';
+        if (valor === 'Gato') return 'cat';
+        if (valor === 'Ave') return 'bird';
+        return 'other';
+    }
+    function sexoToApi(valor: string): string | null {
+        if (valor === 'Macho') return 'male';
+        if (valor === 'Hembra') return 'female';
+        return null;
+    }
+    function tamanoToApi(valor: string): string | null {
+        if (valor === 'Pequeño') return 'small';
+        if (valor === 'Mediano') return 'medium';
+        if (valor === 'Grande') return 'large';
+        return null;
+    }
+
     function validateStep1(): boolean {
         const errors: Record<string, boolean> = {};
+        let specificError = '';
 
         if (!fechaDia || !fechaMes || !fechaAnio) errors.fecha = true;
         if (!sexo) errors.sexo = true;
         if (!tipoMascota) errors.tipoMascota = true;
         if (!tamano) errors.tamano = true;
-        if (!sanitizeText(raza)) errors.raza = true;
-        if (!sanitizeText(color)) errors.color = true;
+
+        if (!sanitizeText(raza)) {
+            errors.raza = true;
+        } else {
+            const check = validateText(raza, 3, 'La raza');
+            if (!check.valid) {
+                errors.raza = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
+        if (!sanitizeText(color)) {
+            errors.color = true;
+        } else {
+            const check = validateText(color, 3, 'El color');
+            if (!check.valid) {
+                errors.color = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         if (!sanitizeText(direccion)) errors.direccion = true;
         if (!departamento) errors.departamento = true;
         if (!provincia) errors.provincia = true;
         if (!distrito) errors.distrito = true;
         if (validPhotos.length === 0) errors.fotos = true;
 
+        // Descripción es opcional — solo se valida si el usuario escribió algo
+        if (sanitizeText(descripcion)) {
+            const check = validateText(descripcion, 10, 'La descripción');
+            if (!check.valid) {
+                errors.descripcion = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         setFieldErrors(errors);
 
         if (Object.keys(errors).length > 0) {
             if (errors.fotos) {
                 showToast('Agrega al menos 1 foto de la mascota', 'error');
+            } else if (specificError) {
+                showToast(specificError, 'error');
             } else {
                 showToast('Completa todos los campos obligatorios', 'error');
             }
@@ -255,47 +330,65 @@ export default function PublicarEncontradoPage() {
         }
     };
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const executeFormSubmission = async () => {
-        if (currentUser) {
-            await createPublication({
-                user_id: currentUser.id,
+        if (!currentUser) return;
+
+        setIsSubmitting(true);
+        try {
+            const report = await createReport({
                 report_type: 'found',
-                pet_type: tipoMascota || null,
+                pet_type: tipoMascota ? tipoMascotaToApi(tipoMascota) : null,
                 title: null, // encontrado no captura nombre de mascota
                 description: sanitizeText(descripcion) || null,
-                country: currentUser.country || 'PE',
+                country: country,
                 region: departamento || null,
                 province: provincia || null,
                 district: distrito || null,
                 address_hint: sanitizeText(direccion) || null,
+                lat: null,
+                lng: null,
                 event_date: fechaDia && fechaMes && fechaAnio ? `${fechaAnio}-${fechaMes}-${fechaDia}` : null,
                 contact_name: currentUser.name || null,
                 contact_phone: currentUser.phone || null,
                 contact_email: currentUser.email || null,
-                sex: sexo || null,
-                is_neutered: isCastrado,
-                size: tamano || null,
-                breed: sanitizeText(raza) || null,
-                color: sanitizeText(color) || null,
-                reward: null, // no aplica para encontrado
-                reward_visible: false,
-                age: null, // encontrado no captura edad
-                adoption_extras: null,
-                adoption_extras_visible: false,
-                reach_facebook: false,
-                reach_instagram: false,
-                images: validPhotos,
-                plan: 'gratis', // encontrado no tiene selector de plan de pago
-                lat: null,
-                lng: null,
-                flyer_image: flyerImageBase64,
+                meta: {
+                    sex: sexoToApi(sexo),
+                    is_neutered: isCastrado,
+                    size: tamanoToApi(tamano),
+                    breed: sanitizeText(raza) || null,
+                    color: sanitizeText(color) || null,
+                    age: null, // encontrado no captura edad
+                },
             });
-        }
 
-        setShowStatusOverlay(true);
-        setTimeout(() => {
-            window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
-        }, 5000);
+            for (const foto of validPhotos) {
+                try {
+                    await uploadReportImage(report.id, foto, false);
+                } catch (err) {
+                    console.error('No se pudo subir una foto', err);
+                }
+            }
+
+            if (flyerImageBase64) {
+                try {
+                    await uploadReportImage(report.id, flyerImageBase64, true);
+                } catch (err) {
+                    console.error('No se pudo subir el flyer', err);
+                }
+            }
+
+            setShowStatusOverlay(true);
+            setTimeout(() => {
+                window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
+            }, 5000);
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Helper para generar la descripción narrativa del flyer
@@ -317,10 +410,8 @@ export default function PublicarEncontradoPage() {
         }
 
         let frase2 = '';
-        if (direccion && distrito) {
-            frase2 = `Encontrado en ${direccion} - ${distrito}.`;
-        } else if (direccion) {
-            frase2 = `Encontrado en ${direccion}.`;
+        if (direccion) {
+            frase2 = `En: ${direccion}.`;
         }
 
         const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
@@ -505,7 +596,7 @@ export default function PublicarEncontradoPage() {
                                     <div className="groups grid-2col box-data-flyer">
                                         {/* TIPO DE MASCOTA */}
                                         <div
-                                            className={`form-group icon-field ${tipoMascota ? 'has-value' : ''
+                                            className={`form-group  ${tipoMascota ? 'has-value' : ''
                                                 }`}
                                         >
                                             <CustomSelect
@@ -653,8 +744,7 @@ export default function PublicarEncontradoPage() {
                                         {/* RAZA / ESPECIE (dinámico según tipo de mascota) */}
                                         <div className="form-group">
                                             <label>{tipoMascota === 'Ave' ? 'Especie' : 'Raza'}</label>
-                                            <input
-                                                type="text"
+                                            <AutocompleteInput
                                                 id="e-raza"
                                                 className={`form-input ${fieldErrors.raza ? 'input-error' : ''}`}
                                                 placeholder={
@@ -665,20 +755,27 @@ export default function PublicarEncontradoPage() {
                                                             : 'Ej: Labrador'
                                                 }
                                                 value={raza}
-                                                onChange={(e) => setRaza(e.target.value)}
+                                                onChange={setRaza}
+                                                suggestions={
+                                                    tipoMascota === 'Ave'
+                                                        ? ESPECIES_AVE
+                                                        : tipoMascota === 'Gato'
+                                                            ? RAZAS_GATO
+                                                            : RAZAS_PERRO
+                                                }
                                             />
                                         </div>
 
                                         {/* COLOR (dinámico según tipo de mascota) */}
                                         <div className="form-group">
                                             <label>{tipoMascota === 'Ave' ? 'Color del plumaje' : 'Color del pelaje'}</label>
-                                            <input
-                                                type="text"
+                                            <AutocompleteInput
                                                 id="e-color"
                                                 className={`form-input ${fieldErrors.color ? 'input-error' : ''}`}
-                                                placeholder="Ej: Blanco con manchas negras..."
+                                                placeholder="Ej: Blanco"
                                                 value={color}
-                                                onChange={(e) => setColor(e.target.value)}
+                                                onChange={setColor}
+                                                suggestions={tipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
                                             />
                                         </div>
 
@@ -697,59 +794,16 @@ export default function PublicarEncontradoPage() {
                                             />
                                         </div>
 
-                                        {/* DIRECCIÓN */}
-                                        <div
-                                            className={`form-group icon-field grid-1col ${direccion ? 'has-value' : ''
-                                                }`}
-                                        >
-                                            <i className="ti ti-map-pin"></i>
-                                            <input
-                                                type="text"
-                                                id="e-direccion"
-                                                className={`form-input ${direccion ? 'has-value' : ''} ${fieldErrors.direccion ? 'input-error' : ''
-                                                    }`}
-                                                placeholder="¿Dónde lo encontraste exactamente?"
-                                                autoComplete="off"
-                                                value={direccion}
-                                                onChange={(e) => setDireccion(e.target.value)}
-                                            />
-                                        </div>
 
-                                        {/* ZONA CON POPOVER */}
-                                        <div
-                                            className="form-group grid-1col zone-picker-group"
-                                            ref={zonePopoverRef}
-                                        >
-                                            <div
-                                                className={`zone-input-trigger ${zonaDisplay ? 'has-value' : ''
-                                                    } ${fieldErrors.departamento || fieldErrors.provincia || fieldErrors.distrito
-                                                        ? 'input-error'
-                                                        : ''
-                                                    }`}
-                                                id="zone-input-trigger"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setIsZonePopoverOpen(!isZonePopoverOpen);
-                                                }}
-                                            >
-                                                <i className="ti ti-map-2"></i>
-                                                <input
-                                                    type="text"
-                                                    id="e-zona-display"
-                                                    className="form-input"
-                                                    placeholder="Zona donde lo encontraste"
-                                                    readOnly
-                                                    autoComplete="off"
-                                                    value={zonaDisplay}
-                                                />
-                                            </div>
-
-                                            <div
-                                                className={`zone-popover ${isZonePopoverOpen ? 'open' : ''
-                                                    }`}
-                                                id="zone-popover"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
+                                        {/* ZONA (SIN POPOVER) */}
+                                        <div className="form-group grid-1col">
+                                            <label>¿Dónde lo encontraste?</label>
+                                            {!isCountryReady ? (
+                                                <div className="admin-info-box">
+                                                    <i className="ti ti-info-circle"></i>
+                                                    <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
+                                                </div>
+                                            ) : (
                                                 <div className="grid-3col">
                                                     <div className="form-group">
                                                         <CustomSelect
@@ -758,6 +812,8 @@ export default function PublicarEncontradoPage() {
                                                             value={departamento}
                                                             onChange={(val) => setDepartamento(val)}
                                                             options={nivel1Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
 
@@ -768,6 +824,8 @@ export default function PublicarEncontradoPage() {
                                                             value={provincia}
                                                             onChange={(val) => setProvincia(val)}
                                                             options={nivel2Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
 
@@ -778,10 +836,28 @@ export default function PublicarEncontradoPage() {
                                                             value={distrito}
                                                             onChange={(val) => setDistrito(val)}
                                                             options={nivel3Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
                                                 </div>
-                                            </div>
+                                            )}
+                                        </div>
+
+                                        {/* DIRECCIÓN */}
+                                        <div
+                                            className={`form-group  grid-1col ${direccion ? 'has-value' : ''}`}
+                                            style={{ marginTop: '-0.35em' }}>
+                                            <input
+                                                type="text"
+                                                id="e-direccion"
+                                                className={`form-input ${direccion ? 'has-value' : ''} ${fieldErrors.direccion ? 'input-error' : ''
+                                                    }`}
+                                                placeholder="Calle, avenida o punto de referencia"
+                                                autoComplete="off"
+                                                value={direccion}
+                                                onChange={(e) => setDireccion(e.target.value)}
+                                            />
                                         </div>
                                     </div>
 
@@ -892,10 +968,12 @@ export default function PublicarEncontradoPage() {
                                     type="button"
                                     id="btn-wizard-next"
                                     className="btn-publish"
-                                    disabled={(currentStep === 2 && !acceptTerms) || isGeneratingFlyer}
+                                    disabled={(currentStep === 2 && !acceptTerms) || isGeneratingFlyer || isSubmitting}
                                     onClick={handleNextStep}
                                 >
-                                    {isGeneratingFlyer ? (
+                                    {isSubmitting ? (
+                                        'Publicando...'
+                                    ) : isGeneratingFlyer ? (
                                         'Generando flyer...'
                                     ) : currentStep === 1 ? (
                                         <>

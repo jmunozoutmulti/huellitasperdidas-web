@@ -3,17 +3,21 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { useApp } from '@/context/AppContext';
-import { createPublication } from '@/lib/publications';
 import { showToast } from '@/components/global/Toast';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
+import { validateText } from '@/lib/textValidation';
+
+import AutocompleteInput from '@/components/ui/AutocompleteInput';
+import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
 
 import dynamic from 'next/dynamic';
 import { geocodeAddress } from '@/lib/geocoding';
-import { getPlanById } from '@/lib/plans';
+import { getPackages, type PackageOption } from '@/lib/packagesApi';
+import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
 import { generateFlyerImage } from '@/lib/flyerExport';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import ModalAgregarNumero from '@/components/global/ModalAgregarNumero';
-import { getCountryByAbbr } from '@/lib/countries';
+import { getCountryByAbbr, type Country } from '@/lib/countries';
 import { getLevel1Options, getLevel2Options, getLevel3Options } from '@/lib/locations';
 
 const MapPicker = dynamic(() => import('@/components/global/MapPicker'), { ssr: false });
@@ -68,11 +72,6 @@ export default function PublicarPerdidaPage() {
     const [provincia, setProvincia] = useState('');
     const [distrito, setDistrito] = useState('');
 
-
-
-    const [zonaDisplay, setZonaDisplay] = useState('');
-    const [isZonePopoverOpen, setIsZonePopoverOpen] = useState(false);
-
     const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false);
     const [observaciones, setObservaciones] = useState('');
     const [recompensa, setRecompensa] = useState('');
@@ -90,7 +89,6 @@ export default function PublicarPerdidaPage() {
     const [isFlyerMobileVisible, setIsFlyerMobileVisible] = useState(false);
 
     const datePopoverRef = useRef<HTMLDivElement>(null);
-    const zonePopoverRef = useRef<HTMLDivElement>(null);
 
     // ==========================================
     // EFECTOS DE CIERRE DE POPOVERS Y EVENTOS
@@ -103,15 +101,9 @@ export default function PublicarPerdidaPage() {
             ) {
                 setIsDatePopoverOpen(false);
             }
-            if (
-                zonePopoverRef.current &&
-                !zonePopoverRef.current.contains(e.target as Node)
-            ) {
-                setIsZonePopoverOpen(false);
-            }
         };
-        document.addEventListener('mousedown', handleClickOutside); // 👈 cambiado
-        return () => document.removeEventListener('mousedown', handleClickOutside); // 👈 cambiado
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     useEffect(() => {
@@ -119,12 +111,6 @@ export default function PublicarPerdidaPage() {
             setIsDatePopoverOpen(false);
         }
     }, [fechaDia, fechaMes, fechaAnio]);
-
-    useEffect(() => {
-        if (departamento && provincia && distrito) {
-            setIsZonePopoverOpen(false);
-        }
-    }, [departamento, provincia, distrito]);
 
     // Formatear Fecha Display
     useEffect(() => {
@@ -151,14 +137,6 @@ export default function PublicarPerdidaPage() {
         }
     }, [fechaDia, fechaMes, fechaAnio]);
 
-    // Formatear Zona Display
-    useEffect(() => {
-        if (departamento && provincia && distrito) {
-            setZonaDisplay(`${provincia}, ${departamento} , ${distrito}`);
-        } else {
-            setZonaDisplay('');
-        }
-    }, [departamento, provincia, distrito]);
 
     // ==========================================
     // CARGA Y REMOCIÓN DE IMÁGENES
@@ -198,18 +176,71 @@ export default function PublicarPerdidaPage() {
     // DATOS PARA EL RESUMEN (PASO 3)
     // ==========================================
     const country = currentUser?.country || 'PE';
-    const currencySymbol = getCountryByAbbr(country).currency.symbol;
-    const currentPlanObj = getPlanById(selectedPlan, country);
 
-    const [labelNivel1, labelNivel2, labelNivel3] = getCountryByAbbr(country).locationLabels;
-    const nivel1Options = getLevel1Options(country);
-    const nivel2Options = getLevel2Options(country, departamento);
-    const nivel3Options = getLevel3Options(country, departamento, provincia);
+    const [countryInfo, setCountryInfo] = useState<Country | null>(null);
+    const [packages, setPackages] = useState<PackageOption[]>([]);
+    const [isLoadingWizardData, setIsLoadingWizardData] = useState(true);
+
+    useEffect(() => {
+        let isCancelled = false;
+        setIsLoadingWizardData(true);
+        Promise.all([getCountryByAbbr(country), getPackages(country)]).then(([c, pkgs]) => {
+            if (!isCancelled) {
+                setCountryInfo(c);
+                setPackages(pkgs);
+                setIsLoadingWizardData(false);
+            }
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
+    const currencySymbol = countryInfo?.currencySymbol ?? '';
+    const currentPlanObj = packages.find((p) => p.slug === selectedPlan) ?? null;
+    const isCountryReady = !isLoadingWizardData && !!countryInfo?.locationLabels && packages.length > 0;
+
+    const [labelNivel1, labelNivel2, labelNivel3] = countryInfo?.locationLabels ?? ['Departamento', 'Provincia', 'Distrito'];
+
+    const [nivel1Options, setNivel1Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel2Options, setNivel2Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel3Options, setNivel3Options] = useState<{ value: string; label: string }[]>([]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel1Options(country).then((opts) => {
+            if (!isCancelled) setNivel1Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel2Options(country, departamento).then((opts) => {
+            if (!isCancelled) setNivel2Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country, departamento]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel3Options(country, departamento, provincia).then((opts) => {
+            if (!isCancelled) setNivel3Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country, departamento, provincia]);
 
     const getFechaRange = () => {
         const hoy = new Date();
         const fin = new Date();
-        fin.setDate(hoy.getDate() + currentPlanObj.dias);
+        const dias = currentPlanObj?.days ?? 0;
+        fin.setDate(hoy.getDate() + dias);
         const opciones: Intl.DateTimeFormatOptions = {
             day: '2-digit',
             month: 'short',
@@ -217,11 +248,8 @@ export default function PublicarPerdidaPage() {
         };
 
         return {
-            inicio:
-                currentPlanObj.dias > 0
-                    ? fin.toLocaleDateString('es-PE', opciones)
-                    : 'Sujeto a aprobación',
-            fin: currentPlanObj.dias > 0 ? fin.toLocaleDateString('es-PE', opciones) : '6 meses',
+            inicio: dias > 0 ? fin.toLocaleDateString('es-PE', opciones) : 'Sujeto a aprobación',
+            fin: dias > 0 ? fin.toLocaleDateString('es-PE', opciones) : '6 meses',
         };
     };
 
@@ -243,6 +271,23 @@ export default function PublicarPerdidaPage() {
     // ==========================================
     // MANEJADORES DE NAVEGACIÓN Y SUBMIT
     // ==========================================
+    function tamanoToApi(valor: string): string | null {
+        if (valor === 'Pequeño') return 'small';
+        if (valor === 'Mediano') return 'medium';
+        if (valor === 'Grande') return 'large';
+        return null;
+    }
+    function sexoToApi(valor: string): string | null {
+        if (valor === 'Macho') return 'male';
+        if (valor === 'Hembra') return 'female';
+        return null;
+    }
+    function tipoMascotaToApi(valor: string): string {
+        if (valor === 'Perro') return 'dog';
+        if (valor === 'Gato') return 'cat';
+        if (valor === 'Ave') return 'bird';
+        return 'other';
+    }
 
     function sanitizeText(value: string): string {
         return value.replace(/<[^>]*>?/gm, '').trim();
@@ -251,25 +296,65 @@ export default function PublicarPerdidaPage() {
 
     function validateStep1(): boolean {
         const errors: Record<string, boolean> = {};
+        let specificError = '';
 
-        if (!sanitizeText(nombre)) errors.nombre = true;
+        if (!sanitizeText(nombre)) {
+            errors.nombre = true;
+        } else {
+            const check = validateText(nombre, 3, 'El nombre');
+            if (!check.valid) {
+                errors.nombre = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         if (!fechaDia || !fechaMes || !fechaAnio) errors.fecha = true;
         if (!sexo) errors.sexo = true;
         if (!tipoMascota) errors.tipoMascota = true;
         if (!tamano) errors.tamano = true;
-        if (!sanitizeText(raza)) errors.raza = true;
-        if (!sanitizeText(color)) errors.color = true;
+
+        if (!sanitizeText(raza)) {
+            errors.raza = true;
+        } else {
+            const check = validateText(raza, 3, 'La raza');
+            if (!check.valid) {
+                errors.raza = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
+        if (!sanitizeText(color)) {
+            errors.color = true;
+        } else {
+            const check = validateText(color, 3, 'El color');
+            if (!check.valid) {
+                errors.color = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         if (!sanitizeText(direccion)) errors.direccion = true;
         if (!departamento) errors.departamento = true;
         if (!provincia) errors.provincia = true;
         if (!distrito) errors.distrito = true;
         if (validPhotos.length === 0) errors.fotos = true;
 
+        // Observaciones es opcional — solo se valida si el usuario escribió algo
+        if (sanitizeText(observaciones)) {
+            const check = validateText(observaciones, 10, 'Las observaciones');
+            if (!check.valid) {
+                errors.observaciones = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         setFieldErrors(errors);
 
         if (Object.keys(errors).length > 0) {
             if (errors.fotos) {
                 showToast('Agrega al menos 1 foto de tu mascota', 'error');
+            } else if (specificError) {
+                showToast(specificError, 'error');
             } else {
                 showToast('Completa todos los campos obligatorios', 'error');
             }
@@ -305,12 +390,17 @@ export default function PublicarPerdidaPage() {
         }
     };
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const executeFormSubmission = async () => {
-        if (currentUser) {
-            await createPublication({
-                user_id: currentUser.id,
+        if (!currentUser) return;
+
+        setIsSubmitting(true);
+        try {
+            const report = await createReport({
                 report_type: 'lost',
-                pet_type: tipoMascota || null,
+                package_slug: selectedPlan,
+                pet_type: tipoMascota ? tipoMascotaToApi(tipoMascota) : null,
                 title: sanitizeText(nombre) || null,
                 description: sanitizeText(observaciones) || null,
                 country: country,
@@ -318,34 +408,52 @@ export default function PublicarPerdidaPage() {
                 province: provincia || null,
                 district: distrito || null,
                 address_hint: sanitizeText(direccion) || null,
+                lat: lat,
+                lng: lng,
                 event_date: fechaDia && fechaMes && fechaAnio ? `${fechaAnio}-${fechaMes}-${fechaDia}` : null,
                 contact_name: currentUser.name || null,
                 contact_phone: currentUser.phone || null,
                 contact_email: currentUser.email || null,
-                sex: sexo || null,
-                is_neutered: isCastrado,
-                size: tamano || null,
-                breed: sanitizeText(raza) || null,
-                color: sanitizeText(color) || null,
-                reward: recompensa ? Number(recompensa) : null,
-                reward_visible: !ocultarMonto,
-                age: edad || null,
-                adoption_extras: null,
-                adoption_extras_visible: false,
-                reach_facebook: false,
-                reach_instagram: false,
-                images: validPhotos,
-                plan: selectedPlan,
-                lat: lat,
-                lng: lng,
-                flyer_image: flyerImageBase64,
+                meta: {
+                    sex: sexoToApi(sexo),
+                    is_neutered: isCastrado,
+                    size: tamanoToApi(tamano),
+                    breed: sanitizeText(raza) || null,
+                    color: sanitizeText(color) || null,
+                    reward: recompensa || null,
+                    reward_visible: !ocultarMonto,
+                    age: edad || null,
+                },
             });
-        }
 
-        setShowStatusOverlay(true);
-        setTimeout(() => {
-            window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
-        }, 5000);
+            // Si una foto falla, el aviso ya quedó creado — el usuario podrá
+            // completarlas después editando su aviso. No revertimos nada.
+            for (const foto of validPhotos) {
+                try {
+                    await uploadReportImage(report.id, foto, false);
+                } catch (err) {
+                    console.error('No se pudo subir una foto', err);
+                }
+            }
+
+            if (flyerImageBase64) {
+                try {
+                    await uploadReportImage(report.id, flyerImageBase64, true);
+                } catch (err) {
+                    console.error('No se pudo subir el flyer', err);
+                }
+            }
+
+            setShowStatusOverlay(true);
+            setTimeout(() => {
+                window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
+            }, 5000);
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Helper para generar las descripciones acumuladas del flyer
@@ -361,16 +469,14 @@ export default function PublicarPerdidaPage() {
 
         let frase1 = rasgos.join(', ');
         if (fechaCorta) {
-            frase1 = frase1 ? `${frase1}, me perdí el ${fechaCorta}.` : `Me perdí el ${fechaCorta}.`;
+            frase1 = frase1 ? `${frase1}, se perdió el ${fechaCorta}.` : `Se perdió el ${fechaCorta}.`;
         } else if (frase1) {
             frase1 += '.';
         }
 
         let frase2 = '';
-        if (direccion && distrito) {
-            frase2 = `Me vieron en ${direccion}.`;
-        } else if (direccion) {
-            frase2 = `Me vieron en ${direccion}.`;
+        if (direccion) {
+            frase2 = `En: ${direccion}.`;
         }
 
         const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
@@ -759,7 +865,7 @@ export default function PublicarPerdidaPage() {
 
                                         {/* TIPO */}
                                         <div
-                                            className={`form-group icon-field ${tipoMascota ? 'has-value' : ''} ${fieldErrors.tipoMascota ? 'input-error' : ''
+                                            className={`form-group ${tipoMascota ? 'has-value' : ''} ${fieldErrors.tipoMascota ? 'input-error' : ''
                                                 }`}
                                         >
                                             <CustomSelect
@@ -793,8 +899,7 @@ export default function PublicarPerdidaPage() {
                                         {/* RAZA / ESPECIE (dinámico según tipo de mascota) */}
                                         <div className="form-group">
                                             <label>{tipoMascota === 'Ave' ? 'Especie' : 'Raza'}</label>
-                                            <input
-                                                type="text"
+                                            <AutocompleteInput
                                                 id="p-raza"
                                                 className={`form-input ${fieldErrors.raza ? 'input-error' : ''}`}
                                                 placeholder={
@@ -805,54 +910,39 @@ export default function PublicarPerdidaPage() {
                                                             : 'Ej: Labrador'
                                                 }
                                                 value={raza}
-                                                onChange={(e) => setRaza(e.target.value)}
+                                                onChange={setRaza}
+                                                suggestions={
+                                                    tipoMascota === 'Ave'
+                                                        ? ESPECIES_AVE
+                                                        : tipoMascota === 'Gato'
+                                                            ? RAZAS_GATO
+                                                            : RAZAS_PERRO
+                                                }
                                             />
                                         </div>
 
                                         {/* COLOR (dinámico según tipo de mascota) */}
                                         <div className="form-group">
                                             <label>{tipoMascota === 'Ave' ? 'Color del plumaje' : 'Color del pelaje'}</label>
-                                            <input
-                                                type="text"
+                                            <AutocompleteInput
                                                 id="p-color"
                                                 className={`form-input ${fieldErrors.color ? 'input-error' : ''}`}
-                                                placeholder="Ej: Blanco con manchas"
+                                                placeholder="Ej: Blanco"
                                                 value={color}
-                                                onChange={(e) => setColor(e.target.value)}
+                                                onChange={setColor}
+                                                suggestions={tipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
                                             />
                                         </div>
 
-                                        {/* ZONA CON POPOVER */}
-                                        <div
-                                            className="form-group grid-1col zone-picker-group"
-                                            ref={zonePopoverRef}
-                                        >
-                                            <div
-                                                className={`zone-input-trigger ${zonaDisplay ? 'has-value' : ''} ${fieldErrors.departamento || fieldErrors.provincia || fieldErrors.distrito ? 'input-error' : ''
-                                                    }`}
-                                                id="zone-input-trigger"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setIsZonePopoverOpen(!isZonePopoverOpen);
-                                                }}
-                                            >
-                                                <i className="ti ti-map-2"></i>
-                                                <input
-                                                    type="text"
-                                                    id="p-zona-display"
-                                                    className="form-input"
-                                                    placeholder="Zona donde se perdió tu mascota"
-                                                    readOnly
-                                                    autoComplete="off"
-                                                    value={zonaDisplay}
-                                                />
-                                            </div>
-
-                                            <div
-                                                className={`zone-popover ${isZonePopoverOpen ? 'open' : ''}`}
-                                                id="zone-popover"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
+                                        {/* ZONA (SIN POPOVER) */}
+                                        <div className="form-group grid-1col">
+                                            <label>¿Dónde ocurrió la pérdida? </label>
+                                            {!isCountryReady ? (
+                                                <div className="admin-info-box">
+                                                    <i className="ti ti-info-circle"></i>
+                                                    <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
+                                                </div>
+                                            ) : (
                                                 <div className="grid-3col">
                                                     <div className="form-group">
                                                         <CustomSelect
@@ -861,6 +951,8 @@ export default function PublicarPerdidaPage() {
                                                             value={departamento}
                                                             onChange={(val) => setDepartamento(val)}
                                                             options={nivel1Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
 
@@ -871,6 +963,8 @@ export default function PublicarPerdidaPage() {
                                                             value={provincia}
                                                             onChange={(val) => setProvincia(val)}
                                                             options={nivel2Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
 
@@ -881,29 +975,32 @@ export default function PublicarPerdidaPage() {
                                                             value={distrito}
                                                             onChange={(val) => setDistrito(val)}
                                                             options={nivel3Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
                                                 </div>
-                                            </div>
+                                            )}
+                                        </div>
+
+                                        {/* DIRECCIÓN */}
+                                        <div
+                                            className={`form-group grid-1col ${direccion ? 'has-value' : ''}`}
+                                            style={{ marginTop: '-0.35em' }}>
+                                            <input
+                                                type="text"
+                                                id="p-direccion"
+                                                className={`form-input ${direccion ? 'has-value' : ''} ${fieldErrors.direccion ? 'input-error' : ''
+                                                    }`}
+                                                placeholder="Calle, avenida o punto de referencia"
+                                                autoComplete="off"
+                                                value={direccion}
+                                                onChange={(e) => setDireccion(e.target.value)}
+                                            />
                                         </div>
                                     </div>
 
-                                    {/* DIRECCIÓN */}
-                                    <div
-                                        className={`form-group icon-field grid-1col ${direccion ? 'has-value' : ''}`}
-                                    >
-                                        <i className="ti ti-map-pin"></i>
-                                        <input
-                                            type="text"
-                                            id="p-direccion"
-                                            className={`form-input ${direccion ? 'has-value' : ''} ${fieldErrors.direccion ? 'input-error' : ''
-                                                }`}
-                                            placeholder="Dirección donde fue vista por última vez"
-                                            autoComplete="off"
-                                            value={direccion}
-                                            onChange={(e) => setDireccion(e.target.value)}
-                                        />
-                                    </div>
+
 
                                     {/* SECCIÓN COLAPSABLE */}
                                     <div className="collapsible-details-section">
@@ -1007,200 +1104,104 @@ export default function PublicarPerdidaPage() {
                             >
                                 <div className="plans-premiun">
                                     <div className="plans-stack">
-                                        {/* GRATIS */}
-                                        <label className="plan-item-label">
-                                            <input
-                                                type="radio"
-                                                name="diffusion_plan"
-                                                value="gratis"
-                                                checked={selectedPlan === 'gratis'}
-                                                onChange={(e) => setSelectedPlan(e.target.value)}
-                                            />
-                                            <div className="plan-item free">
-                                                <div className="row-plan">
-                                                    <div className="plan-info">
-                                                        <h4>Gratis </h4>
-                                                        <p className="plan-scope">Visible para la comunidad</p>
-                                                    </div>
-                                                    <div className="plan-card">
-                                                        <div className="plan-price">
-                                                            <i>{currencySymbol}</i> {getPlanById('gratis', country).precio}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="row-data-plan">
-                                                    <div className="attributes-plan">
-                                                        <ul>
-                                                            <li>
-                                                                <i className="ti ti-ban"></i> Sin impulso en la zona de
-                                                                pérdida
-                                                            </li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </label>
+                                        {packages.map((pkg) => {
+                                            const isFree = pkg.price === 0;
+                                            const isUrgente = pkg.slug === 'urgente';
+                                            const descriptionHtml = pkg.description.replace(/\n/g, '<br/>');
 
-                                        {/* BÁSICO / LOCAL */}
-                                        <label className="plan-item-label">
-                                            <input
-                                                type="radio"
-                                                name="diffusion_plan"
-                                                value="local"
-                                                checked={selectedPlan === 'local'}
-                                                onChange={(e) => setSelectedPlan(e.target.value)}
-                                            />
-                                            <div className="plan-item">
-                                                <div className="row-plan">
-                                                    <div className="plan-info">
-                                                        <h4>
-                                                            <u>Plan</u> Local
-                                                        </h4>
-                                                        <p className="plan-scope">
-                                                            Hasta <b>+9,000 mil</b> personas <br /> verán tu
-                                                            aviso.
-                                                        </p>
-                                                    </div>
-                                                    <div className="plan-card">
-                                                        <div className="plan-price">
-                                                            <i>{currencySymbol}</i> {getPlanById('local', country).precio}
-                                                        </div>
-                                                        <span>
-                                                            / <i className="fa-regular fa-credit-card"></i> Pago
-                                                            único
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="row-data-plan">
-                                                    <div className="plan-features-list">
-                                                        <span className="plan-feature-tag btn-facebook">
-                                                            <i className="fa-brands fa-facebook"></i> Facebook
-                                                        </span>
-                                                    </div>
-                                                    <div className="attributes-plan">
-                                                        <ul>
-                                                            <li>
-                                                                <i className="ti ti-broadcast"></i>
-                                                                <b>{getPlanById('local', country).dias} días</b> de difusión
-                                                            </li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </label>
-
-                                        {/* REGULAR / AMPLIO */}
-                                        <label className="plan-item-label">
-                                            <input
-                                                type="radio"
-                                                name="diffusion_plan"
-                                                value="amplio"
-                                                checked={selectedPlan === 'amplio'}
-                                                onChange={(e) => setSelectedPlan(e.target.value)}
-                                            />
-                                            <div className="plan-item">
-                                                <div className="row-plan">
-                                                    <div className="plan-info">
-                                                        <h4>
-                                                            <u>Plan</u> Amplio
-                                                        </h4>
-                                                        <p className="plan-scope">
-                                                            Hasta <b>+15,000 mil</b> personas <br /> verán tu
-                                                            aviso.
-                                                        </p>
-                                                    </div>
-                                                    <div className="plan-card">
-                                                        <div className="plan-price">
-                                                            <i>{currencySymbol}</i> {getPlanById('amplio', country).precio}
-                                                        </div>
-                                                        <span>
-                                                            / <i className="fa-regular fa-credit-card"></i> Pago
-                                                            único
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div className="plan-features-list">
-                                                        <span className="plan-feature-tag btn-facebook">
-                                                            <i className="fa-brands fa-facebook"></i> Facebook
-                                                        </span>
-                                                    </div>
-                                                    <div className="attributes-plan">
-                                                        <ul>
-                                                            <li>
-                                                                <i className="ti ti-broadcast"></i>
-                                                                <b>6 días</b> de difusión
-                                                            </li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </label>
-
-                                        {/* AVANZADO / URGENTE */}
-                                        <label className="plan-item-label option-dominant-wrapper">
-                                            <input
-                                                type="radio"
-                                                name="diffusion_plan"
-                                                value="urgente"
-                                                checked={selectedPlan === 'urgente'}
-                                                onChange={(e) => setSelectedPlan(e.target.value)}
-                                            />
-                                            <div className="plan-item plan-item-premium">
-                                                <span className="tag-info">
-                                                    <i className="ti ti-bolt"></i> Máxima Difusión
-                                                </span>
-                                                <div className="row-plan">
-                                                    <div className="plan-info">
-                                                        <h4>
-                                                            <u> Plan</u> Urgente
-                                                        </h4>
-                                                        <p className="plan-scope">
-                                                            Hasta <b>+30,000 mil</b> personas <br /> verán tu
-                                                            aviso.
-                                                        </p>
-                                                    </div>
-                                                    <div className="plan-card">
-                                                        <div className="plan-price">
-                                                            <i>{currencySymbol}</i> {getPlanById('urgente', country).precio}
-                                                        </div>
-                                                        <span>
-                                                            / <i className="fa-regular fa-credit-card"></i> Pago
-                                                            único
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div className="plan-features-list">
-                                                        <span className="plan-feature-tag btn-facebook">
-                                                            <i className="fa-brands fa-facebook"></i> Facebook
-                                                        </span>
-                                                        <span className="plan-feature-tag btn-instagram">
-                                                            <i className="fa-brands fa-instagram"></i> Instagram
-                                                        </span>
-                                                    </div>
-                                                    <div className="attributes-plan">
-                                                        <ul>
-                                                            <li>
-                                                                <i className="ti ti-broadcast"></i>
-                                                                <b>{getPlanById('urgente', country).dias} días</b> de difusión
-                                                            </li>
-                                                            <li>
-                                                                <div className="tooltip-wrap">
-                                                                    <i className="ti ti-help tooltip-trigger"></i>
-                                                                    <span className="tooltip-box">
-                                                                        <i className="ti ti-info-circle"></i> Si
-                                                                        encuentras a tu mascota antes, te <b>devolvemos</b>{' '}
-                                                                        los días restantes del plan.
+                                            return (
+                                                <label
+                                                    key={pkg.slug}
+                                                    className={`plan-item-label ${isUrgente ? 'option-dominant-wrapper' : ''}`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="diffusion_plan"
+                                                        value={pkg.slug}
+                                                        checked={selectedPlan === pkg.slug}
+                                                        onChange={(e) => setSelectedPlan(e.target.value)}
+                                                    />
+                                                    <div className={`plan-item ${isFree ? 'free' : ''} ${isUrgente ? 'plan-item-premium' : ''}`}>
+                                                        {isUrgente && (
+                                                            <span className="tag-info">
+                                                                <i className="ti ti-bolt"></i> Máxima Difusión
+                                                            </span>
+                                                        )}
+                                                        <div className="row-plan">
+                                                            <div className="plan-info">
+                                                                <h4>
+                                                                    {isFree ? (
+                                                                        pkg.name
+                                                                    ) : (
+                                                                        <>
+                                                                            <u>Plan</u> {pkg.name}
+                                                                        </>
+                                                                    )}
+                                                                </h4>
+                                                                <p
+                                                                    className="plan-scope"
+                                                                    dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                                                                />
+                                                            </div>
+                                                            <div className="plan-card">
+                                                                <div className="plan-price">
+                                                                    <i>{currencySymbol}</i> {pkg.price}
+                                                                </div>
+                                                                {!isFree && (
+                                                                    <span>
+                                                                        / <i className="fa-regular fa-credit-card"></i> Pago único
                                                                     </span>
-                                                                </div>{' '}
-                                                                Incluye <b><u>reembolso</u></b>
-                                                            </li>
-                                                        </ul>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="row-data-plan">
+                                                            {pkg.channels.length > 0 && (
+                                                                <div className="plan-features-list">
+                                                                    {pkg.channels.map((ch) => (
+                                                                        <span key={ch} className={`plan-feature-tag btn-${ch}`}>
+                                                                            {ch === 'facebook' && <i className="fa-brands fa-facebook"></i>}
+                                                                            {ch === 'instagram' && <i className="fa-brands fa-instagram"></i>}
+                                                                            {ch === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
+                                                                            {ch === 'messenger' && <i className="fa-brands fa-facebook-messenger"></i>}
+                                                                            {' '}
+                                                                            {ch.charAt(0).toUpperCase() + ch.slice(1)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            <div className="attributes-plan">
+                                                                <ul>
+                                                                    {isFree ? (
+                                                                        <li>
+                                                                            <i className="ti ti-ban"></i> Sin impulso en la zona de
+                                                                            pérdida
+                                                                        </li>
+                                                                    ) : (
+                                                                        <li>
+                                                                            <i className="ti ti-broadcast"></i>
+                                                                            <b>{pkg.days} días</b> de difusión
+                                                                        </li>
+                                                                    )}
+                                                                    {pkg.includesRefund && (
+                                                                        <li>
+                                                                            <div className="tooltip-wrap">
+                                                                                <i className="ti ti-help tooltip-trigger"></i>
+                                                                                <span className="tooltip-box">
+                                                                                    <i className="ti ti-info-circle"></i> Si
+                                                                                    encuentras a tu mascota antes, te <b>devolvemos</b>{' '}
+                                                                                    los días restantes del plan.
+                                                                                </span>
+                                                                            </div>{' '}
+                                                                            Incluye <b><u>reembolso</u></b>
+                                                                        </li>
+                                                                    )}
+                                                                </ul>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </label>
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -1402,10 +1403,12 @@ export default function PublicarPerdidaPage() {
                                     type="button"
                                     id="btn-wizard-next"
                                     className="btn-publish"
-                                    disabled={(currentStep === 3 && !acceptTerms) || isGeneratingFlyer}
+                                    disabled={(currentStep === 3 && !acceptTerms) || isGeneratingFlyer || isSubmitting}
                                     onClick={handleNextStep}
                                 >
-                                    {isGeneratingFlyer ? (
+                                    {isSubmitting ? (
+                                        'Publicando...'
+                                    ) : isGeneratingFlyer ? (
                                         'Generando flyer...'
                                     ) : currentStep < 3 ? (
                                         <>
@@ -1469,8 +1472,8 @@ export default function PublicarPerdidaPage() {
                                         <MapPicker
                                             lat={lat}
                                             lng={lng}
-                                            radioKm={getPlanById(selectedPlan, country).radioKm}
-                                            zoom={getPlanById(selectedPlan, country).mapZoom}
+                                            radioKm={currentPlanObj?.adsMetaRadiusKm ?? 0}
+                                            zoom={currentPlanObj?.mapZoom ?? 12}
                                             isDraggable={isAdjustingMap}
                                             isDarkMode={isDarkMode}
                                             onPositionChange={(newLat, newLng) => {
@@ -1566,7 +1569,7 @@ export default function PublicarPerdidaPage() {
                                             <span className="summary-date-label">Días de circulación</span>
                                             <strong className="summary-date-value">
                                                 <i className="ti ti-calendar-bolt"></i>{' '}
-                                                {selectedPlan === 'gratis' ? '6 meses' : currentPlanObj.dias}
+                                                {selectedPlan === 'gratis' ? '6 meses' : currentPlanObj?.days ?? '-'}
                                             </strong>
                                         </div>
                                     </div>
@@ -1579,7 +1582,7 @@ export default function PublicarPerdidaPage() {
                                                 className="summary-date-value"
                                                 id="summary-plan-name"
                                             >
-                                                {currentPlanObj.nombre}
+                                                {currentPlanObj?.name ?? ''}
                                             </strong>
                                         </div>
                                         <div
@@ -1594,7 +1597,7 @@ export default function PublicarPerdidaPage() {
                                                 className="summary-date-value summary-total-val"
                                                 id="sum-total"
                                             >
-                                                {currencySymbol} {currentPlanObj.precio}
+                                                {currencySymbol} {currentPlanObj?.price ?? 0}
                                             </strong>
                                         </div>
                                     </div>

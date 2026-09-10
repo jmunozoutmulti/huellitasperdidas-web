@@ -1,112 +1,79 @@
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+
 export interface LocationNode {
+    id: number;
     name: string;
-    children?: LocationNode[]; // undefined = nivel 3 (hoja, sin hijos)
+    children?: LocationNode[];
 }
 
-export const LOCATIONS_BY_COUNTRY: Record<string, LocationNode[]> = {
-    PE: [
-        {
-            name: 'Lima',
-            children: [
-                {
-                    name: 'Lima',
-                    children: [
-                        { name: 'Miraflores' },
-                        { name: 'San Isidro' },
-                        { name: 'La Molina' },
-                        { name: 'Santiago de Surco' },
-                    ],
-                },
-                {
-                    name: 'Huaral',
-                    children: [{ name: 'Huaral' }],
-                },
-            ],
-        },
-    ],
-    AR: [
-        {
-            name: 'Buenos Aires',
-            children: [
-                {
-                    name: 'La Matanza',
-                    children: [{ name: 'San Justo' }, { name: 'Ramos Mejía' }],
-                },
-            ],
-        },
-    ],
-    CL: [
-        {
-            name: 'Metropolitana de Santiago',
-            children: [
-                {
-                    name: 'Santiago',
-                    children: [{ name: 'Providencia' }, { name: 'Las Condes' }],
-                },
-            ],
-        },
-    ],
-    CO: [
-        {
-            name: 'Cundinamarca',
-            children: [
-                {
-                    name: 'Bogotá D.C.',
-                    children: [{ name: 'Chapinero' }, { name: 'Usaquén' }],
-                },
-            ],
-        },
-    ],
-    MX: [
-        {
-            name: 'Ciudad de México',
-            children: [
-                {
-                    name: 'Cuauhtémoc',
-                    children: [{ name: 'Roma Norte' }, { name: 'Condesa' }],
-                },
-            ],
-        },
-    ],
-    UY: [
-        {
-            name: 'Montevideo',
-            children: [
-                {
-                    name: 'Municipio B',
-                    children: [{ name: 'Cordón' }, { name: 'Centro' }],
-                },
-            ],
-        },
-    ],
-    EC: [
-        {
-            name: 'Pichincha',
-            children: [
-                {
-                    name: 'Quito',
-                    children: [{ name: 'La Mariscal' }, { name: 'La Floresta' }],
-                },
-            ],
-        },
-    ],
-};
-
-function getTree(country: string): LocationNode[] {
-    return LOCATIONS_BY_COUNTRY[country] ?? LOCATIONS_BY_COUNTRY['PE'];
+function mapDistrict(raw: any): LocationNode {
+    return { id: raw.id, name: raw.name };
 }
 
-export function getLevel1Options(country: string): { value: string; label: string }[] {
-    return getTree(country).map((n) => ({ value: n.name, label: n.name }));
+function mapProvince(raw: any): LocationNode {
+    return {
+        id: raw.id,
+        name: raw.name,
+        children: Array.isArray(raw.districts) ? raw.districts.map(mapDistrict) : undefined,
+    };
 }
 
-export function getLevel2Options(country: string, level1: string): { value: string; label: string }[] {
-    const node = getTree(country).find((n) => n.name === level1);
+function mapTerritory(raw: any): LocationNode {
+    return {
+        id: raw.id,
+        name: raw.department,
+        children: Array.isArray(raw.provinces) ? raw.provinces.map(mapProvince) : undefined,
+    };
+}
+
+// Caché por país — cada país se pide una sola vez, se navega en memoria
+// después de eso (departamento → provincias → distritos ya vienen anidados
+// en la misma respuesta).
+const cache = new Map<string, LocationNode[]>();
+const pendingFetches = new Map<string, Promise<LocationNode[]>>();
+
+export async function getTerritoryTree(countryCode: string): Promise<LocationNode[]> {
+    if (cache.has(countryCode)) return cache.get(countryCode)!;
+    if (pendingFetches.has(countryCode)) return pendingFetches.get(countryCode)!;
+
+    const promise = fetch(`${API_BASE}/v1/territories?country_code=${countryCode}`)
+        .then((res) => {
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            return res.json();
+        })
+        .then((data: any[]) => {
+            const tree = data.map(mapTerritory);
+            cache.set(countryCode, tree);
+            return tree;
+        })
+        .finally(() => {
+            pendingFetches.delete(countryCode);
+        });
+
+    pendingFetches.set(countryCode, promise);
+    return promise;
+}
+
+export async function getLevel1Options(countryCode: string): Promise<{ value: string; label: string }[]> {
+    const tree = await getTerritoryTree(countryCode);
+    return tree.map((n) => ({ value: n.name, label: n.name }));
+}
+
+export async function getLevel2Options(countryCode: string, level1: string): Promise<{ value: string; label: string }[]> {
+    if (!level1) return [];
+    const tree = await getTerritoryTree(countryCode);
+    const node = tree.find((n) => n.name === level1);
     return (node?.children ?? []).map((n) => ({ value: n.name, label: n.name }));
 }
 
-export function getLevel3Options(country: string, level1: string, level2: string): { value: string; label: string }[] {
-    const l1 = getTree(country).find((n) => n.name === level1);
+export async function getLevel3Options(
+    countryCode: string,
+    level1: string,
+    level2: string
+): Promise<{ value: string; label: string }[]> {
+    if (!level1 || !level2) return [];
+    const tree = await getTerritoryTree(countryCode);
+    const l1 = tree.find((n) => n.name === level1);
     const l2 = l1?.children?.find((n) => n.name === level2);
     return (l2?.children ?? []).map((n) => ({ value: n.name, label: n.name }));
 }

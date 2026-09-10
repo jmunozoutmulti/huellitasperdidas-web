@@ -7,7 +7,8 @@
 
 import { useState, useEffect, type CSSProperties } from 'react';
 import { useApp } from '@/context/AppContext';
-import { COUNTRIES } from '@/lib/countries';
+import { getCountries, type Country } from '@/lib/countries';
+import { saveDetectedCountry } from '@/lib/auth';
 import {
     getMyPublications,
     deletePublication,
@@ -21,6 +22,11 @@ export default function DevAvisosPanel() {
     const { currentUser, updateCurrentUser } = useApp();
     const [pubs, setPubs] = useState<MockPublication[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [countries, setCountries] = useState<Country[]>([]);
+
+    useEffect(() => {
+        getCountries().then(setCountries);
+    }, []);
 
     const refresh = () => {
         if (currentUser) {
@@ -110,13 +116,16 @@ export default function DevAvisosPanel() {
                             🌎 País del usuario (simulado): <b>{currentUser.country || 'PE'}</b>
                         </div>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {COUNTRIES.map((c) => {
-                                const isActive = (currentUser.country || 'PE') === c.abbr;
+                            {countries.map((c) => {
+                                const isActive = (currentUser.country || 'PE') === c.code;
                                 return (
                                     <button
-                                        key={c.abbr}
+                                        key={c.code}
                                         type="button"
-                                        onClick={() => updateCurrentUser({ country: c.abbr })}
+                                        onClick={() => {
+                                            saveDetectedCountry(c.code);
+                                            updateCurrentUser({ country: c.code });
+                                        }}
                                         style={{
                                             ...btnStyle,
                                             background: isActive ? '#2ecc71' : btnStyle.background,
@@ -125,7 +134,7 @@ export default function DevAvisosPanel() {
                                         }}
                                         title={c.name}
                                     >
-                                        {c.abbr}
+                                        {c.code}
                                     </button>
                                 );
                             })}

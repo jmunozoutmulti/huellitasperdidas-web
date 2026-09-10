@@ -2,15 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
-import {
-    getPublicationById,
-    stopPublication,
-    planLabel,
-    isPaidPlan,
-    getDiasRestantes,
-    calculateRefund,
-    type MockPublication,
-} from '@/lib/publications';
+import { fetchReport, type ReportDetail } from '@/lib/api';
+import { stopReport, ReportsApiError } from '@/lib/reportsApi';
+import { getPackages, type PackageOption } from '@/lib/packagesApi';
+import { getCountryByAbbr } from '@/lib/countries';
 
 interface ModalDetenerProps {
     isOpen: boolean;
@@ -20,29 +15,52 @@ interface ModalDetenerProps {
 }
 
 export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDetenerProps) {
-    const [pub, setPub] = useState<MockPublication | null>(null);
+    const [pub, setPub] = useState<ReportDetail | null>(null);
+    const [pkg, setPkg] = useState<PackageOption | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         if (!isOpen || !id) return;
         setPub(null);
-        getPublicationById(id).then(setPub);
+        setPkg(null);
+        fetchReport(id).then(async (report) => {
+            setPub(report);
+            if (report.package_slug && report.country) {
+                const pkgs = await getPackages(report.country);
+                setPkg(pkgs.find((p) => p.slug === report.package_slug) ?? null);
+            }
+        });
     }, [isOpen, id]);
 
     if (!isOpen) return null;
 
-    const paid = pub ? isPaidPlan(pub.plan) : false;
-    const diasRestantes = pub ? getDiasRestantes(pub.expires_at) : 0;
-    const montoReembolso = pub ? calculateRefund(pub) : 0;
-    const planNombre = pub ? planLabel(pub.plan) : '';
+    const paid = pub ? !!pub.package_slug && pub.package_slug !== 'gratis' : false;
+    const hasRefund = paid && !!pkg?.includesRefund;
 
     const handleConfirm = async () => {
         setIsProcessing(true);
-        await stopPublication(id);
-        setIsProcessing(false);
-        onClose();
-        onStopped();
-        showToast('El anuncio fue detenido correctamente.', 'success');
+        try {
+            const result = await stopReport(id);
+            onClose();
+            onStopped();
+            // El backend ya calcula el monto real — mostramos lo que devuelve,
+            // sin volver a calcularlo nosotros.
+            if (result.refund_status === 'pending' && result.refund_amount) {
+                const country = pub?.country ? await getCountryByAbbr(pub.country) : null;
+                const symbol = country?.currencySymbol ?? '';
+                showToast(
+                    `El anuncio fue detenido. Se te reembolsará ${symbol} ${result.refund_amount} en los próximos días.`,
+                    'success'
+                );
+            } else {
+                showToast('El anuncio fue detenido correctamente.', 'success');
+            }
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos detener el anuncio. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -63,19 +81,19 @@ export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDe
                             <i className="ti ti-loader"></i>
                             <p>Cargando datos del aviso...</p>
                         </div>
-                    ) : paid ? (
+                    ) : hasRefund ? (
                         <div className="admin-info-box" id="detener-reembolso-box">
                             <i className="fa-regular fa-credit-card"></i>
                             <p>
-                                Te quedan <b>{diasRestantes}</b> días sin usar de tu{' '}
-                                <b>{planNombre}</b>. Te reembolsaremos{' '}
-                                <b>S/. {montoReembolso}</b> a tu método de pago original.
+                                <b>Tu plan incluye un reembolso.</b> <br />
+                                Te mostraremos el monto aproximado que recibirás al confirmar esta
+                                acción. La devolución será procesada manualmente por nuestro equipo.
                             </p>
                         </div>
                     ) : (
                         <div className="admin-info-box" id="detener-sin-reembolso-box">
                             <i className="ti ti-info-circle"></i>
-                            <p>Este anuncio no tiene un plan de pago activo, así que no aplica reembolso.</p>
+                            <p>Esta acción no se puede deshacer.</p>
                         </div>
                     )}
                 </div>

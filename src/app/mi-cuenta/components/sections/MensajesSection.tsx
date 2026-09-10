@@ -18,6 +18,8 @@ interface Hilo {
     unread: boolean;
     thumb: string;
     isOpen: boolean;
+    isBlocked: boolean;
+    adminReply?: string | null;
     mensajes: Mensaje[];
     replyInput: string;
 }
@@ -29,7 +31,7 @@ interface MensajesSectionProps {
     onSetOpenMessageMenuId: (id: string | null) => void;
     onReplyInputChange: (hiloId: string, value: string) => void;
     onSendReply: (hiloId: string) => void;
-    onReportarUsuario: () => void;
+    onReportarUsuario: (hiloId: string) => void;
     onBloquearUsuario: (nombre: string, hiloId: string) => void;
     onEliminarMensaje: (hiloId: string) => void;
 }
@@ -68,6 +70,11 @@ export default function MensajesSection({
                                 <div className="mensaje-hilo-title-row">
                                     <h5>{hilo.nombre}</h5>
                                     <span className="mensaje-hilo-badge-aviso">Sobre: {hilo.aviso}</span>
+                                    {hilo.isBlocked && (
+                                        <span className="mensaje-hilo-badge-aviso" style={{ color: 'var(--brand-red)' }}>
+                                            <i className="ti ti-ban"></i> Bloqueado
+                                        </span>
+                                    )}
                                 </div>
                                 <p className="mensaje-hilo-preview">{hilo.preview}</p>
                             </div>
@@ -94,7 +101,7 @@ export default function MensajesSection({
                                             className="mensaje-menu-option-item btn-reportar-usuario"
                                             onClick={() => {
                                                 onSetOpenMessageMenuId(null);
-                                                onReportarUsuario();
+                                                onReportarUsuario(hilo.id);
                                             }}
                                         >
                                             Reportar usuario
@@ -107,7 +114,7 @@ export default function MensajesSection({
                                                 onBloquearUsuario(hilo.nombre, hilo.id);
                                             }}
                                         >
-                                            Bloquear usuario
+                                            {hilo.isBlocked ? 'Desbloquear usuario' : 'Bloquear usuario'}
                                         </button>
                                         <button
                                             type="button"
@@ -130,6 +137,15 @@ export default function MensajesSection({
 
                         <div className="mensaje-hilo-body">
                             <div className="mensaje-hilo-body-inner">
+                                {hilo.adminReply && (
+                                    <div className="admin-info-box">
+                                        <i className="ti ti-info-circle"></i>
+                                        <p>
+                                            <b>Tu reporte fue revisado:</b> {hilo.adminReply}
+                                        </p>
+                                    </div>
+                                )}
+
                                 {hilo.mensajes.map((msg) => (
                                     <div key={msg.id} className={`mensaje-burbuja ${msg.tipo}`}>
                                         <p>{msg.texto}</p>
@@ -137,26 +153,33 @@ export default function MensajesSection({
                                     </div>
                                 ))}
 
-                                <div className="mensaje-reply-row">
-                                    <input
-                                        type="text"
-                                        className="mensaje-reply-field"
-                                        placeholder="Escribe una respuesta..."
-                                        value={hilo.replyInput}
-                                        onChange={(e) => onReplyInputChange(hilo.id, e.target.value)}
-                                        onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                                            if (e.key === 'Enter') onSendReply(hilo.id);
-                                        }}
-                                    />
-                                    <button
-                                        type="button"
-                                        className={`mensaje-reply-send-btn ${hilo.replyInput.trim() ? 'is-active' : ''}`}
-                                        disabled={!hilo.replyInput.trim()}
-                                        onClick={() => onSendReply(hilo.id)}
-                                    >
-                                        <i className="ti ti-send"></i>
-                                    </button>
-                                </div>
+                                {hilo.isBlocked ? (
+                                    <div className="admin-info-box">
+                                        <i className="ti ti-ban"></i>
+                                        <p>Bloqueaste a este usuario. Ya no puede enviarte mensajes.</p>
+                                    </div>
+                                ) : (
+                                    <div className="mensaje-reply-row">
+                                        <input
+                                            type="text"
+                                            className="mensaje-reply-field"
+                                            placeholder="Escribe una respuesta..."
+                                            value={hilo.replyInput}
+                                            onChange={(e) => onReplyInputChange(hilo.id, e.target.value)}
+                                            onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
+                                                if (e.key === 'Enter') onSendReply(hilo.id);
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className={`mensaje-reply-send-btn ${hilo.replyInput.trim() ? 'is-active' : ''}`}
+                                            disabled={!hilo.replyInput.trim()}
+                                            onClick={() => onSendReply(hilo.id)}
+                                        >
+                                            <i className="ti ti-send"></i>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

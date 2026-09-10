@@ -4,7 +4,7 @@ import { useState, useEffect, ChangeEvent } from 'react';
 import dynamic from 'next/dynamic';
 import '@/styles/avistamiento.css';
 import { useApp } from '@/context/AppContext';
-import { createPublication } from '@/lib/publications';
+import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { showToast } from '@/components/global/Toast';
 import { reverseGeocode } from '@/lib/geocoding';
@@ -175,6 +175,13 @@ export default function AvistamientoPage() {
         return value.replace(/<[^>]*>?/gm, '').trim();
     }
 
+    function tipoAnimalToApi(valor: string): string {
+        if (valor === 'Perro') return 'dog';
+        if (valor === 'Gato') return 'cat';
+        if (valor === 'Ave') return 'bird';
+        return 'other';
+    }
+
     const hasAnyPhoto = mainImage !== null || uploadedThumbs.some((img) => img !== null);
 
     function validateForm(): boolean {
@@ -201,18 +208,21 @@ export default function AvistamientoPage() {
     // ==========================================
     // ENVÍO DE ALERTA
     // ==========================================
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const handleSendAlert = async () => {
         if (!validateForm()) return;
+        if (!currentUser) return;
 
-        if (currentUser) {
-            const parsedLat = lat ? parseFloat(lat) : null;
-            const parsedLng = lng ? parseFloat(lng) : null;
-            const allPhotos = [mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[];
+        const parsedLat = lat ? parseFloat(lat) : null;
+        const parsedLng = lng ? parseFloat(lng) : null;
+        const allPhotos = [mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[];
 
-            await createPublication({
-                user_id: currentUser.id,
+        setIsSubmitting(true);
+        try {
+            const report = await createReport({
                 report_type: 'sighting',
-                pet_type: tipoAnimal || null,
+                pet_type: tipoAnimal ? tipoAnimalToApi(tipoAnimal) : null,
                 title: null, // avistamiento no captura nombre de mascota
                 description: sanitizeText(descripcion) || null,
                 country: currentUser.country || 'PE',
@@ -220,34 +230,41 @@ export default function AvistamientoPage() {
                 province: null,
                 district: null,
                 address_hint: sanitizeText(ubicacion) || null,
+                lat: parsedLat,
+                lng: parsedLng,
                 event_date: null,
                 contact_name: currentUser.name || null,
                 contact_phone: currentUser.phone || null,
                 contact_email: currentUser.email || null,
-                sex: null,
-                is_neutered: false,
-                size: null,
-                breed: null,
-                color: null,
-                reward: null,
-                reward_visible: false,
-                age: null,
-                adoption_extras: null,
-                adoption_extras_visible: false,
-                reach_facebook: false,
-                reach_instagram: false,
-                images: allPhotos,
-                plan: 'gratis', // avistamiento siempre es gratuito, no tiene selector de plan
-                lat: parsedLat,
-                lng: parsedLng,
-                flyer_image: null, // avistamiento no genera flyer
+                meta: {
+                    sex: null,
+                    is_neutered: false,
+                    size: null,
+                    breed: null,
+                    color: null,
+                    age: null,
+                },
             });
-        }
 
-        setShowStatusOverlay(true);
-        setTimeout(() => {
-            window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
-        }, 5000);
+            for (const foto of allPhotos) {
+                try {
+                    await uploadReportImage(report.id, foto, false);
+                } catch (err) {
+                    console.error('No se pudo subir una foto', err);
+                }
+            }
+            // avistamiento no genera flyer — no hay nada que subir con is_flyer
+
+            setShowStatusOverlay(true);
+            setTimeout(() => {
+                window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
+            }, 5000);
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos enviar tu alerta. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const parsedLat = lat ? parseFloat(lat) : null;
@@ -577,9 +594,14 @@ export default function AvistamientoPage() {
                                 type="button"
                                 id="btn-send-alert"
                                 className="btn-publish-avistamiento"
+                                disabled={isSubmitting}
                                 onClick={handleSendAlert}
                             >
-                                Enviar alerta <i className="ti ti-bell-ringing"></i>
+                                {isSubmitting ? 'Enviando...' : (
+                                    <>
+                                        Enviar alerta <i className="ti ti-bell-ringing"></i>
+                                    </>
+                                )}
                             </button>
                         </form>
                     </div>

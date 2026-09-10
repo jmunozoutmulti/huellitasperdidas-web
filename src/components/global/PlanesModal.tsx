@@ -74,8 +74,24 @@ interface PlanesModalProps {
 export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalOnClose }: PlanesModalProps) {
     const { currentUser } = useApp();
     const country = currentUser?.country || 'PE';
-    const currencySymbol = getCountryByAbbr(country).currency.symbol;
     const planes = getPlanesData(country);
+
+    const [currencySymbol, setCurrencySymbol] = useState<string | null>(null);
+    const [isLoadingCountry, setIsLoadingCountry] = useState(true);
+
+    useEffect(() => {
+        let isCancelled = false;
+        setIsLoadingCountry(true);
+        getCountryByAbbr(country).then((c) => {
+            if (!isCancelled) {
+                setCurrencySymbol(c?.currencySymbol ?? null);
+                setIsLoadingCountry(false);
+            }
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
 
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
@@ -134,6 +150,44 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
     }, [isOpen]);
 
     if (!isOpen) return null;
+
+    if (isLoadingCountry) {
+        return (
+            <div className="planes-modal-overlay">
+                <div className="planes-modal-backdrop" onClick={handleClose}></div>
+                <div className="planes-modal-card">
+                    <div className="admin-info-box info-box-revision">
+                        <i className="ti ti-loader"></i>
+                        <p>Cargando...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currencySymbol) {
+        return (
+            <div className="planes-modal-overlay">
+                <div className="planes-modal-backdrop" onClick={handleClose}></div>
+                <div className="planes-modal-card">
+                    <div className="planes-modal-header">
+                        <div>
+                            <span className="planes-modal-eyebrow">
+                                <i className="ti ti-settings-search"></i> Herramientas Avanzadas
+                            </span>
+                        </div>
+                        <button type="button" className="planes-modal-close" onClick={handleClose}>
+                            <i className="ti ti-x"></i>
+                        </button>
+                    </div>
+                    <div className="admin-info-box">
+                        <i className="ti ti-info-circle"></i>
+                        <p>Este país aún no está configurado para esta función. Vuelve más tarde.</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const currentPlan = planes[selectedPlan];
 

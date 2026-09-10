@@ -169,7 +169,7 @@
     line-height: 1;
     color: var(--text-main);
     font-weight: 900;
-    letter-spacing: -1px;
+    letter-spacing: -0.5px;
 }
 
 .dashboard-recent-header p {
@@ -338,7 +338,8 @@
 }
 
 .pub-tab.active .pub-tab-count {
-    background: var(--bg-card);
+    background: var(--brand-secondary);
+    color: var(--text-white);
 }
 
 .pub-tab-content {
@@ -494,7 +495,7 @@
 .guardado-row {
     display: flex;
     align-items: center;
-    gap: 1.25em;
+    gap: 1em;
     background: var(--bg-card);
     border-radius: 0.75em;
     padding: 0.85em 1em;
@@ -538,7 +539,7 @@
 
 .guardado-meta {
     display: flex;
-    gap: 1em;
+    gap: 0.5em;
     font-size: 0.95em;
     color: var(--text-secondary);
 }
@@ -560,7 +561,8 @@
     flex-shrink: 0;
 }
 
-.guardado-remove-btn {
+.guardado-actions a,
+.guardado-actions button {
     width: 2em;
     height: 2em;
     border-radius: 50%;
@@ -574,15 +576,19 @@
     flex-shrink: 0;
 }
 
-.guardado-remove-btn:hover {
+.guardado-actions a:hover,
+.guardado-actions button:hover {
     background: var(--brand-red);
     border-color: var(--brand-red);
     color: var(--text-white);
 }
 
-.guardado-remove-btn i {
-    font-size: 1.3em;
+.guardado-actions a i,
+.guardado-actions button i {
+    font-size: 1.1em;
 }
+
+
 
 
 /* ==========================================================================
@@ -1263,7 +1269,8 @@
     gap: 0.5em;
 }
 
-.pub-editor-actions button {
+.pub-editor-actions button,
+.pub-editor-actions a {
     display: flex;
     align-items: center;
     padding: 0.7em;
@@ -1277,11 +1284,13 @@
     border-radius: 50%;
 }
 
-.pub-editor-actions button i {
+.pub-editor-actions button i,
+.pub-editor-actions a i {
     font-size: 1.175em;
 }
 
-.pub-editor-actions button:hover {
+.pub-editor-actions button:hover,
+.pub-editor-actions a:hover {
     border-color: var(--border-color-focus);
 }
 
@@ -1455,7 +1464,7 @@
 .badge-plan {
     font-size: 0.95em;
     font-weight: 500;
-    padding: 0 0.5em;
+    padding: 0 0.25em;
     border-radius: 3em;
     color: var(--text-main);
     background: var(--bg-alt);
@@ -1467,6 +1476,19 @@
     background: none;
     border: 1px solid transparent;
 }
+
+.badge-plan-premiun-adopcion {
+    color: var(--purple-brand);
+    background: none;
+    border: 1px solid transparent;
+}
+
+.badge-plan-premiun-adopcion .status-pulse,
+.badge-plan-premiun-adopcion .status-pulse:after {
+    background-color: var(--purple-brand);
+}
+
+
 
 .badge-plan-status {
     display: inline-flex;
@@ -2750,7 +2772,7 @@ MODAL EDITAR ANUNCIO
 .centinela-hallazgo-row {
     display: flex;
     align-items: center;
-    gap: 1.25em;
+    gap: 1em;
     background: var(--bg-card);
     border-radius: 0.75em;
     padding: 0.85em 1em;
@@ -2819,6 +2841,7 @@ MODAL EDITAR ANUNCIO
     gap: 0.35em;
 }
 
+
 .centinela-hallazgo-actions {
     display: flex;
     align-items: center;
@@ -2826,7 +2849,8 @@ MODAL EDITAR ANUNCIO
     flex-shrink: 0;
 }
 
-.centinela-descartar-btn {
+.centinela-hallazgo-actions a,
+.centinela-hallazgo-actions button {
     width: 2em;
     height: 2em;
     border-radius: 50%;
@@ -2840,15 +2864,19 @@ MODAL EDITAR ANUNCIO
     flex-shrink: 0;
 }
 
-.centinela-descartar-btn:hover {
+.centinela-hallazgo-actions a:hover,
+.centinela-hallazgo-actions button:hover {
     background: var(--brand-red);
     border-color: var(--brand-red);
     color: var(--text-white);
 }
 
-.centinela-descartar-btn i {
-    font-size: 1.3em;
+.centinela-hallazgo-actions a i,
+.centinela-hallazgo-actions button i {
+    font-size: 1.1em;
 }
+
+
 
 .ia-matches-badge-horizontal {
     color: var(--text-main);
@@ -2872,9 +2900,9 @@ MODAL EDITAR ANUNCIO
     transform: translateX(-50%);
     background: #222;
     color: #fff;
-    padding: 5px 8px;
+    font-size: .85em;
+    padding: 0.25em 0.5em;
     border-radius: 5px;
-    font-size: 0.75em;
     white-space: nowrap;
     opacity: 0;
     visibility: hidden;

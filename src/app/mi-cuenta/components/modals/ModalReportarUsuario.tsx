@@ -2,20 +2,45 @@
 
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
+import { reportUser, MessagesApiError } from '@/lib/messagesApi';
 
 interface ModalReportarUsuarioProps {
     isOpen: boolean;
+    userId: string;
+    conversationId?: string;
     onClose: () => void;
 }
 
-export default function ModalReportarUsuario({ isOpen, onClose }: ModalReportarUsuarioProps) {
+export default function ModalReportarUsuario({ isOpen, userId, conversationId, onClose }: ModalReportarUsuarioProps) {
     const [motivo, setMotivo] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        if (isOpen) setMotivo('');
+        if (isOpen) {
+            setMotivo('');
+            setIsProcessing(false);
+        }
     }, [isOpen]);
 
     if (!isOpen) return null;
+
+    const handleEnviar = async () => {
+        if (!motivo.trim()) {
+            showToast('Cuéntanos brevemente el motivo del reporte', 'warning');
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            await reportUser(userId, motivo.trim(), conversationId);
+            onClose();
+            showToast('Reporte enviado. Nuestro equipo lo revisará.', 'success');
+        } catch (err) {
+            const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar el reporte. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     return (
         <div className="app-modal open" id="modal-reportar-usuario">
@@ -46,16 +71,10 @@ export default function ModalReportarUsuario({ isOpen, onClose }: ModalReportarU
                     <button
                         type="button"
                         className="btn-danger-account"
-                        onClick={() => {
-                            if (!motivo.trim()) {
-                                showToast('Cuéntanos brevemente el motivo del reporte', 'warning');
-                                return;
-                            }
-                            onClose();
-                            showToast('Reporte enviado. Nuestro equipo lo revisará.', 'success');
-                        }}
+                        disabled={isProcessing}
+                        onClick={handleEnviar}
                     >
-                        <i className="ti ti-flag"></i> Enviar reporte
+                        <i className="ti ti-flag"></i> {isProcessing ? 'Enviando...' : 'Enviar reporte'}
                     </button>
                 </div>
             </div>

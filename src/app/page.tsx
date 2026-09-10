@@ -7,7 +7,11 @@ import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { PetData } from '@/lib/pets';
 import { fetchReports, fetchReport } from '@/lib/api';
+import { showToast } from '@/components/global/Toast';
 import { reportToPetData } from '@/lib/transformers';
+import { getCountries } from '@/lib/countries';
+import { getDetectedCountry } from '@/lib/auth';
+import { useApp } from '@/context/AppContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 interface SearchItem {
@@ -28,8 +32,13 @@ function getPetCategory(badgeStyle: string): string {
 function HomeContent() {
 
   const router = useRouter();
+  const { currentUser } = useApp();
 
   const searchParams = useSearchParams();
+
+  // Con sesión: el país de la cuenta. Sin sesión: el detectado (hoy en duro
+  // vía detectCountry.ts, pendiente del servicio real de geolocalización).
+  const countryCode = currentUser?.country || getDetectedCountry() || 'PE';
 
   const [pets, setPets] = useState<PetData[]>([]);
   const [isLoadingPets, setIsLoadingPets] = useState(true);
@@ -44,17 +53,20 @@ function HomeContent() {
       setIsLoadingPets(true);
       setLoadError(null);
       try {
+        await getCountries(); // garantiza el caché antes de mapear (barato, ya cacheado luego de la 1ra vez)
         const response = await fetchReports({
           page: 1,
           limit: 100,
           search: searchQuery || undefined,
+          country_code: countryCode,
+          status: 'active',
         });
         let transformed = response.items.map(reportToPetData);
 
         if (transformed.length === 0 && searchQuery) {
           // La búsqueda no encontró nada — mostramos el listado general
           // en su lugar, en vez de dejar la pantalla vacía.
-          const fallback = await fetchReports({ page: 1, limit: 100 });
+          const fallback = await fetchReports({ page: 1, limit: 100, country_code: countryCode, status: 'active' });
           transformed = fallback.items.map(reportToPetData);
           if (!isCancelled) {
             setNoResultsFor(searchQuery);
@@ -82,7 +94,7 @@ function HomeContent() {
     return () => {
       isCancelled = true;
     };
-  }, [searchQuery]);
+  }, [searchQuery, countryCode]);
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -96,8 +108,14 @@ function HomeContent() {
 
     async function loadDetail() {
       try {
+        await getCountries();
         const report = await fetchReport(id!);
         if (!isCancelled) {
+          if (report.status !== 'active') {
+            showToast('Este aviso ya no está disponible.', 'info');
+            router.push('/');
+            return;
+          }
           setSelectedPet(reportToPetData(report));
           setIsDetailActive(true);
         }
@@ -146,6 +164,13 @@ function HomeContent() {
   // ==========================================
   const handleFilterClick = (type: string) => {
     setActiveFilter((prev) => (prev === type ? null : type));
+    if (isDetailActive) {
+      closeDetail();
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
     if (isDetailActive) {
       closeDetail();
     }
@@ -234,7 +259,7 @@ function HomeContent() {
             </button>
           </div>
 
-          <SearchBox pets={pets} onSearch={setSearchQuery} />
+          <SearchBox pets={pets} onSearch={handleSearch} />
         </div>
 
         {/* ==========================================
@@ -303,7 +328,13 @@ function HomeContent() {
           </div>
         )}
 
-        {!isLoadingPets && !loadError && (
+        {!isLoadingPets && !loadError && pets.length === 0 && !searchQuery && (
+          <div className="pub-empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
+            <p>Todavía no hay avisos publicados en tu país.</p>
+          </div>
+        )}
+
+        {!isLoadingPets && !loadError && (pets.length > 0 || searchQuery) && (
           <div className="masonry-grid">
             {displayedPets
               .filter((pet) => isCardVisible(pet.badgeStyle))

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
-import { useApp } from '@/context/AppContext';
-import { updatePublication } from '@/lib/publications';
-import { getPlanById } from '@/lib/plans';
+import { fetchReport, type ReportDetail } from '@/lib/api';
+import { upgradeReport, ReportsApiError } from '@/lib/reportsApi';
+import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr } from '@/lib/countries';
 
 interface ModalUpgradeProps {
@@ -14,45 +14,99 @@ interface ModalUpgradeProps {
     onUpgraded: () => void;
 }
 
-// Solo el "marketing copy" (personas alcanzadas) es propio de este modal —
-// precio y días de difusión siempre se leen de plans.ts para no desincronizarse.
-const upgradeReachCopy: Record<string, { personas: string; level: number }> = {
-    local: { personas: '+9,000', level: 1 },
-    amplio: { personas: '+15,000', level: 2 },
-    urgente: { personas: '+30,000', level: 3 },
-};
-
 export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalUpgradeProps) {
-    const { currentUser } = useApp();
-    const country = currentUser?.country || 'PE';
-    const currencySymbol = getCountryByAbbr(country).currency.symbol;
+    const [pub, setPub] = useState<ReportDetail | null>(null);
+    const [packages, setPackages] = useState<PackageOption[]>([]);
+    const [currencySymbol, setCurrencySymbol] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+
     const [step, setStep] = useState<1 | 2>(1);
-    const [val, setVal] = useState('local');
+    const [val, setVal] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'card' | 'yape'>('card');
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
-        if (isOpen) {
-            setStep(1);
-            setVal('local');
-            setPaymentMethod('card');
-            setAcceptTerms(false);
-        }
-    }, [isOpen]);
+        if (!isOpen || !id) return;
+        setStep(1);
+        setVal('');
+        setPaymentMethod('card');
+        setAcceptTerms(false);
+        setPub(null);
+        setPackages([]);
+        setIsLoading(true);
+
+        fetchReport(id).then(async (report) => {
+            setPub(report);
+            if (report.country) {
+                const [pkgs, country] = await Promise.all([
+                    getPackages(report.country),
+                    getCountryByAbbr(report.country),
+                ]);
+                const paidPackages = pkgs.filter((p) => p.price > 0);
+                setPackages(paidPackages);
+                setCurrencySymbol(country?.currencySymbol ?? '');
+                setVal(paidPackages[0]?.slug ?? '');
+            }
+            setIsLoading(false);
+        });
+    }, [isOpen, id]);
 
     if (!isOpen) return null;
 
-    const planActual = getPlanById(val, country);
-    const copy = upgradeReachCopy[val] || upgradeReachCopy['local'];
+    if (isLoading) {
+        return (
+            <div className="planes-modal-overlay">
+                <div className="planes-modal-backdrop" onClick={onClose}></div>
+                <div className="planes-modal-card wide">
+                    <div className="admin-info-box info-box-revision">
+                        <i className="ti ti-loader"></i>
+                        <p>Cargando...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currencySymbol || packages.length === 0) {
+        return (
+            <div className="planes-modal-overlay">
+                <div className="planes-modal-backdrop" onClick={onClose}></div>
+                <div className="planes-modal-card wide">
+                    <div className="planes-modal-header">
+                        <div>
+                            <span className="planes-modal-eyebrow">
+                                <i className="ti ti-broadcast"></i> Pasar a plan de pago
+                            </span>
+                        </div>
+                        <button type="button" className="planes-modal-close" onClick={onClose}>
+                            <i className="ti ti-x"></i>
+                        </button>
+                    </div>
+                    <div className="admin-info-box">
+                        <i className="ti ti-info-circle"></i>
+                        <p>Este país aún no está configurado para esta función. Vuelve más tarde.</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const planActual = packages.find((p) => p.slug === val) ?? packages[0];
 
     const handlePagar = async () => {
         setIsProcessing(true);
-        await updatePublication(id, { plan: val, amount_paid: planActual.precio, country });
-        setIsProcessing(false);
-        onClose();
-        onUpgraded();
-        showToast('Tu aviso ahora tiene difusión activa', 'success');
+        try {
+            await upgradeReport(id, val);
+            onClose();
+            onUpgraded();
+            showToast('Tu aviso pasó a revisión con el nuevo plan.', 'success');
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos cambiar el plan de tu aviso. Intenta de nuevo.';
+            showToast(message, 'error');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -75,137 +129,80 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                         <div className="upgrade-map-preview">
                             <div className="upgrade-map-box">
                                 <div className="upgrade-map-ring-base"></div>
-                                <div className={`upgrade-map-ring-growth level-${copy.level}`}></div>
+                                <div className={`upgrade-map-ring-growth level-${packages.findIndex((p) => p.slug === val) + 1}`}></div>
                                 <div className="upgrade-map-pin">
                                     <i className="fa-solid fa-street-view"></i>
                                 </div>
                             </div>
                             <p className="upgrade-map-caption">
                                 <i className="ti ti-users"></i>
-                                Tu aviso llegará a <b>{copy.personas}</b> personas en la <b>zona de perdida</b>
+                                Tu aviso llegará a <b>+{planActual?.adsMetaAudience?.toLocaleString('es-PE') ?? '0'}</b> personas en la <b>zona de perdida</b>
                             </p>
                         </div>
 
                         <div className="plans-stack upgrade-plans-stack">
-                            <label className="plan-item-label">
-                                <input
-                                    type="radio"
-                                    name="upgrade-plan"
-                                    value="local"
-                                    checked={val === 'local'}
-                                    onChange={() => setVal('local')}
-                                />
-                                <div className="plan-item">
-                                    <div className="row-plan">
-                                        <div className="plan-info">
-                                            <h4>Plan Local</h4>
-                                            <p className="plan-scope">
-                                                Hasta <b>+9,000</b> personas <br /> verán tu aviso.
-                                            </p>
+                            {packages.map((pkg) => {
+                                const isUrgente = pkg.slug === 'urgente';
+                                const descriptionHtml = pkg.description.replace(/\n/g, '<br/>');
+                                return (
+                                    <label key={pkg.slug} className={`plan-item-label ${isUrgente ? 'option-dominant-wrapper' : ''}`}>
+                                        <input
+                                            type="radio"
+                                            name="upgrade-plan"
+                                            value={pkg.slug}
+                                            checked={val === pkg.slug}
+                                            onChange={(e) => setVal(e.target.value)}
+                                        />
+                                        <div className={`plan-item ${isUrgente ? 'plan-item-premium' : ''}`}>
+                                            {isUrgente && (
+                                                <span className="tag-info">
+                                                    <i className="ti ti-bolt"></i> Máxima Difusión
+                                                </span>
+                                            )}
+                                            <div className="row-plan">
+                                                <div className="plan-info">
+                                                    <h4><u>Plan</u> {pkg.name}</h4>
+                                                    <p className="plan-scope" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                                                </div>
+                                                <div className="plan-card">
+                                                    <div className="plan-price"><i>{currencySymbol}</i> {pkg.price}</div>
+                                                    <span>/ <i className="fa-regular fa-credit-card"></i> Pago único</span>
+                                                </div>
+                                            </div>
+                                            <div className="row-data-plan">
+                                                {pkg.channels.length > 0 && (
+                                                    <div className="plan-features-list">
+                                                        {pkg.channels.map((ch) => (
+                                                            <span key={ch} className={`plan-feature-tag btn-${ch}`}>
+                                                                {ch === 'facebook' && <i className="fa-brands fa-facebook"></i>}
+                                                                {ch === 'instagram' && <i className="fa-brands fa-instagram"></i>}
+                                                                {ch === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
+                                                                {ch === 'messenger' && <i className="fa-brands fa-facebook-messenger"></i>}
+                                                                {' '}{ch.charAt(0).toUpperCase() + ch.slice(1)}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="attributes-plan">
+                                                    <ul>
+                                                        <li><i className="ti ti-broadcast"></i><b>{pkg.days} días</b> de difusión</li>
+                                                        {pkg.includesRefund && (
+                                                            <li>
+                                                                <div className="tooltip-wrap">
+                                                                    <i className="ti ti-help tooltip-trigger"></i>
+                                                                    <span className="tooltip-box">
+                                                                        <i className="ti ti-info-circle"></i> Si encuentras a tu mascota antes, te <b>devolvemos</b> los días restantes del plan.
+                                                                    </span>
+                                                                </div> Incluye <b><u>reembolso</u></b>
+                                                            </li>
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="plan-card">
-                                            <div className="plan-price"><i>{currencySymbol}</i> {getPlanById('local', country).precio}</div>
-                                            <span>/ <i className="fa-regular fa-credit-card"></i> Pago único</span>
-                                        </div>
-                                    </div>
-                                    <div className="row-data-plan">
-                                        <div className="plan-features-list">
-                                            <span className="plan-feature-tag btn-facebook">
-                                                <i className="fa-brands fa-facebook"></i> Facebook
-                                            </span>
-                                        </div>
-                                        <div className="attributes-plan">
-                                            <ul>
-                                                <li><i className="ti ti-broadcast"></i><b>{getPlanById('local', country).dias} días</b> de difusión</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
-
-                            <label className="plan-item-label">
-                                <input
-                                    type="radio"
-                                    name="upgrade-plan"
-                                    value="amplio"
-                                    checked={val === 'amplio'}
-                                    onChange={() => setVal('amplio')}
-                                />
-                                <div className="plan-item">
-                                    <div className="row-plan">
-                                        <div className="plan-info">
-                                            <h4>Plan Amplio</h4>
-                                            <p className="plan-scope">
-                                                Hasta <b>+15,000</b> personas <br /> verán tu aviso.
-                                            </p>
-                                        </div>
-                                        <div className="plan-card">
-                                            <div className="plan-price"><i>{currencySymbol}</i> {getPlanById('amplio', country).precio}</div>
-                                            <span>/ <i className="fa-regular fa-credit-card"></i> Pago único</span>
-                                        </div>
-                                    </div>
-                                    <div className="row-data-plan">
-                                        <div className="plan-features-list">
-                                            <span className="plan-feature-tag btn-facebook">
-                                                <i className="fa-brands fa-facebook"></i> Facebook
-                                            </span>
-                                        </div>
-                                        <div className="attributes-plan">
-                                            <ul>
-                                                <li><i className="ti ti-broadcast"></i><b>{getPlanById('amplio', country).dias} días</b> de difusión</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
-
-                            <label className="plan-item-label option-dominant-wrapper">
-                                <input
-                                    type="radio"
-                                    name="upgrade-plan"
-                                    value="urgente"
-                                    checked={val === 'urgente'}
-                                    onChange={() => setVal('urgente')}
-                                />
-                                <div className="plan-item plan-item-premium">
-                                    <span className="tag-info"><i className="ti ti-bolt"></i> Máxima Difusión</span>
-                                    <div className="row-plan">
-                                        <div className="plan-info">
-                                            <h4>Plan Urgente</h4>
-                                            <p className="plan-scope">
-                                                Hasta <b>+30,000</b> personas <br /> verán tu aviso.
-                                            </p>
-                                        </div>
-                                        <div className="plan-card">
-                                            <div className="plan-price"><i>{currencySymbol}</i> {getPlanById('urgente', country).precio}</div>
-                                            <span>/ <i className="fa-regular fa-credit-card"></i> Pago único</span>
-                                        </div>
-                                    </div>
-                                    <div className="row-data-plan">
-                                        <div className="plan-features-list">
-                                            <span className="plan-feature-tag btn-facebook">
-                                                <i className="fa-brands fa-facebook"></i> Facebook
-                                            </span>
-                                            <span className="plan-feature-tag btn-instagram">
-                                                <i className="fa-brands fa-instagram"></i> Instagram
-                                            </span>
-                                        </div>
-                                        <div className="attributes-plan">
-                                            <ul>
-                                                <li><i className="ti ti-broadcast"></i><b>{getPlanById('urgente', country).dias} días</b> de difusión</li>
-                                                <li>
-                                                    <div className="tooltip-wrap">
-                                                        <i className="ti ti-help tooltip-trigger"></i>
-                                                        <span className="tooltip-box">
-                                                            <i className="ti ti-info-circle"></i> Si encuentras a tu mascota antes, te <b>devolvemos</b> los días restantes del plan.
-                                                        </span>
-                                                    </div> Incluye <b><u>reembolso</u></b>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
+                                    </label>
+                                );
+                            })}
                         </div>
 
                         <div className="planes-modal-actions">
@@ -225,9 +222,9 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                             <div className="planes-modal-summary-bar">
                                 <div className="planes-summary-body">
                                     <span className="planes-summary-label">Plan seleccionado</span>
-                                    <h5>{planActual.nombre}</h5>
+                                    <h5>{planActual?.name}</h5>
                                 </div>
-                                <div className="planes-summary-price">{currencySymbol} {planActual.precio}</div>
+                                <div className="planes-summary-price">{currencySymbol} {planActual?.price}</div>
                             </div>
 
                             <div className="payment-gateway-box">

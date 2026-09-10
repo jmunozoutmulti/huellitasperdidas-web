@@ -1,20 +1,18 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
-import {
-    type MockPublication,
-    reportTypeLabel,
-    planLabel,
-    isPaidPlan,
-    getDiasRestantes,
-} from '@/lib/publications';
+import type { Report } from '@/lib/api';
+import type { PackageOption } from '@/lib/packagesApi';
+import { getCountryByAbbr } from '@/lib/countries';
 
 type Tab = 'activas' | 'revision' | 'rechazadas' | 'finalizadas';
 type ReportType = 'lost' | 'found' | 'adoption' | 'sighting';
 
 interface PubCardProps {
-    pub: MockPublication;
+    pub: Report;
     tab: Tab;
+    packages: PackageOption[];
     isOpen: boolean;
     onToggle: () => void;
     isMenuOpen: boolean;
@@ -30,35 +28,55 @@ interface PubCardProps {
     onOpenTiempo: () => void;
 }
 
-// --- Íconos/textos del badge de estado según status ---
+// --- Íconos/textos del badge de estado según status real ---
 const STATUS_BADGE: Record<string, { icon: string; text: string }> = {
-    pending_review: { icon: 'ti-clock', text: 'En revisión' },
-    approved: { icon: 'ti-circle-check', text: 'Aviso publicado' },
-    rejected: { icon: 'ti-x', text: 'Rechazada' },
-    finished: { icon: 'ti-hourglass-low', text: 'Finalizado' },
+    pending_approval: { icon: 'ti-clock', text: 'En revisión' },
+    active: { icon: 'ti-circle-check', text: 'Aviso publicado' },
+    rejected: { icon: 'ti-x', text: 'Rechazado' },
+    inactive: { icon: 'ti-hourglass-low', text: 'Finalizado' },
+    spam: { icon: 'ti-hourglass-low', text: 'Finalizado' },
+    resolved: { icon: 'ti-hourglass-low', text: 'Finalizado' },
 };
+
+function reportTypeLabel(reportType: string): string {
+    const map: Record<string, string> = {
+        lost: 'Perdido',
+        found: 'Encontrado',
+        adoption: 'Adopción',
+        sighting: 'Avistamiento',
+    };
+    return map[reportType] ?? reportType;
+}
+
+function sexLabel(sex: string | null): string {
+    if (sex === 'male') return 'Macho';
+    if (sex === 'female') return 'Hembra';
+    return '';
+}
+
+function petTypeLabel(petType: string | null): string {
+    if (petType === 'dog') return 'Perro';
+    if (petType === 'cat') return 'Gato';
+    if (petType === 'bird') return 'Ave';
+    return 'Animal';
+}
 
 // report_type que tiene concepto de "plan" (perdido/adopción). Encontrado y avistamiento no.
 function hasPlan(reportType: string): boolean {
     return reportType === 'lost' || reportType === 'adoption';
 }
 
-// Suffix de clase CSS: '' para lost (no lleva sufijo), 'found'/'adoption'/'sighting' para el resto
 function typeSuffix(reportType: string): string {
     return reportType === 'lost' ? '' : reportType;
 }
 
-function capitalize(s: string): string {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 // Encontrado no tiene nombre de mascota — armamos un título descriptivo
 // a partir de pet_type/breed/sex. Ej: "Perro de raza Pitbull Macho"
-function buildFoundTitle(pub: MockPublication): string {
+function buildFoundTitle(pub: Report): string {
     const parts: string[] = [];
-    parts.push(pub.pet_type ? capitalize(pub.pet_type) : 'Animal');
-    if (pub.breed) parts.push(`de raza ${pub.breed}`);
-    if (pub.sex) parts.push(capitalize(pub.sex));
+    parts.push(petTypeLabel(pub.pet_type));
+    if (pub.meta.breed) parts.push(`de raza ${pub.meta.breed}`);
+    if (pub.meta.sex) parts.push(sexLabel(pub.meta.sex));
     return parts.join(' ');
 }
 
@@ -72,24 +90,40 @@ function formatFecha(iso: string): string {
     });
 }
 
-// Convierte el base64 guardado en flyer_image en una descarga real del navegador.
-function downloadFlyer(pub: MockPublication) {
-    if (!pub.flyer_image) {
+function getDiasRestantes(expiresAt: string | null): number {
+    if (!expiresAt) return 0;
+    const diffMs = new Date(expiresAt).getTime() - Date.now();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / 86400000);
+}
+
+// Reactivar solo funciona si el aviso ya venció de verdad (confirmado con
+// backend) — no basta con que esté en la pestaña Finalizados, hay que
+// revisar expires_at directamente. Un aviso detenido antes de tiempo no
+// pasa esta condición hasta que su fecha real de vencimiento llegue.
+function isReallyExpired(pub: Report): boolean {
+    if (!pub.expires_at) return false;
+    return new Date(pub.expires_at).getTime() < Date.now();
+}
+
+function downloadFlyer(flyerUrl: string | null) {
+    if (!flyerUrl) {
         showToast('Este aviso todavía no tiene un flyer generado.', 'error');
         return;
     }
     const a = document.createElement('a');
-    a.href = pub.flyer_image;
-    a.download = `flyer-${pub.title || pub.report_type}-${pub.id.slice(0, 8)}.png`;
+    a.href = flyerUrl;
+    a.download = `flyer-${Date.now()}.png`;
+    a.target = '_blank';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showToast('Flyer descargado correctamente', 'success');
 }
 
 export default function PubCard({
     pub,
     tab,
+    packages,
     isOpen,
     onToggle,
     isMenuOpen,
@@ -105,12 +139,25 @@ export default function PubCard({
     onOpenTiempo,
 }: PubCardProps) {
     const reportType = pub.report_type as ReportType;
-    const paid = isPaidPlan(pub.plan);
+    const paid = !!pub.package_slug && pub.package_slug !== 'gratis';
     const plaBadge = hasPlan(reportType);
     const suffix = typeSuffix(reportType);
-    const statusBadge = STATUS_BADGE[pub.status] ?? STATUS_BADGE.pending_review;
+    const statusBadge = STATUS_BADGE[pub.status] ?? STATUS_BADGE.pending_approval;
     const diasRestantes = getDiasRestantes(pub.expires_at);
     const displayName = reportType === 'found' ? buildFoundTitle(pub) : pub.title || reportTypeLabel(reportType);
+    const planName = packages.find((p) => p.slug === pub.package_slug)?.name ?? pub.package_slug ?? '';
+    const canReactivate = isReallyExpired(pub);
+
+    const [currencySymbol, setCurrencySymbol] = useState('');
+    useEffect(() => {
+        if (pub.country) {
+            getCountryByAbbr(pub.country).then((c) => setCurrencySymbol(c?.currencySymbol ?? ''));
+        }
+    }, [pub.country]);
+
+    const normalPhotos = pub.images.filter((img) => !img.is_flyer);
+    const thumbUrl = normalPhotos[0]?.image_url || '/uploads/publicaciones/placeholder.jpg';
+    const flyerUrl = pub.images.find((img) => img.is_flyer)?.image_url ?? null;
 
     // ============ MENÚ (pub-more-menu) por tab ============
     const renderMenu = () => {
@@ -164,30 +211,33 @@ export default function PubCard({
             );
         }
 
-        // finalizadas — solo Eliminar anuncio, para los 4 tipos
+        // finalizadas
         return (
-            <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
-                <i className="ti ti-trash"></i> Eliminar anuncio
-            </button>
+            <>
+                {plaBadge && paid && canReactivate && !pub.stopped_by_user && (
+                    <button type="button" className="btn-reactivar-pago" onClick={onOpenReactivar}>
+                        <i className="ti ti-refresh"></i> Reactivar anuncio
+                    </button>
+                )}
+                {plaBadge && !paid && (
+                    <button type="button" className="btn-republicar-gratis" onClick={onOpenRepublicarGratis}>
+                        <i className="ti ti-refresh"></i> Volver a publicar
+                    </button>
+                )}
+                <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
+                    <i className="ti ti-trash"></i> Eliminar anuncio
+                </button>
+            </>
         );
     };
 
     // ============ HEADER: metrics-compact ============
     const renderMetricsCompact = () => {
-        if (tab === 'activas') {
+        if (tab === 'activas' || tab === 'finalizadas') {
             return (
                 <div className="pub-accordion-metrics-compact">
-                    <span><i className="ti ti-users"></i> {pub.statistics.views}</span>
-                    <span><i className="ti ti-message-circle"></i> {pub.statistics.comments_count}</span>
-                    <span><i className="ti ti-share"></i> {pub.statistics.shares}</span>
-                </div>
-            );
-        }
-        if (tab === 'finalizadas') {
-            return (
-                <div className="pub-accordion-metrics-compact">
-                    <span><i className="ti ti-users"></i> {pub.statistics.views}</span>
-                    <span><i className="ti ti-share"></i> {pub.statistics.shares}</span>
+                    <span><i className="ti ti-users"></i> {pub.views_count}</span>
+                    <span><i className="ti ti-share"></i> {pub.shares_count}</span>
                 </div>
             );
         }
@@ -196,19 +246,46 @@ export default function PubCard({
 
     // ============ BODY: admin box (revisión / rechazo / info) ============
     const renderAdminBox = () => {
+        if (tab === 'activas' && (pub.reactivated_at || pub.extra_reach_purchased_at)) {
+            return (
+                <>
+                    {pub.reactivated_at && (
+                        <div className="admin-info-box" style={{ marginTop: '3em' }}>
+                            <i className="ti ti-info-circle"></i>
+                            <p>Este aviso fue reactivado el <b>{formatFecha(pub.reactivated_at)}</b>.</p>
+                        </div>
+                    )}
+                    {pub.extra_reach_purchased_at && (
+                        <div className="admin-info-box" style={{ marginTop: '3em' }}>
+                            <i className="ti ti-info-circle"></i>
+                            <p>
+                                Alcance ampliado a <b>{pub.extra_reach || 'un radio mayor'}</b> el{' '}
+                                <b>{formatFecha(pub.extra_reach_purchased_at)}</b>.
+                            </p>
+                        </div>
+                    )}
+                </>
+            );
+        }
         if (tab === 'revision') {
+            const REASON_MESSAGES: Record<string, string> = {
+                created: reportType === 'sighting'
+                    ? 'Estamos validando la información de este avistamiento. Este proceso toma máximo 10 minutos.'
+                    : paid
+                        ? 'Estamos validando la información antes de activar la difusión.'
+                        : 'Estamos validando la información de este anuncio. Este proceso suele tomar hasta 24 horas.',
+                edited: 'Estamos revisando tus cambios.',
+                upgraded: 'Estamos validando el cambio de plan.',
+                extra_reach: 'Estamos validando tu compra de alcance extra.',
+                extended: 'Estamos validando la extensión de tiempo.',
+                reactivated: 'Estamos revisando la reactivación de tu aviso.',
+                reopened: 'Estamos revisando tu solicitud de reapertura.',
+            };
+            const mensaje = REASON_MESSAGES[pub.pending_reason ?? 'created'] ?? REASON_MESSAGES.created;
             return (
                 <div className="admin-info-box info-box-revision">
                     <i className="ti ti-clock"></i>
-                    <p>
-                        {reportType === 'sighting' ? (
-                            <>Estamos <b>validando la información</b> de este avistamiento. Este proceso toma máximo 10 minutos.</>
-                        ) : paid ? (
-                            <>Estamos <b>validando la información</b> antes de activar la difusión.</>
-                        ) : (
-                            <>Estamos <b>validando la información</b> de este anuncio. Este proceso suele tomar hasta 24 horas.</>
-                        )}
-                    </p>
+                    <p>{mensaje}</p>
                 </div>
             );
         }
@@ -224,27 +301,45 @@ export default function PubCard({
             );
         }
         if (tab === 'finalizadas') {
-            let mensaje = 'Este anuncio finalizó su tiempo de difusión. Ahora aparece en la sección Explorar.';
             if (pub.stopped_by_user) {
-                mensaje = 'Este anuncio finalizó por petición tuya.';
-            } else if (reportType === 'adoption') {
+                return (
+                    <div className="admin-info-box">
+                        <i className="ti ti-info-circle"></i>
+                        <p>
+                            Este anuncio finalizó por decisión del usuario
+                            {pub.stopped_at && <> el <b>{formatFecha(pub.stopped_at)}</b></>}
+                            {pub.refund_status === 'pending' && pub.refund_amount && (
+                                <> Se te reembolsará <b>{currencySymbol} {pub.refund_amount}</b> en los próximos días.</>
+                            )}
+                            {pub.refund_status === 'processed' && pub.refund_amount && (
+                                <> Ya se procesó tu reembolso de <b>{currencySymbol} {pub.refund_amount}</b></>
+                            )}
+                        </p>
+                    </div>
+                );
+            }
+            let mensaje = 'Este anuncio finalizó su tiempo de difusión.';
+            if (reportType === 'adoption') {
                 mensaje = `${displayName} ya fue adoptado o el anuncio caducó. Puedes volver a publicarlo si sigue disponible.`;
             } else if (reportType === 'found') {
-                mensaje = 'Este caso pasó a la sección Explorar como referencia.';
+                mensaje = 'Este caso de encontrado venció.';
             } else if (reportType === 'sighting') {
-                mensaje = 'Este aviso de avistamiento venció. Ahora aparece en Explorar como caso de referencia.';
+                mensaje = 'Este aviso de avistamiento venció.';
             }
             return (
                 <div className="admin-info-box">
                     <i className="ti ti-info-circle"></i>
-                    <p>{mensaje}</p>
+                    <p>
+                        {mensaje}
+                        {pub.expires_at && <> <br></br> Venció el <b>{formatFecha(pub.expires_at)}</b></>}
+                    </p>
                 </div>
             );
         }
         return null;
     };
 
-    // ============ BODY: upsell (solo aprobados, solo lost/adoption) ============
+    // ============ BODY: upsell (solo activos, solo lost/adoption) ============
     const renderUpsell = () => {
         if (tab !== 'activas' || !plaBadge) return null;
         if (paid) {
@@ -274,15 +369,56 @@ export default function PubCard({
         );
     };
 
-    // ============ BODY: editor-actions (aprobados / rechazadas) ============
+    // ============ BODY: editor-actions (activos / rechazados) ============
     const renderEditorActions = () => {
         if (tab === 'activas') {
+            if (pub.statistics_ads?.facebook_post_url) {
+                return (
+                    <div className="pub-editor-actions">
+                        <a
+                            href={pub.statistics_ads.facebook_post_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="tooltip"
+                            data-tooltip="Ver difusión"
+                        >
+                            <i className="ti ti-brand-meta"></i>
+                        </a>
+                        {reportType !== 'sighting' && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="btn-editar-aviso tooltip"
+                                    data-tooltip="Editar"
+                                    onClick={() => onOpenEditarAviso(reportType as 'lost' | 'adoption' | 'found', displayName)}
+                                >
+                                    <i className="ti ti-pencil"></i>
+                                </button>
+                                <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(flyerUrl)}>
+                                    <i className="ti ti-download"></i>
+                                </button>
+                                <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
+                                    <i className="ti ti-external-link"></i>
+                                </a>
+                            </>
+                        )}
+                        {reportType === 'sighting' && (
+                            <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
+                                <i className="ti ti-external-link"></i>
+                            </a>
+                        )}
+                    </div>
+                );
+            }
             if (reportType === 'sighting') {
                 return (
                     <div className="pub-editor-actions">
                         <button type="button" className="btn-eliminar-anuncio tooltip" data-tooltip="Eliminar" onClick={onOpenEliminarAviso}>
                             <i className="ti ti-trash"></i>
                         </button>
+                        <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
+                            <i className="ti ti-external-link"></i>
+                        </a>
                     </div>
                 );
             }
@@ -296,10 +432,12 @@ export default function PubCard({
                     >
                         <i className="ti ti-pencil"></i>
                     </button>
-                    <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(pub)}>
+                    <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(flyerUrl)}>
                         <i className="ti ti-download"></i>
                     </button>
-                    <button type="button" className="tooltip" data-tooltip="Ir al aviso"><i className="ti ti-external-link"></i></button>
+                    <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
+                        <i className="ti ti-external-link"></i>
+                    </a>
                 </div>
             );
         }
@@ -338,6 +476,10 @@ export default function PubCard({
     const renderFinalizadaAction = () => {
         if (tab !== 'finalizadas' || !plaBadge) return null;
         if (paid) {
+            // Reactivar (con el mismo plan) solo si de verdad venció y el
+            // usuario no lo detuvo antes de tiempo (confirmado con backend:
+            // /reactivate exige expires_at ya pasado).
+            if (!canReactivate || pub.stopped_by_user) return null;
             return (
                 <div className="pub-editor-actions">
                     <button type="button" className="btn-reactivar-pago" onClick={onOpenReactivar}>
@@ -346,6 +488,8 @@ export default function PubCard({
                 </div>
             );
         }
+        // Gratis — republicar no depende de expires_at (PUT vacío funciona
+        // desde spam/resolved sin importar la fecha).
         return (
             <div className="pub-editor-actions">
                 <button type="button" className="btn-republicar-gratis" onClick={onOpenRepublicarGratis}>
@@ -357,72 +501,44 @@ export default function PubCard({
 
     // ============ BODY: stats-detail-grid ============
     const renderStatsGrid = () => {
-        if (tab === 'activas') {
-            return (
-                <div className="stats-detail-grid">
-                    <div className="stat-detail-card">
-                        <div className="stat-detail-body">
-                            <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-users"></i> {pub.statistics.views}</span></div>
-                            <span className="stat-detail-label">Vistas</span>
-                        </div>
-                    </div>
-                    <div className="stat-detail-card">
-                        <div className="stat-detail-body">
-                            <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-share"></i> {pub.statistics.shares}</span></div>
-                            <span className="stat-detail-label">Compartidos</span>
-                        </div>
-                    </div>
-                    {reportType !== 'sighting' && (
-                        <div className="stat-detail-card">
-                            <div className="stat-detail-body">
-                                <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-message-circle"></i> {pub.statistics.comments_count}</span></div>
-                                <span className="stat-detail-label">Comentarios</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        if (tab === 'finalizadas') {
-            return (
-                <div className="stats-detail-grid">
-                    <div className="stat-detail-card">
-                        <div className="stat-detail-body">
-                            <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-users"></i> {pub.statistics.views}</span></div>
-                            <span className="stat-detail-label">Vistas totales</span>
-                        </div>
-                    </div>
-                    <div className="stat-detail-card">
-                        <div className="stat-detail-body">
-                            <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-share"></i> {pub.statistics.shares}</span></div>
-                            <span className="stat-detail-label">Compartidos</span>
-                        </div>
+        if (tab !== 'activas' && tab !== 'finalizadas') return null;
+        return (
+            <div className="stats-detail-grid">
+                <div className="stat-detail-card">
+                    <div className="stat-detail-body">
+                        <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-users"></i> {pub.views_count}</span></div>
+                        <span className="stat-detail-label">{tab === 'activas' ? 'Vistas' : 'Vistas totales'}</span>
                     </div>
                 </div>
-            );
-        }
-        return null;
+                <div className="stat-detail-card">
+                    <div className="stat-detail-body">
+                        <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-share"></i> {pub.shares_count}</span></div>
+                        <span className="stat-detail-label">Compartidos</span>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
         <div className={`pub-accordion-item ${isOpen ? 'open' : ''}`} data-tipo={reportType}>
             <div className="pub-accordion-header" onClick={onToggle}>
                 <div className="pub-accordion-thumb">
-                    <img src={pub.images[0] || '/uploads/publicaciones/placeholder.jpg'} alt="" />
+                    <img src={thumbUrl} alt="" />
                 </div>
                 <div className="pub-accordion-main">
                     <div className="pub-accordion-title-row">
                         <h4>{displayName}</h4>
                         <span className={`badge-micro ${suffix ? `badge-${suffix}` : ''}`}>{reportTypeLabel(reportType)}</span>
-                        {plaBadge && (
-                            <span className={`badge-plan ${paid ? 'badge-plan-premiun' : ''}`}>
-                                {paid && <span className="status-pulse"></span>} {planLabel(pub.plan, pub.country || 'PE')}
+                        {plaBadge && pub.package_slug && (
+                            <span className={`badge-plan ${paid ? (reportType === 'adoption' ? 'badge-plan-premiun-adopcion' : 'badge-plan-premiun') : ''}`}>
+                                {paid && tab === 'activas' && <span className="status-pulse"></span>} {planName}
                             </span>
                         )}
                     </div>
                     <div className="pub-accordion-meta">
                         {pub.district && <span><i className="ti ti-pin"></i> {[pub.district, pub.province].filter(Boolean).join(', ')}</span>}
-                        {tab === 'activas' && paid && (
+                        {tab === 'activas' && paid && pub.expires_at && (
                             <span
                                 className="pub-accordion-time-left"
                                 role="button"
@@ -440,7 +556,7 @@ export default function PubCard({
                 {renderMetricsCompact()}
                 <div className="pub-btn-group" onClick={(e) => e.stopPropagation()}>
                     <button type="button" className="action-btn-ghost pub-more-trigger" onClick={onToggleMenu}>
-                        <i className="ti ti-pencil"></i>
+                        <i className="ti ti-dots-vertical"></i>
                     </button>
                     <div className={`pub-more-menu ${isMenuOpen ? 'open' : ''}`}>{renderMenu()}</div>
                 </div>
@@ -466,7 +582,7 @@ export default function PubCard({
                                 </div>
                                 <div className="flyer-account-photo-stage">
                                     <div className="flyer-account-dynamic-grid">
-                                        <div className="flyer-account-grid-item" style={{ backgroundImage: `url('${pub.images[0] || ''}')` }}></div>
+                                        <div className="flyer-account-grid-item" style={{ backgroundImage: `url('${thumbUrl}')` }}></div>
                                     </div>
                                     {plaBadge && pub.title && (
                                         <div className="flyer-account-name-badge">
