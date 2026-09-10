@@ -245,8 +245,21 @@ export async function forgotPassword(email: string): Promise<{ message: string }
     return data;
 }
 
-// El token viene de la URL (?token=...) del correo que manda forgotPassword.
-// Vence en 1 hora del lado del backend.
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+    const res = await fetch(`${API_BASE}/v1/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new AuthApiError(res.status, data.detail || 'No pudimos verificar tu correo. El enlace puede haber vencido.');
+    }
+    return data;
+}
+
+
 export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
     const res = await fetch(`${API_BASE}/v1/auth/reset-password`, {
         method: 'POST',
