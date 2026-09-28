@@ -13,6 +13,7 @@ import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { generateFlyerImage } from '@/lib/flyerExport';
+import { resizePetImage } from '@/lib/resizeImage';
 
 interface ModalEditarAvisoProps {
     isOpen: boolean;
@@ -282,18 +283,20 @@ export default function ModalEditarAviso({
             ? `${editFechaDia} ${mesesCompletos[editFechaMes]} ${editFechaAnio}`
             : '';
 
-    const handleEditFotoChange = (idx: number, e: ChangeEvent<HTMLInputElement>) => {
+    const handleEditFotoChange = async (idx: number, e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
+        try {
+            const compressedBase64 = await resizePetImage(file);
             setEditFotos((prev) => {
                 const next = [...prev];
-                next[idx] = { type: 'new', dataUrl: ev.target?.result as string };
+                next[idx] = { type: 'new', dataUrl: compressedBase64 };
                 return next;
             });
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Error al procesar la imagen:', err);
+            showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+        }
     };
 
     const handleRemoveEditFoto = (idx: number) => {
@@ -438,7 +441,9 @@ export default function ModalEditarAviso({
 
         setIsSaving(true);
         const eventDate =
-            editFechaDia && editFechaMes && editFechaAnio ? `${editFechaAnio}-${editFechaMes}-${editFechaDia}` : null;
+            editFechaDia && editFechaMes && editFechaAnio
+                ? `${editFechaAnio}-${String(editFechaMes).padStart(2, '0')}-${String(editFechaDia).padStart(2, '0')}`
+                : null;
 
         try {
             // Ubicación NUNCA se manda — es inmutable, confirmado con backend.

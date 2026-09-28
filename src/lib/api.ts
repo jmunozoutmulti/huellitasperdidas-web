@@ -230,67 +230,6 @@ export interface SearchResponse {
   meta: SearchMeta;
 }
 
-// ---------------------------------------------------------------------------
-// Developer debug
-// ---------------------------------------------------------------------------
-
-export interface DebugImage {
-  url: string;
-  is_pet: boolean | null;
-  score: number | null;
-}
-
-export interface DebugFetch {
-  status_code: number | null;
-  title: string | null;
-  raw_text: string | null;
-  og_description: string | null;
-  is_partial: boolean;
-  ocr_text: string | null;
-  images: DebugImage[];
-}
-
-export interface DebugClassifier {
-  is_relevant: boolean;
-  confidence: number;
-  rejection_reason: string | null;
-  pos_hits: number;
-  neg_hits: number;
-  advice_hits: number;
-  positive_matched: string[];
-  negative_matched: string[];
-  advice_matched: string[];
-}
-
-export interface DebugPostResult {
-  url: string;
-  error: string | null;
-  fetch: DebugFetch | null;
-  classifier: DebugClassifier | null;
-  llm_result: Record<string, unknown> | null;
-}
-
-export interface DebugResponse {
-  url: string;
-  is_feed: boolean;
-  llm_available: boolean;
-  error?: string;
-  results: DebugPostResult[];
-}
-
-export async function debugUrl(url: string, is_feed: boolean): Promise<DebugResponse> {
-  const res = await fetch(`${API_BASE}/v1/admin/debug/process-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, is_feed }),
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail ?? `API error: ${res.status}`);
-  }
-  return res.json();
-}
 
 export async function analyzeImage(image_base64: string): Promise<AnalyzeImageResult> {
   const res = await fetch(`${API_BASE}/v1/search/analyze-image`, {

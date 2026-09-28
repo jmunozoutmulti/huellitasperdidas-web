@@ -1,13 +1,21 @@
-// Redimensiona y comprime una imagen usando un <canvas> del navegador,
-// antes de convertirla a base64 — para avatares no hace falta la resolución
-// original de una foto de celular (2-5MB+), con esto queda típicamente en
-// 10-50KB sin que se note la diferencia visual en un círculo de perfil chico.
+// 1. Función base general para procesar imágenes en Canvas
 export function resizeImageFile(
     file: File,
-    maxDimension: number = 400,
-    quality: number = 0.8
+    maxDimension: number = 1500,
+    quality: number = 0.8,
+    maxWeightBytes: number = 500 * 1024 // 500 KB
 ): Promise<string> {
     return new Promise((resolve, reject) => {
+        // Si el archivo ya pesa menos del umbral máximo, lo leemos intacto
+        if (file.size <= maxWeightBytes) {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+            reader.onload = (event) => resolve(event.target?.result as string);
+            reader.readAsDataURL(file);
+            return;
+        }
+
+        // Si supera el umbral, lo redimensionamos en Canvas
         const reader = new FileReader();
         reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
         reader.onload = (event) => {
@@ -33,12 +41,22 @@ export function resizeImageFile(
                     return;
                 }
                 ctx.drawImage(img, 0, 0, width, height);
-                // JPEG siempre, sin importar el formato original — un avatar
-                // no necesita transparencia (PNG), y JPEG comprime mucho mejor
                 resolve(canvas.toDataURL('image/jpeg', quality));
             };
             img.src = event.target?.result as string;
         };
         reader.readAsDataURL(file);
     });
+}
+
+// 2. FOTOS DE MASCOTAS (Perdidos / Adopción / Encontrados)
+// Máximo 1500px, 80% calidad y evalúa si supera los 500 KB
+export function resizePetImage(file: File): Promise<string> {
+    return resizeImageFile(file, 1500, 0.8, 500 * 1024);
+}
+
+// 3. AVATARES DE PERFIL
+// Máximo 400px, 80% calidad y evalúa si supera los 80 KB
+export function resizeAvatarImage(file: File): Promise<string> {
+    return resizeImageFile(file, 400, 0.8, 80 * 1024);
 }

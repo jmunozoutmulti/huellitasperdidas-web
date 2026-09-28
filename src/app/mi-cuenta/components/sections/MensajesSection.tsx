@@ -3,6 +3,7 @@
 import { KeyboardEvent, ChangeEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { showToast } from '@/components/global/Toast';
+import { resizePetImage } from '@/lib/resizeImage';
 
 interface Mensaje {
     id: string;
@@ -61,20 +62,30 @@ export default function MensajesSection({
     const [pendingImages, setPendingImages] = useState<Record<string, File | null>>({});
     const [pendingPreviews, setPendingPreviews] = useState<Record<string, string | null>>({});
 
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !activeHiloId) {
+        const currentHiloId = activeHiloId;
+        if (!file || !currentHiloId) {
             e.target.value = '';
             return;
         }
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('La imagen supera los 5MB permitidos', 'warning');
+
+        try {
+            const compressedBase64 = await resizePetImage(file);
+            const res = await fetch(compressedBase64);
+            const blob = await res.blob();
+            const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', {
+                type: 'image/jpeg',
+            });
+
+            setPendingImages((prev) => ({ ...prev, [currentHiloId]: optimizedFile }));
+            setPendingPreviews((prev) => ({ ...prev, [currentHiloId]: URL.createObjectURL(optimizedFile) }));
+        } catch (err) {
+            console.error('Error al optimizar la imagen:', err);
+            showToast('No se pudo procesar la imagen seleccionada.', 'error');
+        } finally {
             e.target.value = '';
-            return;
         }
-        setPendingImages((prev) => ({ ...prev, [activeHiloId]: file }));
-        setPendingPreviews((prev) => ({ ...prev, [activeHiloId]: URL.createObjectURL(file) }));
-        e.target.value = '';
     };
 
     const handleSend = (hiloId: string) => {

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/encontrado.css';
 import { useApp } from '@/context/AppContext';
+import { resizePetImage } from '@/lib/resizeImage';
 import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
 import { useRouter } from 'next/navigation';
 import { generateFlyerImage } from '@/lib/flyerExport';
@@ -204,20 +205,21 @@ export default function PublicarEncontradoPage() {
     // ==========================================
     // CARGA Y REMOCIÓN DE IMÁGENES
     // ==========================================
-    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
+    const handlePhotoChange = async (e: ChangeEvent<HTMLInputElement>, index: number) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const result = event.target?.result as string;
+            try {
+                const compressedBase64 = await resizePetImage(file);
                 setUploadedImages((prev) => {
                     const next = [...prev];
-                    next[index] = result;
+                    next[index] = compressedBase64;
                     return next;
                 });
                 clearFieldError('fotos');
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Error al procesar la imagen:', err);
+                showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+            }
         }
     };
 
@@ -400,7 +402,9 @@ export default function PublicarEncontradoPage() {
                 address_hint: sanitizeText(direccion) || null,
                 lat: null,
                 lng: null,
-                event_date: fechaDia && fechaMes && fechaAnio ? `${fechaAnio}-${fechaMes}-${fechaDia}` : null,
+                event_date: fechaDia && fechaMes && fechaAnio
+                    ? `${fechaAnio}-${String(fechaMes).padStart(2, '0')}-${String(fechaDia).padStart(2, '0')}`
+                    : null,
                 contact_name: currentUser.name || null,
                 contact_phone: `${countryInfo?.dialCode ?? ''} ${normalizePhoneInput(telefono, country)}`.trim() || null,
                 contact_email: currentUser.email || null,

@@ -7,6 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
 import { useRouter } from 'next/navigation';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
+import { resizePetImage } from '@/lib/resizeImage';
 import { showToast } from '@/components/global/Toast';
 import { reverseGeocode } from '@/lib/geocoding';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -55,17 +56,19 @@ export default function AvistamientoPage() {
     // ==========================================
     // MANEJADORES DE IMÁGENES
     // ==========================================
-    const handleMainFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleMainFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setMainImage(event.target?.result as string);
+            try {
+                const compressedBase64 = await resizePetImage(file);
+                setMainImage(compressedBase64);
                 setMainImageOffset(0);
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Error al procesar la imagen:', err);
+                showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+            }
         }
-        e.target.value = ''; // permite volver a seleccionar el mismo archivo si hace falta
+        e.target.value = '';
     };
 
     const handleResetScanner = () => {
@@ -73,26 +76,27 @@ export default function AvistamientoPage() {
         setMainImageOffset(0);
     };
 
-    const handleThumbFileChange = (
+    const handleThumbFileChange = async (
         e: ChangeEvent<HTMLInputElement>,
         index: number
     ) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const result = event.target?.result as string;
+            try {
+                const compressedBase64 = await resizePetImage(file);
                 setUploadedThumbs((prev) => {
                     const next = [...prev];
-                    next[index] = result;
+                    next[index] = compressedBase64;
                     return next;
                 });
 
                 if (!mainImage && index === 0) {
-                    setMainImage(result);
+                    setMainImage(compressedBase64);
                 }
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Error al procesar la imagen:', err);
+                showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+            }
         }
     };
 

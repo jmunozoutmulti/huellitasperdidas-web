@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/adoptar.css';
 import { useApp } from '@/context/AppContext';
+import { resizePetImage } from '@/lib/resizeImage';
 import { geocodeAddress } from '@/lib/geocoding';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
@@ -158,20 +159,21 @@ export default function PublicarAdoptarPage() {
     // ==========================================
     // CARGA Y REMOCIÓN DE IMÁGENES
     // ==========================================
-    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
+    const handlePhotoChange = async (e: ChangeEvent<HTMLInputElement>, index: number) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const result = event.target?.result as string;
+            try {
+                const compressedBase64 = await resizePetImage(file);
                 setUploadedImages((prev) => {
                     const next = [...prev];
-                    next[index] = result;
+                    next[index] = compressedBase64;
                     return next;
                 });
                 clearFieldError('fotos');
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Error al procesar la imagen:', err);
+                showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+            }
         }
     };
 

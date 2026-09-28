@@ -43,7 +43,7 @@ import {
     removeRecentSearch as removeRecentSearchStorage,
 } from '@/lib/searchHistory';
 import { showToast } from '@/components/global/Toast';
-
+import { resizePetImage } from '@/lib/resizeImage';
 // ==========================================
 // CONSTANTES
 // ==========================================
@@ -70,43 +70,6 @@ const PET_TYPE_OPTIONS: { value: string; label: string; icon: string }[] = [
     { value: 'gato', label: 'Gato', icon: 'fa-cat' },
     { value: 'ave', label: 'Ave', icon: 'fa-dove' },
 ];
-
-// Comprime a máx. 1024px de lado más largo, calidad 0.85 — mismo criterio
-// que ya usaban en el ejemplo de referencia, para no mandar fotos pesadas.
-function compressImage(file: File, maxDim = 1024, quality = 0.85): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-                let { width, height } = img;
-                if (width > maxDim || height > maxDim) {
-                    if (width > height) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    reject(new Error('No se pudo procesar la imagen.'));
-                    return;
-                }
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.onerror = () => reject(new Error('No se pudo leer la imagen.'));
-            img.src = reader.result as string;
-        };
-        reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
-        reader.readAsDataURL(file);
-    });
-}
 
 // Convierte el AnalyzeImageResult en una lista plana de chips mostrables.
 function buildBioAttributeChips(result: AnalyzeImageResult): { id: string; label: string }[] {
@@ -408,7 +371,7 @@ export default function BuscarIAPage() {
         setIsAnalyzingBio(true);
 
         try {
-            const dataUrl = await compressImage(file);
+            const dataUrl = await resizePetImage(file);
             setBioImagePreview(dataUrl);
 
             const base64 = dataUrl.split(',')[1] ?? dataUrl;

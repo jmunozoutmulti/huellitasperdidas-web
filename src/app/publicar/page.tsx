@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { showToast } from '@/components/global/Toast';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { validateText } from '@/lib/textValidation';
+import { resizePetImage } from '@/lib/resizeImage';
 
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
@@ -147,22 +148,25 @@ export default function PublicarPerdidaPage() {
     // ==========================================
     // CARGA Y REMOCIÓN DE IMÁGENES
     // ==========================================
-    const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
+    const handlePhotoChange = async (e: ChangeEvent<HTMLInputElement>, index: number) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const result = event.target?.result as string;
+            try {
+                // Se optimiza a máx 1500px, 80% calidad y respeta si ya pesa <= 500 KB
+                const compressedBase64 = await resizePetImage(file);
                 setUploadedImages((prev) => {
                     const next = [...prev];
-                    next[index] = result;
+                    next[index] = compressedBase64;
                     return next;
                 });
                 clearFieldError('fotos');
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('Error al procesar la imagen:', err);
+                showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+            }
         }
     };
+
 
     const handleRemovePhoto = (index: number) => {
         setUploadedImages((prev) => {
@@ -476,9 +480,11 @@ export default function PublicarPerdidaPage() {
                 address_hint: sanitizeText(direccion) || null,
                 lat: lat,
                 lng: lng,
-                event_date: fechaDia && fechaMes && fechaAnio ? `${fechaAnio}-${fechaMes}-${fechaDia}` : null,
+                event_date: fechaDia && fechaMes && fechaAnio
+                    ? `${fechaAnio}-${String(fechaMes).padStart(2, '0')}-${String(fechaDia).padStart(2, '0')}`
+                    : null,
                 contact_name: currentUser.name || null,
-                contact_phone: `${countryInfo?.dialCode ?? ''} ${normalizePhoneInput(telefono, country)}`.trim() || null,
+                contact_phone: `${countryInfo?.dialCode ?? ''} ${normalizePhoneInput(telefono, country)} `.trim() || null,
                 contact_email: currentUser.email || null,
                 meta: {
                     sex: sexoToApi(sexo),

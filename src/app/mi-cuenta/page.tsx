@@ -14,7 +14,7 @@ import { fetchMyReports, type Report } from '@/lib/api';
 import { getMySettings, updateMySettings, type UserSettings } from '@/lib/authApi';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { AuthApiError } from '@/lib/authApi';
-import { resizeImageFile } from '@/lib/resizeImage';
+import { resizeAvatarImage } from '@/lib/resizeImage';
 import { deleteReport } from '@/lib/reportsApi';
 import { getLocaleForCountry } from '@/lib/countries';
 
@@ -381,7 +381,8 @@ export default function MiCuentaPage() {
             return;
         }
         try {
-            const resized = await resizeImageFile(file, 400, 0.8);
+
+            const resized = await resizeAvatarImage(file);
             setAvatarSrc(resized);
         } catch {
             showToast('No pudimos procesar la imagen. Intenta con otra.', 'error');
