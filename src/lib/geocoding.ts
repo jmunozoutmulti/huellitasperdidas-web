@@ -32,8 +32,13 @@ export async function geocodeAddress(
     distrito: string,
     provincia: string,
     departamento: string,
-    countryAbbr: string = 'PE'
+    countryAbbr: string | null | undefined
 ): Promise<GeocodeResult | null> {
+    // Sin país confirmado no geocodificamos — buscar un distrito/dirección
+    // sin saber el país puede devolver coordenadas de un lugar homónimo en
+    // otro país, de forma silenciosa.
+    if (!countryAbbr) return null;
+
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
     const country = await getCountryByAbbr(countryAbbr);
     const countryName = country?.name ?? countryAbbr;
@@ -57,16 +62,14 @@ export async function geocodeAddress(
         if (result) bestResult = result;
     }
 
-    // 4. Todo + Dirección exacta
-    if (direccion.trim() && distrito) {
-        const result = await tryGeocode(
-            `${direccion}, ${distrito}, ${provincia}, ${departamento}, ${countryName}`,
-            apiKey,
-            countryAbbr
-        );
+    // 4. Todo + Dirección exacta.
+    // distrito es opcional (países de 2 niveles, ej. México, no lo tienen):
+    // armamos la query solo con las partes que sí existen.
+    if (direccion.trim()) {
+        const partes = [direccion, distrito, provincia, departamento, countryName].filter(Boolean);
+        const result = await tryGeocode(partes.join(', '), apiKey, countryAbbr);
         if (result) bestResult = result;
     }
-
     return bestResult;
 }
 
@@ -74,8 +77,8 @@ export async function geocodeAddress(
  * Geocodifica un texto libre de ubicación (sin desglose de departamento/
  * provincia/distrito), usado en formularios simples como Avistamiento.
  */
-export async function geocodeFreeText(query: string, countryAbbr: string = 'PE'): Promise<GeocodeResult | null> {
-    if (!query.trim()) return null;
+export async function geocodeFreeText(query: string, countryAbbr: string | null | undefined): Promise<GeocodeResult | null> {
+    if (!query.trim() || !countryAbbr) return null;
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
     const country = await getCountryByAbbr(countryAbbr);

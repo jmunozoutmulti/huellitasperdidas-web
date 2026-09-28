@@ -22,7 +22,7 @@ export class ApiError extends Error {
 export async function authFetch(
     path: string,
     options: RequestInit = {},
-    config: { skipAuthErrorHandling?: boolean } = {}
+    config: { skipAuthErrorHandling?: boolean; idempotencyKey?: string } = {}
 ): Promise<Response> {
     const token = getAccessToken();
     const headers = new Headers(options.headers);
@@ -31,6 +31,9 @@ export async function authFetch(
     }
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
+    }
+    if (config.idempotencyKey) {
+        headers.set('Idempotency-Key', config.idempotencyKey);
     }
 
     const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -55,12 +58,21 @@ export async function authFetch(
 export async function authFetchJson<T>(
     path: string,
     options: RequestInit = {},
-    config: { skipAuthErrorHandling?: boolean } = {}
+    config: { skipAuthErrorHandling?: boolean; idempotencyKey?: string } = {}
 ): Promise<T> {
     const res = await authFetch(path, options, config);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-        throw new ApiError(res.status, data.detail || 'Ocurrió un error con la solicitud.');
+        throw new ApiError(res.status, extractErrorMessage(data.detail));
     }
     return data as T;
+}
+
+function extractErrorMessage(detail: unknown): string {
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+        return detail.map((d) => (typeof d === 'string' ? d : d.msg ?? JSON.stringify(d))).join(', ');
+    }
+    if (detail && typeof detail === 'object') return JSON.stringify(detail);
+    return 'Ocurrió un error con la solicitud.';
 }

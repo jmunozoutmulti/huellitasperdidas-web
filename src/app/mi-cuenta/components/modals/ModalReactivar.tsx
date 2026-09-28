@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
 import { reactivateReport, ReportsApiError } from '@/lib/reportsApi';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr } from '@/lib/countries';
+import type { PaymentInfo } from '@/lib/paymentsApi';
+import CheckoutPago from '@/components/checkout/CheckoutPago';
 
 interface ModalReactivarProps {
     isOpen: boolean;
@@ -18,17 +20,21 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
     const [pub, setPub] = useState<ReportDetail | null>(null);
     const [pkg, setPkg] = useState<PackageOption | null>(null);
     const [currencySymbol, setCurrencySymbol] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<'card' | 'yape'>('card');
-    const [acceptTerms, setAcceptTerms] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [currencyCode, setCurrencyCode] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [pendingPayment, setPendingPayment] = useState<PaymentInfo | null>(null);
+    const idempotencyKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!isOpen || !id) return;
         setPub(null);
         setPkg(null);
         setCurrencySymbol('');
-        setPaymentMethod('card');
-        setAcceptTerms(false);
+        setCurrencyCode('');
+        setPendingPayment(null);
+        setIsLoading(true);
+        idempotencyKeyRef.current = null;
+
         fetchReport(id).then(async (report) => {
             setPub(report);
             if (report.package_slug && report.country) {
@@ -36,29 +42,48 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                     getPackages(report.country),
                     getCountryByAbbr(report.country),
                 ]);
-                setPkg(pkgs.find((p) => p.slug === report.package_slug) ?? null);
+                const foundPkg = pkgs.find((p) => p.slug === report.package_slug) ?? null;
+                setPkg(foundPkg);
                 setCurrencySymbol(country?.currencySymbol ?? '');
+                setCurrencyCode(country?.code !== 'PE' ? country?.currency ?? '' : '');
+
+                if (!idempotencyKeyRef.current) {
+                    idempotencyKeyRef.current = crypto.randomUUID();
+                }
+                try {
+                    const { payment } = await reactivateReport(id, report.package_slug, idempotencyKeyRef.current);
+                    if (payment) {
+                        setPendingPayment(payment);
+                    }
+                } catch (err) {
+                    const message = err instanceof ReportsApiError ? err.message : 'No pudimos cargar las opciones de pago.';
+                    showToast(message, 'error');
+                }
             }
+            setIsLoading(false);
+        }).catch((err) => {
+            console.error('Error cargando datos para reactivar:', err);
+            setIsLoading(false);
         });
     }, [isOpen, id]);
 
-    if (!isOpen) return null;
+    const handlePaymentConfirmed = useCallback(() => {
+        onClose();
+        onReactivated();
+        showToast('¡Pago confirmado! Tu aviso quedará activo en cuanto nuestro equipo lo revise.', 'success');
+    }, [onClose, onReactivated]);
 
-    const handlePagar = async () => {
-        if (!pub?.package_slug) return;
-        setIsProcessing(true);
-        try {
-            await reactivateReport(id, pub.package_slug);
-            onClose();
-            onReactivated();
-            showToast('Tu solicitud fue registrada. Un administrador confirmará el pago y aprobará la reactivación.', 'success');
-        } catch (err) {
-            const message = err instanceof ReportsApiError ? err.message : 'No pudimos reactivar tu aviso. Intenta de nuevo.';
-            showToast(message, 'error');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+    const handlePaymentTimeout = useCallback(() => {
+        onClose();
+        onReactivated();
+        showToast('Tu pago está siendo confirmado, puede tardar unos minutos. Revisa "Mis avisos" en un momento.', 'info');
+    }, [onClose, onReactivated]);
+
+    const handlePaymentCancelled = useCallback(() => {
+        showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
+    }, []);
+
+    if (!isOpen) return null;
 
     return (
         <div className="planes-modal-overlay">
@@ -82,10 +107,10 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                     </p>
                 </div>
 
-                {!pub || !pkg ? (
+                {isLoading || !pub || !pkg ? (
                     <div className="admin-info-box">
                         <i className="ti ti-loader"></i>
-                        <p>Cargando datos del aviso...</p>
+                        <p>Cargando opciones de pago...</p>
                     </div>
                 ) : (
                     <div id="reactivar-modal-checkout">
@@ -96,97 +121,26 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                                     <h5>{pkg.name}</h5>
                                     <span>{pkg.days} días de difusión</span>
                                 </div>
-                                <div className="planes-summary-price">{currencySymbol} {pkg.price}</div>
+                                <div className="planes-summary-price">{currencySymbol} {pkg.price} {currencyCode}</div>
                             </div>
 
-                            <div className="payment-gateway-box">
-                                <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Checkout Seguro (Mercado Pago)
-                                </h4>
-
-                                <div className="payment-methods-tabs">
-                                    <button
-                                        type="button"
-                                        className={`pay-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
-                                        onClick={() => setPaymentMethod('card')}
-                                    >
-                                        <i className="fa-solid fa-credit-card"></i> Tarjeta de Crédito/Débito
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`pay-tab-btn ${paymentMethod === 'yape' ? 'active' : ''}`}
-                                        onClick={() => setPaymentMethod('yape')}
-                                    >
-                                        <i className="fa-solid fa-mobile-screen-button"></i> Yape
-                                    </button>
+                            {/* Pasarela directa */}
+                            {pendingPayment && (
+                                <div className="payment-gateway-box">
+                                    <h4>
+                                        <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                    </h4>
+                                    <CheckoutPago
+                                        payment={pendingPayment}
+                                        reportId={id}
+                                        country={pub.country}
+                                        onConfirmed={handlePaymentConfirmed}
+                                        onTimeout={handlePaymentTimeout}
+                                        onCancelled={handlePaymentCancelled}
+                                    />
+                                    <span className='text-chat'>¿Problemas con tu pago? <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target='blank'>Escríbenos aquí</a> y te ayudamos.</span>
                                 </div>
-
-                                <div className="payment-methods-content">
-                                    <div className={`pay-method-panel ${paymentMethod === 'card' ? 'active' : ''}`}>
-                                        <div className="groups-payment form-group">
-                                            <label className="form-label">Número de tarjeta</label>
-                                            <input type="text" className="form-input" placeholder="0000 0000 0000 0000" />
-                                        </div>
-                                        <div className="groups-payment grid-2col">
-                                            <div className="form-group">
-                                                <label className="form-label">Expiración</label>
-                                                <input type="text" className="form-input" placeholder="MM/AA" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label className="form-label">CVV</label>
-                                                <input type="password" className="form-input" placeholder="000" />
-                                            </div>
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Nombre en tarjeta</label>
-                                            <input type="text" className="form-input" />
-                                        </div>
-                                    </div>
-
-                                    <div className={`pay-method-panel ${paymentMethod === 'yape' ? 'active' : ''}`}>
-                                        <div className="yape-mock-wrapper">
-                                            <p>Escanea desde la app Yape o ingresa tu código de aprobación:</p>
-                                            <div className="yape-qr-box">
-                                                <i className="fa-solid fa-qrcode"></i>
-                                                <span>QR HUELLITAS PERÚ</span>
-                                            </div>
-                                            <div className="form-group">
-                                                <label className="form-label">Código de aprobación Yape (6 dígitos)</label>
-                                                <input type="text" className="form-input" placeholder="000000" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="terms-acceptance-box">
-                                    <label className="terms-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            className="terms-checkbox-input"
-                                            checked={acceptTerms}
-                                            onChange={(e) => setAcceptTerms(e.target.checked)}
-                                        />
-                                        <span className="terms-checkbox-custom"><i className="fa-solid fa-check"></i></span>
-                                        <span className="terms-checkbox-text">
-                                            Acepto los <a href="/terminos-y-condiciones" target="_blank">Términos y Condiciones</a> del servicio.
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="planes-modal-actions">
-                            <div className="text-modal">
-                                <i className="ti ti-clock"></i> Reactivaremos tu aviso en un máximo de 30 minutos.
-                            </div>
-                            <button
-                                type="button"
-                                className="btn-publish"
-                                disabled={!acceptTerms || isProcessing}
-                                onClick={handlePagar}
-                            >
-                                {isProcessing ? 'Procesando...' : 'Pagar y Reactivar'}
-                            </button>
+                            )}
                         </div>
                     </div>
                 )}

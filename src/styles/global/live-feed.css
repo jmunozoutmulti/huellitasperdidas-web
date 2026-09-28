@@ -116,14 +116,13 @@
 @media screen and (max-width: 760px) {
 
     .live-feed-popup {
+        display: none;
         white-space: inherit;
         font-size: 0.9em;
-    }
-
-    .live-feed-popup {
         left: inherit;
         right: 1em;
         max-width: 70%;
         text-align: right;
+
     }
 }

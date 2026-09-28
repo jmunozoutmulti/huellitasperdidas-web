@@ -4,14 +4,16 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { fetchMyReports, type Report } from '@/lib/api';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
+import { getDiasRestantes } from '@/lib/publications';
 import PubCard from '../cards/PubCard';
 import AlertBanner from '@/components/global/AlertBanner';
 
-type Tab = 'activas' | 'revision' | 'rechazadas' | 'finalizadas';
+type Tab = 'activas' | 'revision' | 'pago_pendiente' | 'rechazadas' | 'finalizadas';
 
 const TAB_ICON: Record<Tab, string> = {
     activas: 'ti-check',
     revision: 'ti-clock',
+    pago_pendiente: 'ti-credit-card',
     rechazadas: 'ti-ban',
     finalizadas: 'ti-x',
 };
@@ -19,6 +21,7 @@ const TAB_ICON: Record<Tab, string> = {
 const TAB_LABEL: Record<Tab, string> = {
     activas: 'Activos',
     revision: 'En revisión',
+    pago_pendiente: 'Pago pendiente',
     rechazadas: 'Rechazados',
     finalizadas: 'Finalizados',
 };
@@ -32,14 +35,13 @@ function isExpired(pub: Report): boolean {
     return new Date(pub.expires_at).getTime() < Date.now();
 }
 
-function getDiasRestantes(expiresAt: string | null): number {
-    if (!expiresAt) return 0;
-    const diffMs = new Date(expiresAt).getTime() - Date.now();
-    if (diffMs <= 0) return 0;
-    return Math.ceil(diffMs / 86400000);
-}
-
 function getTab(pub: Report): Tab | null {
+    // El pago manda primero: un aviso con pago pendiente/fallido no debe
+    // mezclarse en "En revisión" como si ya estuviera esperando aprobación
+    // normal — todavía no completó ni el primer paso (pagar).
+    if (pub.payment_status === 'pending' || pub.payment_status === 'failed') {
+        return 'pago_pendiente';
+    }
     if (pub.status === 'pending_approval') return 'revision';
     if (pub.status === 'rejected') return 'rechazadas';
     if (pub.status === 'active') {
@@ -68,6 +70,7 @@ interface DashboardSectionProps {
     onOpenReactivar: (id: string) => void;
     onOpenRepublicarGratis: (id: string) => void;
     onOpenTiempo: (id: string) => void;
+    onOpenRetryPago: (id: string) => void;
     refreshKey: number;
     onSetAccordionOpen: (id: string, isOpen: boolean) => void;
 }
@@ -89,6 +92,7 @@ export default function DashboardSection({
     onOpenReactivar,
     onOpenRepublicarGratis,
     onOpenTiempo,
+    onOpenRetryPago,
     refreshKey,
 }: DashboardSectionProps) {
     const { currentUser } = useApp();
@@ -101,7 +105,8 @@ export default function DashboardSection({
         if (!currentUser) return;
         let isCancelled = false;
         setIsLoading(true);
-        Promise.all([fetchMyReports(), getPackages(currentUser.country || 'PE')])
+        const packagesPromise = currentUser.country ? getPackages(currentUser.country) : Promise.resolve([]);
+        Promise.all([fetchMyReports(), packagesPromise])
             .then(([reports, pkgs]) => {
                 if (!isCancelled) {
                     setPublications(reports);
@@ -116,9 +121,12 @@ export default function DashboardSection({
         };
     }, [currentUser, refreshKey]);
 
-    const tabs: Tab[] = ['activas', 'revision', 'rechazadas', 'finalizadas'];
-
     const countByTab = (tab: Tab) => publications.filter((p) => getTab(p) === tab).length;
+
+    // "Pago pendiente" solo aparece si hay al menos 1 aviso ahí — evita
+    const tabs: Tab[] = ['activas', 'revision', 'pago_pendiente', 'rechazadas', 'finalizadas']
+        .filter((tab) => tab !== 'pago_pendiente' || countByTab(tab) > 0) as Tab[];
+
     const currentPubs = publications.filter((p) => getTab(p) === activePubTab);
 
     useEffect(() => {
@@ -140,6 +148,7 @@ export default function DashboardSection({
             {publications
                 .filter((p) => {
                     if (p.status !== 'active') return false;
+                    if (p.payment_status === 'pending' || p.payment_status === 'failed') return false;
                     if (!p.package_slug || p.package_slug === 'gratis') return false;
                     if (dismissedBannerIds.has(p.id)) return false;
                     const dias = getDiasRestantes(p.expires_at);
@@ -172,7 +181,9 @@ export default function DashboardSection({
                             onClick={() => setActivePubTab(tab)}
                         >
                             <i className={`ti ${TAB_ICON[tab]}`}></i> {TAB_LABEL[tab]}{' '}
-                            <span className="pub-tab-count">{countByTab(tab)}</span>
+                            <span className={`pub-tab-count ${countByTab(tab) > 9 ? 'pill' : ''}`}>
+                                {countByTab(tab)}
+                            </span>
                         </button>
                     ))}
                 </div>
@@ -212,6 +223,7 @@ export default function DashboardSection({
                                 onOpenReactivar={() => onOpenReactivar(pub.id)}
                                 onOpenRepublicarGratis={() => onOpenRepublicarGratis(pub.id)}
                                 onOpenTiempo={() => onOpenTiempo(pub.id)}
+                                onOpenRetryPago={() => onOpenRetryPago(pub.id)}
                             />
                         ))}
                 </div>

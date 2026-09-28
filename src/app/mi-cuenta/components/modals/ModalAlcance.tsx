@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
 import { purchaseExtraReach, ReportsApiError } from '@/lib/reportsApi';
 import { getPackages, type PackageOption, type ReachOption } from '@/lib/packagesApi';
-import { getCountryByAbbr } from '@/lib/countries';
+import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
+import type { PaymentInfo } from '@/lib/paymentsApi';
+import CheckoutPago from '@/components/checkout/CheckoutPago';
 
 interface ModalAlcanceProps {
     isOpen: boolean;
@@ -18,20 +20,21 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
     const [pub, setPub] = useState<ReportDetail | null>(null);
     const [pkg, setPkg] = useState<PackageOption | null>(null);
     const [currencySymbol, setCurrencySymbol] = useState('');
+    const [currencyCode, setCurrencyCode] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
     const [step, setStep] = useState<1 | 2>(1);
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
-    const [paymentMethod, setPaymentMethod] = useState<'card' | 'yape'>('card');
-    const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [pendingPayment, setPendingPayment] = useState<PaymentInfo | null>(null);
+    const idempotencyKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!isOpen || !id) return;
         setStep(1);
         setRadiusKm(null);
-        setPaymentMethod('card');
-        setAcceptTerms(false);
+        setPendingPayment(null);
+        idempotencyKeyRef.current = null;
         setPub(null);
         setPkg(null);
         setIsLoading(true);
@@ -46,11 +49,31 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                 const foundPkg = pkgs.find((p) => p.slug === report.package_slug) ?? null;
                 setPkg(foundPkg);
                 setCurrencySymbol(country?.currencySymbol ?? '');
+                setCurrencyCode(country?.code !== 'PE' ? country?.currency ?? '' : '');
                 setRadiusKm(foundPkg?.reachOptions[0]?.radiusKm ?? null);
             }
             setIsLoading(false);
+        }).catch((err) => {
+            console.error('Error cargando datos para alcance:', err);
+            setIsLoading(false);
         });
     }, [isOpen, id]);
+
+    const handlePaymentConfirmed = useCallback(() => {
+        onClose();
+        onPurchased();
+        showToast('¡Pago confirmado! Tu aviso quedará activo en cuanto nuestro equipo lo revise.', 'success');
+    }, [onClose, onPurchased]);
+
+    const handlePaymentTimeout = useCallback(() => {
+        onClose();
+        onPurchased();
+        showToast('Tu pago está siendo confirmado, puede tardar unos minutos. Revisa "Mis avisos" en un momento.', 'info');
+    }, [onClose, onPurchased]);
+
+    const handlePaymentCancelled = useCallback(() => {
+        showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
+    }, []);
 
     if (!isOpen) return null;
 
@@ -96,12 +119,20 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
 
     const handlePagar = async () => {
         if (!tier) return;
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = crypto.randomUUID();
+        }
         setIsProcessing(true);
         try {
-            await purchaseExtraReach(id, tier.radiusKm);
-            onClose();
-            onPurchased();
-            showToast('¡Listo! Validaremos la solicitud y ampliaremos el alcance de tu aviso.', 'success');
+            const { payment } = await purchaseExtraReach(id, tier.radiusKm, idempotencyKeyRef.current);
+            if (payment) {
+                setPendingPayment(payment);
+                setStep(2);
+            } else {
+                onClose();
+                onPurchased();
+                showToast('¡Listo! Validaremos la solicitud y ampliaremos el alcance de tu aviso.', 'success');
+            }
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos procesar tu compra. Intenta de nuevo.';
             showToast(message, 'error');
@@ -125,6 +156,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                     </button>
                 </div>
 
+                {/* PASO 1: SELECCIÓN DE ALCANCE */}
                 {step === 1 && tier && (
                     <div id="alcance-modal-step-1">
                         <div className="alcance-radar-preview">
@@ -166,13 +198,13 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                                             <span className="zona-reach">
                                                 {t.estimatedReach && (
                                                     <>
-                                                        Hasta <b>{Number(t.estimatedReach).toLocaleString('es-PE')}</b> personas
+                                                        Hasta <b>{Number(t.estimatedReach).toLocaleString(getLocaleForCountry(pub?.country))}</b> personas
                                                     </>
                                                 )}
                                             </span>
                                         </div>
                                         <div className="zona-precio">
-                                            <span><i>{currencySymbol}</i> {t.price}</span>
+                                            <span><i>{currencySymbol}</i> {t.price} {currencyCode}</span>
                                         </div>
                                     </div>
                                 </label>
@@ -183,14 +215,26 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                             <div className="text-modal">
                                 <i className="ti ti-radar"></i> El alcance se suma a tu plan actual
                             </div>
-                            <button type="button" className="btn-publish" onClick={() => setStep(2)}>
-                                Continuar <i className="ti ti-chevron-right"></i>
+                            <button
+                                type="button"
+                                className="btn-publish"
+                                disabled={isProcessing}
+                                onClick={handlePagar}
+                            >
+                                {isProcessing ? (
+                                    'Procesando...'
+                                ) : (
+                                    <>
+                                        <i className="ti ti-check"></i> Continuar
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
                 )}
 
-                {step === 2 && tier && (
+                {/* PASO 2: PASARELA DE PAGO DIRECTA */}
+                {step === 2 && tier && pendingPayment && (
                     <div id="alcance-modal-step-2">
                         <div className="modal-summary">
                             <div className="planes-modal-summary-bar">
@@ -198,102 +242,28 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                                     <span className="planes-summary-label">Alcance seleccionado</span>
                                     <h5>{tier.radiusKm} km adicionales</h5>
                                 </div>
-                                <div className="planes-summary-price">{currencySymbol} {tier.price}</div>
+                                <div className="planes-summary-price">{currencySymbol} {tier.price} {currencyCode}</div>
                             </div>
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Checkout Seguro (Mercado Pago)
+                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
                                 </h4>
 
-                                <div className="payment-methods-tabs">
-                                    <button
-                                        type="button"
-                                        className={`pay-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
-                                        onClick={() => setPaymentMethod('card')}
-                                    >
-                                        <i className="fa-solid fa-credit-card"></i> Tarjeta de Crédito/Débito
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`pay-tab-btn ${paymentMethod === 'yape' ? 'active' : ''}`}
-                                        onClick={() => setPaymentMethod('yape')}
-                                    >
-                                        <i className="fa-solid fa-mobile-screen-button"></i> Yape
-                                    </button>
-                                </div>
-
-                                <div className="payment-methods-content">
-                                    <div className={`pay-method-panel ${paymentMethod === 'card' ? 'active' : ''}`}>
-                                        <div className="groups-payment form-group">
-                                            <label className="form-label">Número de tarjeta</label>
-                                            <input type="text" className="form-input" placeholder="0000 0000 0000 0000" />
-                                        </div>
-                                        <div className="groups-payment grid-2col">
-                                            <div className="form-group">
-                                                <label className="form-label">Expiración</label>
-                                                <input type="text" className="form-input" placeholder="MM/AA" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label className="form-label">CVV</label>
-                                                <input type="password" className="form-input" placeholder="000" />
-                                            </div>
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Nombre en tarjeta</label>
-                                            <input type="text" className="form-input" />
-                                        </div>
-                                    </div>
-
-                                    <div className={`pay-method-panel ${paymentMethod === 'yape' ? 'active' : ''}`}>
-                                        <div className="yape-mock-wrapper">
-                                            <p>Escanea desde la app Yape o ingresa tu código de aprobación:</p>
-                                            <div className="yape-qr-box">
-                                                <i className="fa-solid fa-qrcode"></i>
-                                                <span>QR HUELLITAS PERÚ</span>
-                                            </div>
-                                            <div className="form-group">
-                                                <label className="form-label">Código de aprobación Yape (6 dígitos)</label>
-                                                <input type="text" className="form-input" placeholder="000000" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="terms-acceptance-box">
-                                    <label className="terms-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            className="terms-checkbox-input"
-                                            checked={acceptTerms}
-                                            onChange={(e) => setAcceptTerms(e.target.checked)}
-                                        />
-                                        <span className="terms-checkbox-custom">
-                                            <i className="fa-solid fa-check"></i>
-                                        </span>
-                                        <span className="terms-checkbox-text">
-                                            Acepto los <a href="/terminos-y-condiciones" target="_blank">Términos y Condiciones</a> del servicio.
-                                        </span>
-                                    </label>
-                                </div>
+                                <CheckoutPago
+                                    payment={pendingPayment}
+                                    reportId={id}
+                                    country={pub?.country}
+                                    onConfirmed={handlePaymentConfirmed}
+                                    onTimeout={handlePaymentTimeout}
+                                    onCancelled={handlePaymentCancelled}
+                                />
+                                <span className='text-chat'>¿Problemas con tu pago? <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target='blank'>Escríbenos aquí</a> y te ayudamos.</span>
                             </div>
-                        </div>
-                        <div className="planes-modal-actions">
-                            <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
-                                <i className="ti ti-chevron-left"></i> Volver
-                            </button>
-                            <button
-                                type="button"
-                                className="btn-publish"
-                                disabled={!acceptTerms || isProcessing}
-                                onClick={handlePagar}
-                            >
-                                {isProcessing ? 'Procesando...' : 'Pagar y Activar'}
-                            </button>
                         </div>
                     </div>
                 )}
             </div>
-        </div >
+        </div>
     );
 }

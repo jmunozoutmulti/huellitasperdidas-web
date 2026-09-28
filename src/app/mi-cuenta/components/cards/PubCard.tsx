@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
 import type { Report } from '@/lib/api';
 import type { PackageOption } from '@/lib/packagesApi';
-import { getCountryByAbbr } from '@/lib/countries';
+import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
 
-type Tab = 'activas' | 'revision' | 'rechazadas' | 'finalizadas';
+type Tab = 'activas' | 'revision' | 'pago_pendiente' | 'rechazadas' | 'finalizadas';
 type ReportType = 'lost' | 'found' | 'adoption' | 'sighting';
 
 interface PubCardProps {
@@ -26,6 +26,7 @@ interface PubCardProps {
     onOpenReactivar: () => void;
     onOpenRepublicarGratis: () => void;
     onOpenTiempo: () => void;
+    onOpenRetryPago: () => void;
 }
 
 // --- Íconos/textos del badge de estado según status real ---
@@ -49,15 +50,14 @@ function reportTypeLabel(reportType: string): string {
 }
 
 function sexLabel(sex: string | null): string {
-    if (sex === 'male') return 'Macho';
-    if (sex === 'female') return 'Hembra';
+    if (sex === 'macho') return 'Macho';
+    if (sex === 'hembra') return 'Hembra';
     return '';
 }
-
 function petTypeLabel(petType: string | null): string {
-    if (petType === 'dog') return 'Perro';
-    if (petType === 'cat') return 'Gato';
-    if (petType === 'bird') return 'Ave';
+    if (petType === 'perro') return 'Perro';
+    if (petType === 'gato') return 'Gato';
+    if (petType === 'ave') return 'Ave';
     return 'Animal';
 }
 
@@ -80,8 +80,8 @@ function buildFoundTitle(pub: Report): string {
     return parts.join(' ');
 }
 
-function formatFecha(iso: string): string {
-    return new Date(iso).toLocaleString('es-PE', {
+function formatFecha(iso: string, countryCode?: string | null): string {
+    return new Date(iso).toLocaleString(getLocaleForCountry(countryCode), {
         day: '2-digit',
         month: 'long',
         year: 'numeric',
@@ -137,6 +137,7 @@ export default function PubCard({
     onOpenReactivar,
     onOpenRepublicarGratis,
     onOpenTiempo,
+    onOpenRetryPago,
 }: PubCardProps) {
     const reportType = pub.report_type as ReportType;
     const paid = !!pub.package_slug && pub.package_slug !== 'gratis';
@@ -214,16 +215,6 @@ export default function PubCard({
         // finalizadas
         return (
             <>
-                {plaBadge && paid && canReactivate && !pub.stopped_by_user && (
-                    <button type="button" className="btn-reactivar-pago" onClick={onOpenReactivar}>
-                        <i className="ti ti-refresh"></i> Reactivar anuncio
-                    </button>
-                )}
-                {plaBadge && !paid && (
-                    <button type="button" className="btn-republicar-gratis" onClick={onOpenRepublicarGratis}>
-                        <i className="ti ti-refresh"></i> Volver a publicar
-                    </button>
-                )}
                 <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
                     <i className="ti ti-trash"></i> Eliminar anuncio
                 </button>
@@ -250,17 +241,17 @@ export default function PubCard({
             return (
                 <>
                     {pub.reactivated_at && (
-                        <div className="admin-info-box" style={{ marginTop: '3em' }}>
+                        <div className="admin-info-box">
                             <i className="ti ti-info-circle"></i>
-                            <p>Este aviso fue reactivado el <b>{formatFecha(pub.reactivated_at)}</b>.</p>
+                            <p>Este aviso fue reactivado el <b>{formatFecha(pub.reactivated_at, pub.country)}</b>.</p>
                         </div>
                     )}
                     {pub.extra_reach_purchased_at && (
-                        <div className="admin-info-box" style={{ marginTop: '3em' }}>
+                        <div className="admin-info-box">
                             <i className="ti ti-info-circle"></i>
                             <p>
                                 Alcance ampliado a <b>{pub.extra_reach || 'un radio mayor'}</b> el{' '}
-                                <b>{formatFecha(pub.extra_reach_purchased_at)}</b>.
+                                <b>{formatFecha(pub.extra_reach_purchased_at, pub.country)}</b>.
                             </p>
                         </div>
                     )}
@@ -307,7 +298,7 @@ export default function PubCard({
                         <i className="ti ti-info-circle"></i>
                         <p>
                             Este anuncio finalizó por decisión del usuario
-                            {pub.stopped_at && <> el <b>{formatFecha(pub.stopped_at)}</b></>}
+                            {pub.stopped_at && <> el <b>{formatFecha(pub.stopped_at, pub.country)}</b></>}
                             {pub.refund_status === 'pending' && pub.refund_amount && (
                                 <> Se te reembolsará <b>{currencySymbol} {pub.refund_amount}</b> en los próximos días.</>
                             )}
@@ -331,7 +322,7 @@ export default function PubCard({
                     <i className="ti ti-info-circle"></i>
                     <p>
                         {mensaje}
-                        {pub.expires_at && <> <br></br> Venció el <b>{formatFecha(pub.expires_at)}</b></>}
+                        {pub.expires_at && <> <br></br> Venció el <b>{formatFecha(pub.expires_at, pub.country)}</b></>}
                     </p>
                 </div>
             );
@@ -472,6 +463,18 @@ export default function PubCard({
         return null;
     };
 
+    // ============ BODY: acción de pago pendiente (terminar de pagar) ============
+    const renderPagoPendienteAction = () => {
+        if (tab !== 'pago_pendiente') return null;
+        return (
+            <div className="pub-editor-actions">
+                <button type="button" className="btn-reactivar-pago" onClick={onOpenRetryPago}>
+                    <i className="ti ti-credit-card-pay"></i> Terminar de pagar
+                </button>
+            </div>
+        );
+    };
+
     // ============ BODY: acción de finalizadas (reactivar / republicar) ============
     const renderFinalizadaAction = () => {
         if (tab !== 'finalizadas' || !plaBadge) return null;
@@ -550,7 +553,7 @@ export default function PubCard({
                                 <i className="ti ti-history"></i> <u>Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}</u>
                             </span>
                         )}
-                        <span><b>Publicado:</b> {formatFecha(pub.created_at)}</span>
+                        <span><b>Publicado:</b> {formatFecha(pub.created_at, pub.country)}</span>
                     </div>
                 </div>
                 {renderMetricsCompact()}
@@ -598,6 +601,7 @@ export default function PubCard({
                         {renderAdminBox()}
                         {renderUpsell()}
                         {renderEditorActions()}
+                        {renderPagoPendienteAction()}
                         {renderFinalizadaAction()}
                         {renderStatsGrid()}
                     </div>

@@ -259,6 +259,7 @@ body.is-home .navbar {
   gap: 0.35em;
   border-radius: 3em;
   text-decoration: none;
+  position: relative;
 }
 
 .tab-btn i {
@@ -273,6 +274,41 @@ body.is-home .navbar {
   background-color: var(--bg-card);
   font-weight: 700;
   box-shadow: rgba(0, 0, 0, 0.07) 0px 2px 10px 0px;
+}
+
+.centinela-active-dot {
+  background-color: var(--brand-red);
+  border-radius: 50%;
+  width: .5em;
+  height: .5em;
+  display: inline-block;
+  position: absolute;
+  top: 6px;
+  right: 2px;
+}
+
+.centinela-active-dot:after {
+  content: '';
+  position: absolute;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background-color: var(--brand-red);
+  border-radius: 50%;
+  animation: centinela-radar-wave 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes centinela-radar-wave {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 
 .nav-user-actions {
@@ -314,7 +350,7 @@ body.is-home .navbar {
 }
 
 .user-avatar span {
-  font-size: 1em;
+  font-size: 1.1em;
   color: #fff;
   font-weight: 700;
 }
@@ -459,7 +495,7 @@ body.is-home .navbar {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--bg-input);
+  background: #e1e1e1;
   transition: 0.3s;
   border-radius: 2em;
 }
@@ -474,7 +510,8 @@ body.is-home .navbar {
   background-color: #ffffff;
   transition: 0.3s;
   border-radius: 50%;
-  box-shadow: 0 5px 5px rgb(0 0 0 / 10%);
+  box-shadow: 0 0 15px rgb(0 0 0 / 20%);
+
 }
 
 input:checked+.ui-slider-btn {
@@ -784,22 +821,6 @@ input:checked+.ui-slider-btn:before {
 
 .auth-phone-input-group {
   flex: 1;
-}
-
-.country-select-trigger {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1em;
-  border: 1px solid var(--border-color);
-  border-radius: 0.5em;
-  background: var(--bg-input);
-  color: var(--text-main);
-  font-weight: 500;
-  cursor: pointer;
-  font-size: 0.95em;
-  gap: 5px;
 }
 
 .country-select-abbr {
@@ -1262,6 +1283,11 @@ input:checked+.ui-slider-btn:before {
   background-color: var(--brand-red);
 }
 
+.badge-horizontal.badge-max-priority {
+  background-color: var(--yellow-brand);
+  color: var(--text-main);
+}
+
 .badge.badge-found,
 .badge-horizontal.badge-found {
   background-color: var(--emerald-brand);
@@ -1301,12 +1327,16 @@ input:checked+.ui-slider-btn:before {
   color: var(--text-white) !important;
 }
 
+.badge-horizontal.badge-adopt-premium {
+  background-color: var(--purple-brand-hover) !important;
+  color: var(--text-white) !important;
+}
 
 /*Boton +*/
 .fab-publish-wrapper {
   position: fixed;
   bottom: 2em;
-  left: 5%;
+  left: 2.5%;
   z-index: 200;
   display: none;
 }
@@ -1329,7 +1359,7 @@ input:checked+.ui-slider-btn:before {
 
 .fab-publish-btn i {
   color: var(--text-white);
-  font-size: 1.4em;
+  font-size: 1.6em;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 2;
   position: relative;
@@ -1436,8 +1466,9 @@ h1 {
   -webkit-appearance: none;
 }
 
-.custom-select-dropdown::-webkit-scrollbar:vertical {
+.custom-select-dropdown::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 
 .custom-select-dropdown::-webkit-scrollbar-button {
@@ -1520,10 +1551,6 @@ h1 {
   background: transparent;
 }
 
-.pointernone {
-  cursor: initial !important;
-}
-
 
 /* ==========================================================================
    PASARELA DE PAGO INTERFAZ (MOCKUP MERCADO PAGO / YAPE)
@@ -1531,14 +1558,14 @@ h1 {
 .payment-gateway-box {
   background: var(--bg-alt);
   border: 1px solid var(--border-color);
-  padding: 1.5em;
+  padding: 1em;
   border-radius: 1em;
 }
 
 .payment-gateway-box h4 {
   font-size: 1em;
   color: var(--text-main);
-  margin-bottom: 1em;
+  margin-bottom: 0.5em;
   font-weight: 700;
 }
 
@@ -1585,13 +1612,44 @@ h1 {
   display: block;
 }
 
-/* Yape Estilo Específico */
-.yape-mock-wrapper {
-  text-align: center;
-  padding: 0.5em;
+#pay-method-card h1 {
+  display: none;
 }
 
-.yape-mock-wrapper p {
+#pay-method-card .mp-checkout-bricks__payment-options-_ANPQa {
+  margin-bottom: 1em;
+}
+
+#pay-method-card div:last-child {
+  margin-bottom: 0;
+}
+
+#pay-method-card {
+  font-family: Google Sans;
+}
+
+/* Yape Estilo Específico */
+.info-yape {
+  padding: 0.35em 1em;
+  text-align: center;
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 1px dashed #691784;
+  border-radius: 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #691784;
+  margin-bottom: 2em;
+  gap: 1em;
+}
+
+.info-yape img {
+  width: 2.25em;
+}
+
+♀ .yape-mock-wrapper p {
   font-size: 0.9em;
   color: var(--text-main);
   margin-bottom: 1em;
@@ -1670,7 +1728,7 @@ h1 {
 .terms-checkbox-text {
   font-size: 0.9em;
   line-height: 1.3em;
-  color: var(--text-main);
+  color: var(--text-secondary);
   font-weight: 300;
 }
 
@@ -1750,6 +1808,11 @@ h1 {
 .groups-payment {
   margin-bottom: 0.75em;
 }
+
+.groups-payment label b {
+  color: #691784;
+}
+
 
 .form-group>label {
   display: block;
@@ -1930,6 +1993,27 @@ h1 {
   color: var(--text-primary);
 }
 
+.field-tel {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5em;
+  padding: 0 0.75em;
+}
+
+.field-tel span {
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border-color);
+  flex-shrink: 0;
+  padding-right: .5em;
+  font-size: .95em;
+  font-weight: 700;
+}
+
+.field-tel .form-input {
+  border: none;
+}
 
 .grid-1col {
   display: grid;
@@ -2057,7 +2141,6 @@ h1 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0.75em;
-  margin-top: 0.5em;
 }
 
 .photo-uploader-box {
@@ -2285,6 +2368,35 @@ h1 {
   padding: 0.5em 0;
 }
 
+.dropdown-scroll {
+  overflow: auto;
+  max-height: 21em;
+}
+
+.dropdown-scroll::-webkit-scrollbar {
+  -webkit-appearance: none;
+}
+
+.dropdown-scroll::-webkit-scrollbar:vertical {
+  width: 7px;
+}
+
+.dropdown-scroll::-webkit-scrollbar-button {
+  display: none;
+}
+
+.dropdown-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border-color-focus);
+  border: 0px solid var(--border-color-focus);
+}
+
+.dropdown-scroll::-webkit-scrollbar-track {
+  border-radius: 0px;
+}
+
+
+
+
 .search-dropdown-results.is-visible {
   display: block;
 }
@@ -2469,7 +2581,7 @@ h1 {
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 0.95em;
+  font-size: 0.8em;
   transition: all 0.25s ease;
 }
 
@@ -2482,7 +2594,7 @@ h1 {
   font-size: 1.1em;
   font-weight: 700;
   color: var(--text-main);
-  margin: 1.5em 0 0.5em 0;
+  margin: 1.25em 0 0.25em 0;
 }
 
 .popup-publicar-body p {
@@ -2498,7 +2610,7 @@ h1 {
   text-align: center;
   background: var(--brand-red);
   color: var(--text-white);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 0.95em;
   padding: 0.5em;
   border-radius: 3em;
@@ -2511,6 +2623,60 @@ h1 {
   background: var(--brand-red-hover);
   box-shadow: 0 6px 20px rgba(255, 77, 77, 0.60);
 }
+
+
+.section-not-country {
+  background: var(--bg-card);
+  border-radius: 0.75em;
+  gap: .5em;
+  padding: 3em;
+  width: 30em;
+  margin: 0 auto;
+  display: flex;
+  flex-flow: column;
+  gap: 1em;
+}
+
+.section-not-country p {
+  color: var(--text-secondary);
+  font-size: 1em;
+  list-style: 1.3em;
+  font-weight: 300;
+  text-align: center;
+}
+
+.section-not-country p b {
+  font-weight: 700;
+}
+
+.selectCountry {
+  width: 20em;
+  margin: 0 auto;
+}
+
+.selectCountry li {
+  font-size: .95em;
+}
+
+
+.text-chat {
+  color: var(--text-secondary);
+  margin-top: 1em;
+  font-size: .875em;
+  font-weight: 300;
+  line-height: 1.3em;
+  display: block;
+}
+
+.text-chat a {
+  color: var(--text-main);
+  text-decoration: underline;
+}
+
+.text-chat a:hover {
+  color: var(--text-red);
+}
+
 
 
 
@@ -2657,5 +2823,18 @@ h1 {
   .btn-login i {
     font-size: 1.5em;
   }
+
+  .section-not-country {
+    width: 100%;
+  }
+
+  .selectCountry {
+    width: 100%;
+  }
+
+  .terms-checkbox-label {
+    gap: 0.8em;
+  }
+
 
 }

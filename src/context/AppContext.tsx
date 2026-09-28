@@ -5,14 +5,17 @@ import { showToast } from '@/components/global/Toast';
 import { AuthUser, saveAccessToken, getAccessToken, clearAccessToken, saveDetectedCountry, getDetectedCountry } from '@/lib/auth';
 import { detectCountry } from '@/lib/detectCountry';
 import { loginUser, registerUser, getMe, updateMe, deleteMe, uploadAvatar, deleteAvatar, loginWithGoogleToken, AuthApiError } from '@/lib/authApi';
+import { getMyCentinela } from '@/lib/centinelaApi';
 
 interface AppContextType {
     isDarkMode: boolean;
     toggleTheme: (isDark?: boolean) => void;
+    detectedCountry: string | null;
+    isCountryDetectionDone: boolean;
     isAuthModalOpen: boolean;
-    authModalInitialMode: 'login' | 'register' | 'recover' | 'forgot' | 'reset';
+    authModalInitialMode: 'login' | 'register' | 'recover' | 'forgot' | 'reset' | 'verify';
     authModalResetToken: string | null;
-    openAuthModal: (options?: { mode?: 'login' | 'register' | 'recover' | 'forgot' | 'reset'; token?: string }) => void;
+    openAuthModal: (options?: { mode?: 'login' | 'register' | 'recover' | 'forgot' | 'reset' | 'verify'; token?: string }) => void;
     closeAuthModal: () => void;
     isLoggedIn: boolean;
     currentUser: AuthUser | null;
@@ -22,6 +25,7 @@ interface AppContextType {
     logout: () => void;
     usuarioTienePublicacionActiva: boolean;
     centinelaEstaActivo: boolean;
+    setCentinelaEstaActivo: (value: boolean) => void;
     isAuthChecked: boolean;
     updateCurrentUser: (patch: Partial<AuthUser>) => void;
     updateProfile: (patch: { name?: string; last_name_paterno?: string; last_name_materno?: string; phone?: string; country?: string; region?: string; province?: string; district?: string; password?: string; current_password?: string }) => Promise<void>;
@@ -34,14 +38,17 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-    const [authModalInitialMode, setAuthModalInitialMode] = useState<'login' | 'register' | 'recover' | 'forgot' | 'reset'>('login');
+    const [authModalInitialMode, setAuthModalInitialMode] = useState<'login' | 'register' | 'recover' | 'forgot' | 'reset' | 'verify'>('login');
     const [authModalResetToken, setAuthModalResetToken] = useState<string | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
 
     const [usuarioTienePublicacionActiva] = useState(false);
-    const [centinelaEstaActivo] = useState(false);
+    const [centinelaEstaActivo, setCentinelaEstaActivo] = useState(false);
+
+    const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
+    const [isCountryDetectionDone, setIsCountryDetectionDone] = useState(false);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme');
@@ -49,12 +56,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsDarkMode(isDark);
         document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
 
-        // País detectado — una sola vez por dispositivo (si ya hay uno
-        // guardado, no se vuelve a pedir). Corre para cualquier visitante,
-        // tenga sesión o no — es lo que filtra Explorar antes de que exista
-        // una cuenta.
-        if (!getDetectedCountry()) {
-            detectCountry().then(saveDetectedCountry);
+        const existing = getDetectedCountry();
+        if (existing) {
+            setDetectedCountry(existing);
+            setIsCountryDetectionDone(true);
+        } else {
+            detectCountry().then((country) => {
+                saveDetectedCountry(country);
+                setDetectedCountry(country);
+                setIsCountryDetectionDone(true);
+            });
         }
 
         async function restoreSession() {
@@ -74,14 +85,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     last_name_paterno: apiUser.last_name_paterno || '',
                     last_name_materno: apiUser.last_name_materno || '',
                     phone: apiUser.phone || '',
-                    country: apiUser.country || getDetectedCountry() || 'PE',
+                    country: apiUser.country || getDetectedCountry() || null,
                     region: apiUser.region || '',
                     province: apiUser.province || '',
                     district: apiUser.district || '',
                     avatar: apiUser.avatar || '',
+                    hasPassword: apiUser.has_password,
                 };
                 setCurrentUser(user);
                 setIsLoggedIn(true);
+                backfillDetectedCountry(apiUser.country);
+                refreshCentinelaStatus();
             } catch {
                 // Token inválido o vencido — cerramos sesión en silencio,
                 // sin mostrar ningún error (es un estado normal, no una falla).
@@ -94,9 +108,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         restoreSession();
     }, []);
 
-    // Si cualquier llamada autenticada (authFetch) detecta que el token ya
-    // no sirve, esto reacciona al instante — sin esto, la UI seguía
-    // mostrando "logueado" hasta el próximo recargue de página.
+    // Si cualquier llamada autenticada (authFetch) detecta que el token ya no sirve, esto reacciona al instante 
     useEffect(() => {
         const handleUnauthorized = () => {
             setCurrentUser(null);
@@ -114,7 +126,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('theme', newDarkState ? 'dark' : 'light');
     };
 
-    const openAuthModal = (options?: { mode?: 'login' | 'register' | 'recover' | 'forgot' | 'reset'; token?: string }) => {
+    const openAuthModal = (options?: { mode?: 'login' | 'register' | 'recover' | 'forgot' | 'reset' | 'verify'; token?: string }) => {
         setAuthModalInitialMode(options?.mode || 'login');
         setAuthModalResetToken(options?.token || null);
         setIsAuthModalOpen(true);
@@ -125,9 +137,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthModalResetToken(null);
     };
 
-    // Login real contra el backend. Lanza el error (AuthApiError) para que
-    // quien llame (AuthModal) decida cómo mostrarlo — por ejemplo, el caso
-    // especial de "correo no verificado" viene con un mensaje específico.
     const login = async (email: string, password: string) => {
         const res = await loginUser(email, password);
         const apiUser = res.user;
@@ -139,32 +148,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             last_name_paterno: apiUser.last_name_paterno || '',
             last_name_materno: apiUser.last_name_materno || '',
             phone: apiUser.phone || '',
-            country: apiUser.country || getDetectedCountry() || 'PE',
+            country: apiUser.country || getDetectedCountry() || null,
             region: apiUser.region || '',
             province: apiUser.province || '',
             district: apiUser.district || '',
             avatar: apiUser.avatar || '',
+            hasPassword: apiUser.has_password,
         };
 
         saveAccessToken(res.access_token);
         setCurrentUser(user);
         setIsLoggedIn(true);
+        backfillDetectedCountry(apiUser.country);
+        refreshCentinelaStatus();
         closeAuthModal();
         showToast('¡Bienvenido de vuelta!', 'success');
     };
 
-    // Registro real. No inicia sesión — el backend exige verificar el correo
-    // primero. Devuelve el mensaje del backend para que AuthModal lo muestre.
+    // Registro real. No inicia sesión — el backend exige verificar el correo primero.
     const register = async (email: string, password: string, name: string) => {
-        const res = await registerUser(email, password, name);
+        const res = await registerUser(email, password, name, getDetectedCountry());
         return res.message;
     };
 
-    // Login/registro real con Google — el backend decide solo si es cuenta
-    // nueva o existente. Manda el id_token de Google tal cual, sin decodificarlo
-    // nosotros (eso lo hace el propio backend, que además lo valida).
+    // Login/registro real con Google — el backend decide solo si es cuenta nueva o existente. 
     const loginWithGoogle = async (idToken: string) => {
-        const res = await loginWithGoogleToken(idToken);
+        const res = await loginWithGoogleToken(idToken, getDetectedCountry());
         const apiUser = res.user;
 
         const user: AuthUser = {
@@ -174,16 +183,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             last_name_paterno: apiUser.last_name_paterno || '',
             last_name_materno: apiUser.last_name_materno || '',
             phone: apiUser.phone || '',
-            country: apiUser.country || getDetectedCountry() || 'PE',
+            country: apiUser.country || getDetectedCountry() || null,
             region: apiUser.region || '',
             province: apiUser.province || '',
             district: apiUser.district || '',
             avatar: apiUser.avatar || '',
+            hasPassword: apiUser.has_password,
         };
 
         saveAccessToken(res.access_token);
         setCurrentUser(user);
         setIsLoggedIn(true);
+        backfillDetectedCountry(apiUser.country);
+        refreshCentinelaStatus();
         closeAuthModal();
         showToast('¡Bienvenido de vuelta!', 'success');
     };
@@ -192,6 +204,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         clearAccessToken();
         setCurrentUser(null);
         setIsLoggedIn(false);
+        setCentinelaEstaActivo(false);
         showToast('Sesión cerrada', 'info');
     };
 
@@ -202,8 +215,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
     };
 
-    // Guarda cambios de perfil de verdad en el backend — ya soporta todos
-    // estos campos (name, apellidos, teléfono, país, ubicación, avatar).
+    const refreshCentinelaStatus = async () => {
+        try {
+            const data = await getMyCentinela();
+            setCentinelaEstaActivo(!!data?.activo);
+        } catch {
+            // silencioso — sin esto, el ícono simplemente no aparece
+        }
+    };
+
+    // Completa el país en el backend cuando la cuenta no lo tiene guardado
+    const backfillDetectedCountry = (currentCountry: string | null) => {
+        if (currentCountry) return;
+        const detected = getDetectedCountry();
+        if (!detected) return;
+        updateProfile({ country: detected }).catch((err) => {
+            console.warn('No se pudo guardar el país detectado:', err instanceof Error ? err.message : err);
+        });
+    };
+
+    // Guarda cambios de perfil de verdad en el backend 
     const updateProfile = async (patch: {
         name?: string;
         last_name_paterno?: string;
@@ -225,11 +256,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 last_name_paterno: apiUser.last_name_paterno || '',
                 last_name_materno: apiUser.last_name_materno || '',
                 phone: apiUser.phone || '',
-                country: apiUser.country || 'PE',
+                country: apiUser.country || null,
                 region: apiUser.region || '',
                 province: apiUser.province || '',
                 district: apiUser.district || '',
                 avatar: apiUser.avatar || '',
+                hasPassword: apiUser.has_password,
             };
             return updated;
         });
@@ -260,6 +292,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             value={{
                 isDarkMode,
                 toggleTheme,
+                detectedCountry,
+                isCountryDetectionDone,
                 isAuthModalOpen,
                 authModalInitialMode,
                 authModalResetToken,
@@ -273,6 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 logout,
                 usuarioTienePublicacionActiva,
                 centinelaEstaActivo,
+                setCentinelaEstaActivo,
                 isAuthChecked,
                 updateCurrentUser,
                 updateProfile,

@@ -44,7 +44,8 @@ export default function Header() {
         isAuthChecked,
         logout,
         isDarkMode,
-        toggleTheme
+        toggleTheme,
+        centinelaEstaActivo
     } = useApp();
 
 
@@ -223,6 +224,12 @@ export default function Header() {
                         className={`tab-btn ${pathname.startsWith('/buscar') ? 'active' : ''}`}
                     >
                         <i className="ti ti-camera-search"></i> <span>Centinela IA</span>
+                        {centinelaEstaActivo && (
+                            <span
+                                className="centinela-active-dot"
+                                title="Centinela activo — buscando 24/7"
+                            ></span>
+                        )}
                     </Link>
                 </div>
 

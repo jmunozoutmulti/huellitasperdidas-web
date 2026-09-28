@@ -4,7 +4,7 @@ import { ChangeEvent, useState, useEffect } from 'react';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr, type Country } from '@/lib/countries';
-import { getLevel1Options, getLevel2Options, getLevel3Options } from '@/lib/locations';
+import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
 
 interface SelectOption {
     value: string;
@@ -59,7 +59,7 @@ export default function DatosSection({
     onOpenCambiarClave,
 }: DatosSectionProps) {
     const { currentUser } = useApp();
-    const countryCode = currentUser?.country || 'PE';
+    const countryCode = currentUser?.country ?? null;
 
     const [country, setCountry] = useState<Country | null>(null);
     const [isLoadingCountry, setIsLoadingCountry] = useState(true);
@@ -85,6 +85,10 @@ export default function DatosSection({
 
     // Nivel 1 (Departamento/Estado/Región) — depende solo del país
     useEffect(() => {
+        if (!countryCode) {
+            setNivel1Options([]);
+            return;
+        }
         let isCancelled = false;
         getLevel1Options(countryCode).then((opts) => {
             if (!isCancelled) setNivel1Options(opts);
@@ -96,6 +100,10 @@ export default function DatosSection({
 
     // Nivel 2 — depende del país + lo elegido en nivel 1
     useEffect(() => {
+        if (!countryCode) {
+            setNivel2Options([]);
+            return;
+        }
         let isCancelled = false;
         getLevel2Options(countryCode, dDepartamento).then((opts) => {
             if (!isCancelled) setNivel2Options(opts);
@@ -107,6 +115,10 @@ export default function DatosSection({
 
     // Nivel 3 — depende del país + nivel 1 + nivel 2
     useEffect(() => {
+        if (!countryCode) {
+            setNivel3Options([]);
+            return;
+        }
         let isCancelled = false;
         getLevel3Options(countryCode, dDepartamento, dProvincia).then((opts) => {
             if (!isCancelled) setNivel3Options(opts);
@@ -115,6 +127,18 @@ export default function DatosSection({
             isCancelled = true;
         };
     }, [countryCode, dDepartamento, dProvincia]);
+
+    const [hasLevel3, setHasLevel3] = useState(true);
+    useEffect(() => {
+        if (!countryCode) return;
+        let isCancelled = false;
+        countryHasLevel3(countryCode).then((result) => {
+            if (!isCancelled) setHasLevel3(result);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode]);
 
     const locationLabels = country?.locationLabels;
     const isCountryConfigured = !isLoadingCountry && !!locationLabels;
@@ -206,13 +230,18 @@ export default function DatosSection({
 
                         {isLoadingCountry ? (
                             <p className="form-label-note">Cargando...</p>
+                        ) : !countryCode ? (
+                            <div className="admin-info-box">
+                                <i className="ti ti-info-circle"></i>
+                                <p>No pudimos determinar tu país. Vuelve a intentar más tarde.</p>
+                            </div>
                         ) : !isCountryConfigured ? (
                             <div className="admin-info-box">
                                 <i className="ti ti-info-circle"></i>
                                 <p>Este país aún no está configurado. Vuelve más tarde.</p>
                             </div>
                         ) : (
-                            <div className="grid-3col">
+                            <div className={hasLevel3 ? 'grid-3col' : 'grid-2col'}>
                                 <div className="form-group">
                                     <CustomSelect
                                         id="d-departamento"
@@ -233,31 +262,38 @@ export default function DatosSection({
                                         searchable={true}
                                     />
                                 </div>
-                                <div className="form-group">
-                                    <CustomSelect
-                                        id="d-distrito"
-                                        placeholder={locationLabels![2]}
-                                        value={dDistrito}
-                                        onChange={onSetDistrito}
-                                        options={nivel3Options}
-                                        searchable={true}
-                                    />
-                                </div>
+                                {hasLevel3 && (
+                                    <div className="form-group">
+                                        <CustomSelect
+                                            id="d-distrito"
+                                            placeholder={locationLabels![2]}
+                                            value={dDistrito}
+                                            onChange={onSetDistrito}
+                                            options={nivel3Options}
+                                            searchable={true}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">
-                        Teléfono de contacto <span className="form-label-note">— Aparece en tus avisos</span>
-                    </label>
+                    <label className="form-label">Teléfono de contacto</label>
                     <div className="datos-locked-field">
                         <div className="datos-input-verified">
-                            <input type="tel" className="form-input" id="d-telefono" value={dTelefono} disabled />
-                            <span className="datos-verified-badge">
-                                <i className="ti ti-circle-check"></i> Verificado
-                            </span>
+                            <div className="country-select-trigger">
+                                <span>{country?.code}</span>
+                                <span>{country?.dialCode}</span>
+                            </div>
+                            <input
+                                type="tel"
+                                className="form-input"
+                                id="d-telefono"
+                                value={dTelefono.replace(/^\+\d+\s*/, '')}
+                                disabled
+                            />
                         </div>
                         <button
                             type="button"
@@ -287,14 +323,19 @@ export default function DatosSection({
                 <div className="form-group">
                     <label className="form-label">Contraseña</label>
                     <div className="datos-locked-field">
-                        <input type="password" className="form-input" value="••••••••" disabled />
+                        <input
+                            type="text"
+                            className="form-input"
+                            value={currentUser?.hasPassword === false ? 'Sin contraseña (cuenta creada con Google)' : '••••••••'}
+                            disabled
+                        />
                         <button
                             type="button"
                             className="datos-unlock-btn"
                             data-field="clave"
                             onClick={onOpenCambiarClave}
                         >
-                            <i className="ti ti-lock"></i> Cambiar
+                            <i className="ti ti-lock"></i> {currentUser?.hasPassword === false ? 'Crear' : 'Cambiar'}
                         </button>
                     </div>
                 </div>
@@ -311,6 +352,6 @@ export default function DatosSection({
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

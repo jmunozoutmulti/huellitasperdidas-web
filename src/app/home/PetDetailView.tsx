@@ -144,7 +144,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
     // Prefijo +51 fijo por ahora — pendiente de usar el país real del aviso.
     const buildWhatsAppLink = () => {
         const digits = (pet.contactPhone || '').replace(/\D/g, '');
-        return digits ? `https://wa.me/51${digits}` : null;
+        return digits ? `https://wa.me/${digits}` : null;
     };
 
     const renderContactButton = () => {
@@ -379,7 +379,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                     )}
                                 </div>
                                 <span className="card-date">
-                                    <b> {pet.authorName ?? 'Usuario'}</b> · {pet.publishedAtDisplay || pet.createdAtDisplay}
+                                    <b> {pet.authorName ?? 'Usuario'}</b> · Publicado: {pet.publishedAtDisplay || pet.createdAtDisplay}
                                 </span>
                             </div>
 
@@ -512,7 +512,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                     ) : (
                         <div className="detail-author-row">
                             <span className="card-date">
-                                <b>Publicado el:</b> {pet.createdAtDisplay}
+                                <b>Publicado:</b> {pet.createdAtDisplay}
                             </span>
                         </div>
                     )}
@@ -558,7 +558,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                             )}
                             {pet.race && (
                                 <div className="spec-item">
-                                    <span className="spec-label">{pet.petType === 'bird' ? 'Especie' : 'Raza'}</span>
+                                    <span className="spec-label">{pet.petType === 'ave' ? 'Especie' : 'Raza'}</span>
                                     <p id="spec-race" className="spec-value">
                                         {pet.race}
                                     </p>
@@ -566,7 +566,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                             )}
                             {pet.features && (
                                 <div className="spec-item">
-                                    <span className="spec-label">{pet.petType === 'bird' ? 'Color del plumaje' : 'Color del pelaje'}</span>
+                                    <span className="spec-label">{pet.petType === 'ave' ? 'Color del plumaje' : 'Color del pelaje'}</span>
                                     <p id="spec-features" className="spec-value">
                                         {pet.features}
                                     </p>

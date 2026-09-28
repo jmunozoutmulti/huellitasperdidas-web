@@ -1,24 +1,22 @@
 'use client';
-import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { showToast } from '@/components/global/Toast';
 import PlanesModal from '@/components/global/PlanesModal';
-import { getMyConversations, getConversationMessages, replyToConversation, getMyFiledReports, getUnreadMessagesCount, markMessagesSeen, type ConversationSummary, type ConversationMessage } from '@/lib/messagesApi';
+import { getMyConversations, getConversationMessages, replyToConversation, uploadMessageImage, getMyFiledReports, getUnreadMessagesCount, markMessagesSeen, type ConversationSummary, type ConversationMessage } from '@/lib/messagesApi';
 import { useApp } from '@/context/AppContext';
 import AlertBanner from '@/components/global/AlertBanner';
 import GuardadosSection from './components/sections/GuardadosSection';
-import CentinelaSection from './components/sections/CentinelaSection';
 import MensajesSection from './components/sections/MensajesSection';
 import DatosSection from './components/sections/DatosSection';
 import AjustesSection from './components/sections/AjustesSection';
 import DashboardSection from './components/sections/AvisosSection';
-import DevAvisosPanel from './components/DevAvisosPanel';
-import { getMyPublications, isExpiringSoon, getDiasRestantes, reportTypeLabel, type MockPublication } from '@/lib/publications';
+import { fetchMyReports, type Report } from '@/lib/api';
 import { getMySettings, updateMySettings, type UserSettings } from '@/lib/authApi';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import PhoneReminderBanner from '@/components/global/PhoneReminderBanner';
 import { AuthApiError } from '@/lib/authApi';
 import { resizeImageFile } from '@/lib/resizeImage';
 import { deleteReport } from '@/lib/reportsApi';
+import { getLocaleForCountry } from '@/lib/countries';
 
 import dynamic from 'next/dynamic';
 const ModalAgregarNumero = dynamic(() => import('@/components/global/ModalAgregarNumero'), { ssr: false });
@@ -33,6 +31,7 @@ const ModalAlcance = dynamic(() => import('./components/modals/ModalAlcance'), {
 const ModalTiempo = dynamic(() => import('./components/modals/ModalTiempo'), { ssr: false });
 const ModalUpgrade = dynamic(() => import('./components/modals/ModalUpgrade'), { ssr: false });
 const ModalReactivar = dynamic(() => import('./components/modals/ModalReactivar'), { ssr: false });
+const ModalRetryPago = dynamic(() => import('./components/modals/ModalRetryPago'), { ssr: false });
 const ModalRepublicarGratis = dynamic(() => import('./components/modals/ModalRepublicarGratis'), { ssr: false });
 const ModalEditarAviso = dynamic(() => import('./components/modals/ModalEditarAviso'), { ssr: false });
 const ModalCambiarClave = dynamic(() => import('./components/modals/ModalCambiarClave'), { ssr: false });
@@ -41,7 +40,7 @@ export default function MiCuentaPage() {
 
     useRequireAuth();
 
-    const { isDarkMode, toggleTheme, currentUser, updateCurrentUser, updateProfile, updateAvatar } = useApp();
+    const { isDarkMode, toggleTheme, currentUser, updateCurrentUser, updateProfile, updateAvatar, logout } = useApp();
 
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
@@ -55,9 +54,50 @@ export default function MiCuentaPage() {
 
     // Sub-tabs de avisos en Dashboard
     const [activePubTab, setActivePubTab] = useState<
-        'activas' | 'revision' | 'rechazadas' | 'finalizadas'
+        'activas' | 'revision' | 'pago_pendiente' | 'rechazadas' | 'finalizadas'
     >('activas');
 
+    const handleCloseReactivar = useCallback(() => {
+        setModalReactivar({ isOpen: false, id: '' });
+    }, []);
+
+    const handleReactivated = useCallback(() => {
+        setAvisosRefreshKey((k) => k + 1);
+    }, []);
+
+
+    const handleCloseRetryPago = useCallback(() => {
+        setModalRetryPago({ isOpen: false, id: '' });
+    }, []);
+
+    const handleRetryPaid = useCallback(() => {
+        setAvisosRefreshKey((k) => k + 1);
+    }, []);
+
+    const handleCloseUpgrade = useCallback(() => {
+        setModalUpgrade({ isOpen: false, id: '' });
+    }, []);
+
+    const handleUpgraded = useCallback(() => {
+        setAvisosRefreshKey((k) => k + 1);
+    }, []);
+
+
+    const handleCloseAlcance = useCallback(() => {
+        setModalAlcance({ isOpen: false, id: '' });
+    }, []);
+
+    const handlePurchased = useCallback(() => {
+        setAvisosRefreshKey((k) => k + 1);
+    }, []);
+
+    const handleCloseTiempo = useCallback(() => {
+        setModalTiempo({ isOpen: false, id: '' });
+    }, []);
+
+    const handleExtended = useCallback(() => {
+        setAvisosRefreshKey((k) => k + 1);
+    }, []);
 
     // Acordeones desplegados
     const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({});
@@ -138,7 +178,7 @@ export default function MiCuentaPage() {
                             nombre: c.other_user_name,
                             aviso: c.report_title || 'Aviso',
                             preview: c.last_message,
-                            tiempo: new Date(c.last_message_at).toLocaleString('es-PE', {
+                            tiempo: new Date(c.last_message_at).toLocaleString(getLocaleForCountry(currentUser?.country), {
                                 day: 'numeric',
                                 month: 'short',
                                 hour: 'numeric',
@@ -182,18 +222,19 @@ export default function MiCuentaPage() {
                     prev.map((h) =>
                         h.id === id
                             ? {
-                                  ...h,
-                                  loaded: true,
-                                  mensajes: msgs.map((m) => ({
-                                      id: m.id,
-                                      tipo: m.sender_id === currentUser?.id ? 'enviado' : 'recibido',
-                                      texto: m.body,
-                                      hora: new Date(m.created_at).toLocaleTimeString('es-PE', {
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                      }),
-                                  })),
-                              }
+                                ...h,
+                                loaded: true,
+                                mensajes: msgs.map((m) => ({
+                                    id: m.id,
+                                    tipo: m.sender_id === currentUser?.id ? 'enviado' : 'recibido',
+                                    texto: m.body,
+                                    imagen: m.image_url,
+                                    hora: new Date(m.created_at).toLocaleTimeString(getLocaleForCountry(currentUser?.country), {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                    }),
+                                })),
+                            }
                             : h
                     )
                 );
@@ -201,34 +242,38 @@ export default function MiCuentaPage() {
         }
     };
 
-    const handleSendReply = async (hiloId: string) => {
+    const handleSendReply = async (hiloId: string, imagenFile?: File | null) => {
         const hilo = hilos.find((h) => h.id === hiloId);
-        if (!hilo || !hilo.replyInput.trim()) return;
+        if (!hilo || (!hilo.replyInput.trim() && !imagenFile)) return;
         const texto = hilo.replyInput.trim();
 
         try {
-            const nuevo = await replyToConversation(hiloId, texto);
+            let nuevo = await replyToConversation(hiloId, texto);
+            if (imagenFile) {
+                nuevo = await uploadMessageImage(nuevo.id, imagenFile);
+            }
             setHilos((prev) =>
                 prev.map((h) =>
                     h.id === hiloId
                         ? {
-                              ...h,
-                              mensajes: [
-                                  ...h.mensajes,
-                                  {
-                                      id: nuevo.id,
-                                      tipo: 'enviado',
-                                      texto: nuevo.body,
-                                      hora: new Date(nuevo.created_at).toLocaleTimeString('es-PE', {
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                      }),
-                                  },
-                              ],
-                              preview: texto,
-                              tiempo: 'Ahora',
-                              replyInput: '',
-                          }
+                            ...h,
+                            mensajes: [
+                                ...h.mensajes,
+                                {
+                                    id: nuevo.id,
+                                    tipo: 'enviado',
+                                    texto: nuevo.body,
+                                    imagen: nuevo.image_url,
+                                    hora: new Date(nuevo.created_at).toLocaleTimeString(getLocaleForCountry(currentUser?.country), {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                    }),
+                                },
+                            ],
+                            preview: texto || 'Foto',
+                            tiempo: 'Ahora',
+                            replyInput: '',
+                        }
                         : h
                 )
             );
@@ -376,18 +421,16 @@ export default function MiCuentaPage() {
 
 
     // Banners de Alerta — derivados de datos reales
-    const [myPublications, setMyPublications] = useState<MockPublication[]>([]);
-    const [showDangerBanner, setShowDangerBanner] = useState(true);
+    const [myPublications, setMyPublications] = useState<Report[]>([]);
     const [showInfoBanner, setShowInfoBanner] = useState(true);
 
     useEffect(() => {
         if (currentUser) {
-            getMyPublications(currentUser.id).then(setMyPublications);
+            fetchMyReports().then(setMyPublications);
         }
     }, [currentUser, avisosRefreshKey]);
 
-    const pendingCount = myPublications.filter((p) => p.status === 'pending_review').length;
-    const expiringPub = myPublications.find((p) => p.status === 'approved' && isExpiringSoon(p));
+    const pendingCount = myPublications.filter((p) => p.status === 'pending_approval').length;
 
     const [modalCambiarNumero, setModalCambiarNumero] = useState(false);
     const [modalCambiarClave, setModalCambiarClave] = useState(false);
@@ -416,6 +459,7 @@ export default function MiCuentaPage() {
     const [modalUpgrade, setModalUpgrade] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
 
     const [modalReactivar, setModalReactivar] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
+    const [modalRetryPago, setModalRetryPago] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
     const [modalRepublicarGratis, setModalRepublicarGratis] = useState<{ isOpen: boolean; id: string }>({
         isOpen: false,
         id: '',
@@ -429,10 +473,24 @@ export default function MiCuentaPage() {
     });
 
     const toggleNotifTipo = (tipo: string) => {
-        setNotifTipos((prev) => ({ ...prev, [tipo]: !prev[tipo] }));
-    };
+        const next = { ...notifTipos, [tipo]: !notifTipos[tipo] };
+        setNotifTipos(next);
 
-    const [settingsLoaded, setSettingsLoaded] = useState(false);
+        const settings: UserSettings = {
+            notification_types: {
+                lost: !!next.lost,
+                found: !!next.found,
+                sighting: !!next.sighting,
+                adoption: !!next.adoption,
+            },
+        };
+        updateMySettings(settings)
+            .then(() => showToast('Ajustes guardados', 'success'))
+            .catch((err) => {
+                const message = err instanceof AuthApiError ? err.message : 'No pudimos guardar tus ajustes.';
+                showToast(message, 'error');
+            });
+    };
 
     useEffect(() => {
         if (currentUser) {
@@ -442,39 +500,9 @@ export default function MiCuentaPage() {
                 })
                 .catch(() => {
                     // Si falla la carga, seguimos con los defaults (todos activos)
-                })
-                .finally(() => {
-                    setSettingsLoaded(true);
                 });
         }
     }, [currentUser]);
-
-    const hasShownFirstSaveRef = useRef(false);
-
-    useEffect(() => {
-        if (currentUser && settingsLoaded) {
-            const settings: UserSettings = {
-                notification_types: {
-                    lost: !!notifTipos.lost,
-                    found: !!notifTipos.found,
-                    sighting: !!notifTipos.sighting,
-                    adoption: !!notifTipos.adoption,
-                },
-            };
-            updateMySettings(settings)
-                .then(() => {
-                    if (hasShownFirstSaveRef.current) {
-                        showToast('Ajustes guardados', 'success');
-                    } else {
-                        hasShownFirstSaveRef.current = true;
-                    }
-                })
-                .catch((err) => {
-                    const message = err instanceof AuthApiError ? err.message : 'No pudimos guardar tus ajustes.';
-                    showToast(message, 'error');
-                });
-        }
-    }, [notifTipos, currentUser, settingsLoaded]);
 
     // Cierre de menús flotantes al hacer clic en pantalla
     useEffect(() => {
@@ -506,24 +534,6 @@ export default function MiCuentaPage() {
             <section id="view-mi-cuenta" className="animate-fade-in">
 
 
-                {/* BANNER DANGER (CADUCIDAD) */}
-                {showDangerBanner && expiringPub && (
-                    <AlertBanner
-                        type="danger"
-                        message={
-                            <>
-                                <i className="ti ti-exclamation-circle"></i> Tu aviso de{' '}
-                                <b>{expiringPub.title || reportTypeLabel(expiringPub.report_type)}</b> caduca en{' '}
-                                {getDiasRestantes(expiringPub.expires_at)} día(s).
-                            </>
-                        }
-                        actionLabel="Renovar aviso"
-                        actionIcon="ti ti-refresh"
-                        onAction={() => setModalTiempo({ isOpen: true, id: expiringPub.id })}
-                        onClose={() => setShowDangerBanner(false)}
-                    />
-                )}
-
                 {/* BANNER INFO (REVISIÓN) */}
                 {showInfoBanner && pendingCount > 0 && (
                     <AlertBanner
@@ -536,9 +546,6 @@ export default function MiCuentaPage() {
                         onClose={() => setShowInfoBanner(false)}
                     />
                 )}
-
-                <PhoneReminderBanner />
-
 
 
                 <div className="cuenta-layout">
@@ -600,22 +607,6 @@ export default function MiCuentaPage() {
 
                                 <button
                                     type="button"
-                                    className={`cuenta-nav-item ${activeSection === 'centinela' ? 'active' : ''}`}
-                                    data-section="centinela"
-                                    onClick={() => {
-                                        setActiveSection('centinela');
-                                        setIsMobileNavOpen(false);
-                                    }}
-                                >
-                                    <span className="cuenta-nav-icon-box">
-                                        <i className="ti ti-radar-2"></i>
-                                    </span>
-                                    <span>Centinela IA</span>
-                                    <span className="cuenta-nav-badge">3</span>
-                                </button>
-
-                                <button
-                                    type="button"
                                     className={`cuenta-nav-item ${activeSection === 'mensajes' ? 'active' : ''}`}
                                     data-section="mensajes"
                                     onClick={() => {
@@ -664,21 +655,16 @@ export default function MiCuentaPage() {
                             </nav>
 
                             <nav className="cuenta-nav-secondary">
-                                <a href="#">
+                                <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target="_blank">
                                     <span>
-                                        <i className="ti ti-help-circle"></i> Soporte
+                                        <i className="ti ti-help-circle"></i> Ayuda y soporte
                                     </span>
                                 </a>
                                 <a
                                     href="#"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        if (confirm('¿Deseas cerrar sesión?')) {
-                                            showToast('Cerrando sesión...', 'info');
-                                            setTimeout(() => {
-                                                window.location.href = '/?page=login';
-                                            }, 1500);
-                                        }
+                                        logout();
                                     }}
                                 >
                                     <span>
@@ -712,6 +698,7 @@ export default function MiCuentaPage() {
                                 onOpenReactivar={(id) => setModalReactivar({ isOpen: true, id })}
                                 onOpenRepublicarGratis={(id) => setModalRepublicarGratis({ isOpen: true, id })}
                                 onOpenTiempo={(id) => setModalTiempo({ isOpen: true, id })}
+                                onOpenRetryPago={(id) => setModalRetryPago({ isOpen: true, id })}
                                 refreshKey={avisosRefreshKey}
                             />
                         )}
@@ -719,10 +706,7 @@ export default function MiCuentaPage() {
                         {/* SECCIÓN 2: FAVORITOS */}
                         {activeSection === 'guardados' && <GuardadosSection />}
 
-                        {/* SECCIÓN 3: CENTINELA IA */}
-                        {activeSection === 'centinela' && <CentinelaSection />}
-
-                     {/* SECCIÓN 4: MIS MENSAJES */}
+                        {/* SECCIÓN 4: MIS MENSAJES */}
                         {activeSection === 'mensajes' && (
                             <MensajesSection
                                 hilos={hilos}
@@ -790,7 +774,7 @@ export default function MiCuentaPage() {
                     </div>
 
                 </div>
-            </section>
+            </section >
 
             <ModalEditarAviso
                 isOpen={modalEditar.isOpen}
@@ -878,29 +862,36 @@ export default function MiCuentaPage() {
             <ModalAlcance
                 isOpen={modalAlcance.isOpen}
                 id={modalAlcance.id}
-                onClose={() => setModalAlcance({ isOpen: false, id: '' })}
-                onPurchased={() => setAvisosRefreshKey((k) => k + 1)}
+                onClose={handleCloseAlcance}
+                onPurchased={handlePurchased}
             />
 
             <ModalTiempo
                 isOpen={modalTiempo.isOpen}
                 id={modalTiempo.id}
-                onClose={() => setModalTiempo({ isOpen: false, id: '' })}
-                onExtended={() => setAvisosRefreshKey((k) => k + 1)}
+                onClose={handleCloseTiempo}
+                onExtended={handleExtended}
             />
 
             <ModalUpgrade
                 isOpen={modalUpgrade.isOpen}
                 id={modalUpgrade.id}
-                onClose={() => setModalUpgrade({ isOpen: false, id: '' })}
-                onUpgraded={() => setAvisosRefreshKey((k) => k + 1)}
+                onClose={handleCloseUpgrade}
+                onUpgraded={handleUpgraded}
             />
 
             <ModalReactivar
                 isOpen={modalReactivar.isOpen}
                 id={modalReactivar.id}
-                onClose={() => setModalReactivar({ isOpen: false, id: '' })}
-                onReactivated={() => setAvisosRefreshKey((k) => k + 1)}
+                onClose={handleCloseReactivar}
+                onReactivated={handleReactivated}
+            />
+
+            <ModalRetryPago
+                isOpen={modalRetryPago.isOpen}
+                id={modalRetryPago.id}
+                onClose={handleCloseRetryPago}
+                onPaid={handleRetryPaid}
             />
 
             <ModalRepublicarGratis
@@ -915,8 +906,7 @@ export default function MiCuentaPage() {
             />
 
             <PlanesModal />
-            <DevAvisosPanel />
-        </main>
+        </main >
     );
 }
 

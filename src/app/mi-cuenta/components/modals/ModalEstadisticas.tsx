@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchReport, type ReportDetail } from '@/lib/api';
-import { getPackages } from '@/lib/packagesApi';
+import { getLocaleForCountry } from '@/lib/countries';
 
 interface ModalEstadisticasProps {
     isOpen: boolean;
@@ -10,28 +10,14 @@ interface ModalEstadisticasProps {
     onClose: () => void;
 }
 
-function getDiasRestantes(expiresAt: string | null): number {
-    if (!expiresAt) return 0;
-    const diffMs = new Date(expiresAt).getTime() - Date.now();
-    if (diffMs <= 0) return 0;
-    return Math.ceil(diffMs / 86400000);
-}
-
 export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadisticasProps) {
     const [pub, setPub] = useState<ReportDetail | null>(null);
-    const [diasTotales, setDiasTotales] = useState(0);
 
     useEffect(() => {
         if (!isOpen || !id) return;
         setPub(null);
-        setDiasTotales(0);
-        fetchReport(id).then(async (report) => {
+        fetchReport(id).then((report) => {
             setPub(report);
-            if (report.package_slug && report.country) {
-                const pkgs = await getPackages(report.country);
-                const pkg = pkgs.find((p) => p.slug === report.package_slug);
-                setDiasTotales(pkg?.days ?? 0);
-            }
         });
     }, [isOpen, id]);
 
@@ -40,15 +26,11 @@ export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadist
     const stats = pub?.statistics_ads;
 
     const reachActual = stats?.reach_actual ?? 0;
-    const reachProjected = stats?.reach_projected ?? 0;
     const impressions = stats?.impressions ?? 0;
     const clicks = stats?.clicks ?? 0;
-    const frequency = stats?.frequency ?? 0;
 
-    const diasRestantes = pub ? getDiasRestantes(pub.expires_at) : 0;
-    const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : '0.0';
-    const progresoAlcance = reachProjected > 0 ? Math.min(100, Math.round((reachActual / reachProjected) * 100)) : 0;
-    const hasAdsData = !!stats && (reachProjected > 0 || impressions > 0);
+    const hasAdsData = !!stats && impressions > 0;
+    const locale = getLocaleForCountry(pub?.country);
 
     return (
         <div className="app-modal open" id="modal-estadisticas">
@@ -72,27 +54,18 @@ export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadist
                                 {hasAdsData ? (
                                     <>
                                         <div className="stat-metric-card">
-                                            <span className="stat-metric-label">Alcance real</span>
-                                            <h3 className="stat-metric-value">{reachActual.toLocaleString('es-PE')}</h3>
-                                            <span className="stat-metric-sub">de {reachProjected.toLocaleString('es-PE')} proyectados</span>
-                                            <div className="stat-progress-bar">
-                                                <div className="stat-progress-fill" style={{ width: `${progresoAlcance}%` }}></div>
-                                            </div>
+                                            <span className="stat-metric-label">Alcance</span>
+                                            <h3 className="stat-metric-value">{reachActual.toLocaleString(locale)}</h3>
+                                            <span className="stat-metric-sub">Personas alcanzadas</span>
                                         </div>
                                         <div className="stat-metric-card">
                                             <span className="stat-metric-label">Impresiones</span>
-                                            <h3 className="stat-metric-value">{impressions.toLocaleString('es-PE')}</h3>
+                                            <h3 className="stat-metric-value">{impressions.toLocaleString(locale)}</h3>
                                             <span className="stat-metric-sub">veces mostrado</span>
                                         </div>
                                         <div className="stat-metric-card">
-                                            <span className="stat-metric-label">Clicks (CTR)</span>
-                                            <h3 className="stat-metric-value">{ctr}%</h3>
-                                            <span className="stat-metric-sub">{clicks.toLocaleString('es-PE')} clicks totales</span>
-                                        </div>
-                                        <div className="stat-metric-card">
-                                            <span className="stat-metric-label">Frecuencia</span>
-                                            <h3 className="stat-metric-value">{frequency.toFixed(2)}</h3>
-                                            <span className="stat-metric-sub">veces por persona</span>
+                                            <span className="stat-metric-label">Clics en el anuncio</span>
+                                            <h3 className="stat-metric-value">{Math.round(clicks).toLocaleString(locale)}</h3>
                                         </div>
                                     </>
                                 ) : (
@@ -101,15 +74,6 @@ export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadist
                                         <p>Las métricas de alcance publicitario todavía no están disponibles para este aviso.</p>
                                     </div>
                                 )}
-                                <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Vistas</span>
-                                    <h3 className="stat-metric-value">{pub.views_count.toLocaleString('es-PE')}</h3>
-                                </div>
-                                <div className="stat-metric-card">
-                                    <span className="stat-metric-label">Compartidos</span>
-                                    <h3 className="stat-metric-value">{pub.shares_count}</h3>
-                                </div>
-                                
                             </div>
 
                             <div className="admin-info-box">

@@ -91,6 +91,7 @@ export default function DraggablePhoto({ src, offsetY, onOffsetChange }: Draggab
                 ref={imgRef}
                 src={src}
                 alt=""
+                crossOrigin="anonymous"
                 draggable={false}
                 onLoad={() => {
                     // Al cargar, asegura que arranque centrada (offsetY = 0 = centro real)

@@ -342,6 +342,10 @@
     color: var(--text-white);
 }
 
+.pub-tab-count.pill {
+    width: 2em;
+}
+
 .pub-tab-content {
     display: none;
     flex-direction: column;
@@ -625,8 +629,7 @@
 }
 
 .datos-input-modal {
-    display: grid;
-    grid-template-columns: 1fr 3fr;
+    display: flex;
     align-items: center;
     gap: 0.5em;
     background: var(--bg-input);
@@ -636,20 +639,23 @@
 }
 
 .datos-input-modal:focus-within {
-    border-color: var(--brand-red);
+    border-color: var(--border-color-focus);
 }
 
 .datos-input-modal .form-input {
     border: none;
-    letter-spacing: 0.5px;
 }
 
-.datos-input-modal .country-select-trigger {
+.country-select-trigger {
     border: none;
     border-right: 1px solid var(--border-color);
-    border-radius: 0;
-    border-top-left-radius: .5em;
-    border-bottom-left-radius: .5em;
+    cursor: initial;
+    color: var(--text-secondary);
+    font-size: .925em;
+    font-weight: 700;
+    display: flex;
+    gap: 0.25em;
+    padding: 0 1em;
 }
 
 
@@ -988,7 +994,7 @@
     padding: 0.75em 1em;
     border-radius: 0.5em;
     border: 1px solid transparent;
-    margin: 0 0 1.3em 0;
+    margin: 0 0 1em 0;
 }
 
 .banner-content {
@@ -998,7 +1004,7 @@
 
 .banner-content p {
     margin: 0;
-    font-size: 1em;
+    font-size: 0.95em;
     line-height: 1.3;
     display: flex;
     align-items: center;
@@ -1070,7 +1076,7 @@
     color: var(--text-white);
     border: none;
     padding: 0.375em 0.8em;
-    font-size: 0.925em;
+    font-size: 0.95em;
     line-height: 1;
     font-weight: 300;
     border-radius: 3em;
@@ -1227,6 +1233,7 @@
     align-items: stretch;
     grid-template-columns: 15em 1fr;
     gap: 2em;
+    align-items: flex-start;
 }
 
 
@@ -1251,7 +1258,7 @@
     flex-direction: column;
     gap: 1em;
     position: relative;
-    justify-content: center;
+    padding-top: 3.75em;
 }
 
 .pub-editor-timebox {
@@ -2260,7 +2267,7 @@ MODAL PASAR A PLAN DE PAGO
 .upgrade-map-box {
     position: relative;
     width: 100%;
-    aspect-ratio: 21/8;
+    aspect-ratio: 21/7;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2343,7 +2350,7 @@ MODAL PASAR A PLAN DE PAGO
 }
 
 .upgrade-plans-stack .row-plan {
-    padding: 2.375em 0 1em 0;
+    padding: 1.5em 0 1em;
 }
 
 .upgrade-plans-stack .plan-scope {
@@ -2356,6 +2363,15 @@ MODAL PASAR A PLAN DE PAGO
 .upgrade-plans-stack .attributes-plan ul li {
     margin: 3px 0;
     font-size: .935em;
+}
+
+.upgrade-plans-stack .plan-card {
+    padding-right: 0;
+}
+
+.upgrade-plans-stack .plan-price {
+    letter-spacing: -1px;
+    font-size: 1.175em;
 }
 
 #reactivar-modal-checkout {
@@ -2577,9 +2593,9 @@ MODAL EDITAR ANUNCIO
 
 .mensaje-hilo-item.open .mensaje-hilo-chevron {
     transform: rotate(180deg);
-    background: var(--text-main);
-    border-color: var(--text-main);
-    color: #fff;
+    background: var(--brand-main);
+    border-color: var(--brand-main);
+    color: var(--text-white);
 }
 
 .mensaje-hilo-body {
@@ -2620,6 +2636,15 @@ MODAL EDITAR ANUNCIO
     align-self: flex-end;
 }
 
+.mensaje-burbuja-imagen {
+    width: 100%;
+    max-width: 16em;
+    max-height: 16em;
+    object-fit: cover;
+    border-radius: 0.75em;
+    display: block;
+}
+
 .mensaje-burbuja.recibido {
     align-self: flex-start;
     background: var(--bg-alt);
@@ -2632,6 +2657,47 @@ MODAL EDITAR ANUNCIO
     background: var(--brand-main);
     color: var(--text-white);
     border-bottom-right-radius: 0.3em;
+}
+
+.mensaje-reply-image-preview {
+    position: relative;
+    width: fit-content;
+    margin: 0.5em 0 0 0.5em;
+}
+
+.mensaje-reply-image-preview img {
+    width: 5em;
+    height: 5em;
+    object-fit: cover;
+    border-radius: 0.75em;
+    display: block;
+    border: 1px solid var(--border-color);
+}
+
+.mensaje-reply-image-preview button {
+    position: absolute;
+    top: -0.5em;
+    right: -0.5em;
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 50%;
+    background: var(--text-main);
+    color: #fff;
+    border: 2px solid var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.75em;
+    padding: 0;
+}
+
+.mensaje-reply-image-preview button:hover {
+    background: var(--brand-red);
+}
+
+.mensaje-reply-image-preview button i {
+    font-size: 1em;
 }
 
 .mensaje-reply-row {
@@ -2744,139 +2810,77 @@ MODAL EDITAR ANUNCIO
     color: var(--brand-red);
 }
 
-
-
-/* ==========================================================================
-   CENTINELA IA — Hallazgos automáticos agrupados por día
-   ========================================================================== */
-.centinela-hallazgos-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5em;
-}
-
-.centinela-day-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75em;
-}
-
-.centinela-day-label {
-    font-size: 0.85em;
-    font-weight: 700;
-    color: var(--text-secondary);
-    margin: 0;
-    padding-left: 0.25em;
-}
-
-.centinela-hallazgo-row {
-    display: flex;
-    align-items: center;
-    gap: 1em;
-    background: var(--bg-card);
+.mensaje-burbuja-imagen-wrap {
+    position: relative;
+    width: fit-content;
     border-radius: 0.75em;
-    padding: 0.85em 1em;
-}
-
-.centinela-hallazgo-thumb {
-    width: 3.4em;
-    height: 3.4em;
-    border-radius: 0.6em;
     overflow: hidden;
-    flex-shrink: 0;
-    background: var(--bg-alt);
+    cursor: zoom-in;
 }
 
-.centinela-hallazgo-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.mensaje-burbuja-imagen-wrap .mensaje-burbuja-imagen {
     display: block;
 }
 
-.centinela-hallazgo-grid {
-    flex: 1;
+.mensaje-burbuja-imagen-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
     display: flex;
     align-items: center;
-    gap: 1em;
-    min-width: 0;
+    justify-content: center;
+    font-size: 1.6em;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
-.centinela-hallazgo-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3em;
+.mensaje-burbuja-imagen-wrap:hover .mensaje-burbuja-imagen-overlay {
+    opacity: 1;
 }
 
-.centinela-hallazgo-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    flex-wrap: wrap;
-}
-
-.centinela-hallazgo-title-row h6 {
-    margin: 0;
-    font-size: 1em;
-    font-weight: 700;
-    color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.centinela-hallazgo-meta {
-    display: flex;
-    gap: 1em;
-    font-size: 0.9em;
-    color: var(--text-secondary);
-    flex-wrap: wrap;
-}
-
-.centinela-hallazgo-meta span {
+.mensaje-lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
-    gap: 0.35em;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+    animation: fadeIn 0.2s ease;
 }
 
-
-.centinela-hallazgo-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.6em;
-    flex-shrink: 0;
+.mensaje-lightbox-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 0.5em;
+    cursor: default;
 }
 
-.centinela-hallazgo-actions a,
-.centinela-hallazgo-actions button {
-    width: 2em;
-    height: 2em;
+.mensaje-lightbox-close {
+    position: absolute;
+    top: 1.5em;
+    right: 1.5em;
+    width: 2.5em;
+    height: 2.5em;
     border-radius: 50%;
-    border: 1px solid var(--border-color);
-    background: var(--bg-alt);
-    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    flex-shrink: 0;
+    font-size: 1.2em;
 }
 
-.centinela-hallazgo-actions a:hover,
-.centinela-hallazgo-actions button:hover {
-    background: var(--brand-red);
-    border-color: var(--brand-red);
-    color: var(--text-white);
+.mensaje-lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
-
-.centinela-hallazgo-actions a i,
-.centinela-hallazgo-actions button i {
-    font-size: 1.1em;
-}
-
-
 
 .ia-matches-badge-horizontal {
     color: var(--text-main);
@@ -2886,7 +2890,6 @@ MODAL EDITAR ANUNCIO
     border-radius: 5px;
     white-space: nowrap;
 }
-
 
 .tooltip {
     position: relative;
@@ -3031,6 +3034,14 @@ MODAL EDITAR ANUNCIO
         display: flex;
     }
 
+    .dashboard-subsection-title {
+        font-size: 1.75em;
+    }
+
+    .pub-editor-side {
+        padding-top: 0;
+    }
+
     .zona-km {
         font-size: 1.1em;
     }
@@ -3082,6 +3093,12 @@ MODAL EDITAR ANUNCIO
 
     .banner-content p {
         flex-flow: column;
+        align-items: flex-start;
+    }
+
+    .btn-time-add {
+        margin-left: 0;
+        font-size: 1em;
     }
 
     .admin-flyer-actions {

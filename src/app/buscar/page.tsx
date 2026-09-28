@@ -1,126 +1,277 @@
 'use client';
-import { triggerOpenPlanesModal } from '@/utils/events';
-import PlanesModal from '@/components/global/PlanesModal';
 
-import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/buscar.css';
-import { useRouter } from 'next/navigation';
-import { getMockSearchResults, SearchResult } from '@/lib/searchResults';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useApp } from '@/context/AppContext';
+import {
+    fetchReports,
+    fetchMyReports,
+    fetchReport,
+    analyzeImage,
+    searchPets,
+    type Report,
+    type AnalyzeImageResult,
+    type SearchResult,
+    type SearchMeta,
+} from '@/lib/api';
+import {
+    createOrReplaceCentinela,
+    turnOffCentinela,
+    getMyCentinela,
+    getCentinelaMatches,
+    markCentinelaMatchVisto,
+    type CentinelaWatch,
+    type CentinelaMatch,
+} from '@/lib/centinelaApi';
+import { reportToPetData } from '@/lib/transformers';
+import { PetData } from '@/lib/pets';
+import {
+    getLevel1Options,
+    getLevel2Options,
+    getLevel3Options,
+    countryHasLevel3,
+    getTerritoryTree,
+} from '@/lib/locations';
+import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
+import { getPackages, type PackageOption } from '@/lib/packagesApi';
+import {
+    getRecentSearches,
+    addRecentSearch,
+    removeRecentSearch as removeRecentSearchStorage,
+} from '@/lib/searchHistory';
+import { showToast } from '@/components/global/Toast';
 
-interface MockPetInfo {
-    nombre: string;
-    detalles: string;
+// ==========================================
+// CONSTANTES
+// ==========================================
+
+// report_type real que acepta GET /v1/reports (confirmado en el Swagger).
+const REPORT_TYPE_OPTIONS = [
+    { value: 'lost', label: 'Perdidos' },
+    { value: 'found', label: 'Encontrados' },
+    { value: 'sighting', label: 'Avistamientos' },
+    { value: 'adoption', label: 'Adopciones' },
+];
+
+const TIEMPO_OPTIONS = [
+    { value: '24h', label: 'Últimas 24 horas' },
+    { value: '7d', label: 'Última semana' },
+    { value: '30d', label: 'Último mes' },
+];
+const TIEMPO_HOURS: Record<string, number> = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
+
+// Enum real confirmado de pet_type en español. Se quita 'otro' — si no es
+// perro/gato/ave, el usuario lo escribe directo en el buscador.
+const PET_TYPE_OPTIONS: { value: string; label: string; icon: string }[] = [
+    { value: 'perro', label: 'Perro', icon: 'fa-dog' },
+    { value: 'gato', label: 'Gato', icon: 'fa-cat' },
+    { value: 'ave', label: 'Ave', icon: 'fa-dove' },
+];
+
+// Comprime a máx. 1024px de lado más largo, calidad 0.85 — mismo criterio
+// que ya usaban en el ejemplo de referencia, para no mandar fotos pesadas.
+function compressImage(file: File, maxDim = 1024, quality = 0.85): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('No se pudo procesar la imagen.'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+            img.src = reader.result as string;
+        };
+        reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+        reader.readAsDataURL(file);
+    });
 }
 
-interface SearchItem {
-    title: string;
-    subtitle: string;
+// Convierte el AnalyzeImageResult en una lista plana de chips mostrables.
+function buildBioAttributeChips(result: AnalyzeImageResult): { id: string; label: string }[] {
+    const chips: { id: string; label: string }[] = [];
+    if (result.pet_type) chips.push({ id: 'pet_type', label: result.pet_type });
+    if (result.size) chips.push({ id: 'size', label: result.size });
+    if (result.sex) chips.push({ id: 'sex', label: result.sex });
+    (result.colors || []).forEach((c, i) => chips.push({ id: `color-${i}`, label: c }));
+    if (result.has_collar) {
+        chips.push({
+            id: 'collar',
+            label: result.collar_color ? `Collar ${result.collar_color}` : 'Con collar',
+        });
+    }
+    (result.distinctive_marks || []).forEach((m, i) => chips.push({ id: `mark-${i}`, label: m }));
+    Object.entries(result.physical_traits || {}).forEach(([k, v], i) =>
+        chips.push({ id: `trait-${i}`, label: `${k}: ${v}` })
+    );
+    return chips;
+}
+
+// Distrito + provincia cuando hay distrito (p.ej. Perú: "Comas, Lima").
+// Si el país no tiene ese nivel (p.ej. México: Estado/Municipio), cae a
+// provincia + región, que es donde queda guardado ese dato para ese caso.
+function formatPetLocation(pet: PetData): string {
+    if (pet.district) {
+        return [pet.district, pet.province].filter(Boolean).join(', ');
+    }
+    return [pet.province, pet.region].filter(Boolean).join(', ') || '-';
 }
 
 export default function BuscarIAPage() {
-
     useRequireAuth();
+    const { currentUser, setCentinelaEstaActivo } = useApp();
+    const countryCode = currentUser?.country ?? null;
 
-    const router = useRouter();
-    const searchResults: SearchResult[] = getMockSearchResults();
+    // ==========================================
+    // AVISOS PROPIOS (pet-pills-flex) + GATING (paquete con Centinela)
+    // ==========================================
+    const [myReports, setMyReports] = useState<Report[]>([]);
+    const [activePetPill, setActivePetPill] = useState<string>('nuevo');
+    const [packages, setPackages] = useState<PackageOption[]>([]);
+    const [myReportsLoaded, setMyReportsLoaded] = useState(false);
+    const [packagesLoaded, setPackagesLoaded] = useState(false);
+    const isGatingReady = myReportsLoaded && packagesLoaded;
 
-    const handleResultClick = (result: SearchResult) => {
-        if (result.pet.isExternal && result.pet.externalUrl) {
-            window.open(result.pet.externalUrl, '_blank');
-            return;
-        }
-        router.push(`/${result.pet.id}`);
+    useEffect(() => {
+        let isCancelled = false;
+        fetchMyReports()
+            .then((reports) => {
+                if (!isCancelled) setMyReports(reports);
+            })
+            .catch(() => {
+                // silencioso — si falla, simplemente no se muestran pills
+            })
+            .finally(() => {
+                if (!isCancelled) setMyReportsLoaded(true);
+            });
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!countryCode) return;
+        let isCancelled = false;
+        getPackages(countryCode)
+            .then((data) => {
+                if (!isCancelled) setPackages(data);
+            })
+            .catch(() => {
+                // silencioso — sin paquetes, hasToolsAccess simplemente da false
+            })
+            .finally(() => {
+                if (!isCancelled) setPackagesLoaded(true);
+            });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode]);
+
+    const activeMyReports = myReports.filter((r) => {
+        if (r.status !== 'active') return false;
+        if (r.payment_status === 'pending' || r.payment_status === 'failed') return false;
+        if (r.expires_at && new Date(r.expires_at).getTime() < Date.now()) return false;
+        return true;
+    });
+
+    const hasToolsAccess = activeMyReports.some((r) => {
+        const pkg = packages.find((p) => p.slug === r.package_slug);
+        return pkg?.centinela === true;
+    });
+
+    type SearchMode = 'mascota' | 'abierta';
+    const [searchMode, setSearchMode] = useState<SearchMode>('abierta');
+    const isMascotaMode = searchMode === 'mascota';
+
+    const [selectedPetReport, setSelectedPetReport] = useState<Report | null>(null);
+
+    const handleSelectPetPill = (report: Report) => {
+        setActivePetPill(report.id);
+        setSelectedPetReport(report);
+        setSearchMode('mascota');
     };
 
+    const handleResetPetPill = () => {
+        setActivePetPill('nuevo');
+        setSelectedPetReport(null);
+        setSearchMode('abierta');
+        setResults([]);
+        setHasSearched(false);
+        setSearchError(null);
+        setResultsSearchMeta(null);
+        resetBioScanner();
+        setGlobalQuery('');
+        setFilterReportType('');
+        setFilterTiempo('');
+        setFilterDepartamento('');
+        setFilterProvincia('');
+        setFilterDistrito('');
+        setPetTypeFilter('');
+    };
 
+    const getCurrentSearchCriteria = () => {
+        if (isMascotaMode) {
+            if (!selectedPetReport) {
+                return {
+                    queryText: '',
+                    district: '',
+                    reportId: null as string | null,
+                    reportType: null as string | null,
+                    petType: null as string | null,
+                };
+            }
+            const breed = selectedPetReport.meta?.breed;
+            const color = selectedPetReport.meta?.color;
+            return {
+                queryText: [breed, color].filter(Boolean).join(' ') || selectedPetReport.title || '',
+                district: selectedPetReport.district || '',
+                reportId: selectedPetReport.id,
+                reportType: null as string | null,
+                petType: null as string | null,
+            };
+        }
+        return {
+            queryText: globalQuery.trim(),
+            district: deepestLocationValue,
+            reportId: null as string | null,
+            reportType: filterReportType || null,
+            petType: petTypeFilter || null,
+        };
+    };
 
     // ==========================================
-    // ESTADOS Y MOCKS GENERALES
+    // BUSCADOR + RECIENTES (compartidos con Home vía searchHistory.ts)
     // ==========================================
-    const [activePetPill, setActivePetPill] = useState<string | null>(null);
     const [globalQuery, setGlobalQuery] = useState('');
     const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
-    const [recentSearches, setRecentSearches] = useState<string[]>([
-        'Poodle gris Miraflores',
-        'Gato negro con collar rojo',
-        'Husky ojos azules',
-    ]);
-
-    // Filtros rápidos
-    const [filterTipoAviso, setFilterTipoAviso] = useState('');
-    const [filterTiempo, setFilterTiempo] = useState('');
-
-    // Filtros avanzados
-    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-    const [filterDepartamento, setFilterDepartamento] = useState('');
-    const [filterProvincia, setFilterProvincia] = useState('');
-    const [filterDistrito, setFilterDistrito] = useState('');
-
-    // Pills multi-select (Tipo de mascota / Tamaño)
-    const [pillFilters, setPillFilters] = useState<{
-        tipo: string[];
-        tamano: string[];
-    }>({
-        tipo: [],
-        tamano: [],
-    });
-
-    // Custom Tags (Raza / Color)
-    const [customTags, setCustomTags] = useState<{
-        raza: string[];
-        color: string[];
-    }>({
-        raza: [],
-        color: [],
-    });
-
-    const [inputTagRaza, setInputTagRaza] = useState('');
-    const [inputTagColor, setInputTagColor] = useState('');
-
-    // Centinela 24/7 y Antivirus Scan
-    const [isCentinelaActive, setIsCentinelaActive] = useState(false);
-    const [isCentinelaConfigOpen, setIsCentinelaConfigOpen] = useState(false);
-    const [centinelaFreq, setCentinelaFreq] = useState('');
-    const [includePhotoInCentinela, setIncludePhotoInCentinela] = useState(false);
-    const [isCentinelaLocked, setIsCentinelaLocked] = useState(false);
-    const [centinelaStatusText, setCentinelaStatusText] = useState('En pausa');
-
-    // Scanner Biométrico / Foto
-    const [uploadedBioImage, setUploadedBioImage] = useState<string | null>(null);
-    const [isBioScannerLocked, setIsBioScannerLocked] = useState(false);
-
-    // Estados de Búsqueda, Loader y Resultados
-    const [isFirstVisitBannerVisible, setIsFirstVisitBannerVisible] = useState(true);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchProgress, setSearchProgress] = useState(0);
-    const [isScanningBio, setIsScanningBio] = useState(false);
-
-    const [hasSearched, setHasSearched] = useState(false);
-    const [hasResults, setHasResults] = useState(false);
-
-    // Refs
+    const [recentSearches, setRecentSearches] = useState<string[]>([]);
     const searchContainerRef = useRef<HTMLDivElement>(null);
 
-    // Mocks
-    const anunciosMock: Record<string, MockPetInfo> = {
-        toby: { nombre: 'Toby', detalles: 'La Molina | Blanco y crema' },
-        benji: { nombre: 'Benji', detalles: 'Miraflores | Gris total' },
-        nuevo: { nombre: 'Nueva Búsqueda', detalles: '' },
-    };
+    useEffect(() => {
+        setRecentSearches(getRecentSearches());
+    }, []);
 
-    const mockPostsIA: SearchItem[] = [
-        { title: 'Raza pequeña de 3 meses', subtitle: 'Adopciones' },
-        { title: 'Perros visto en S.M.P-Lima Perú', subtitle: 'Avistamiento' },
-        { title: 'Perro encontrado en la loza deportiva SMP', subtitle: 'Encontrado' },
-        { title: 'Gato macho perdido', subtitle: 'Perdido' },
-    ];
-
-    // ==========================================
-    // EFECTOS Y LISTENERS
-    // ==========================================
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (
@@ -134,757 +285,1022 @@ export default function BuscarIAPage() {
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
-    // ==========================================
-    // LÓGICA DE CENTINELA Y PRUEBA GRATUITA
-    // ==========================================
-    const handleCentinelaToggle = (e: ChangeEvent<HTMLInputElement>) => {
-        const checked = e.target.checked;
-        setIsCentinelaActive(checked);
-
-        if (checked) {
-            setCentinelaStatusText('Activo');
-            setIsSearching(false);
-            setIsScanningBio(true);
-
-            // Simulación de prueba libre (expira a los 5s)
-            if (!isCentinelaLocked) {
-                setTimeout(() => {
-                    setIsCentinelaActive(false);
-                    setCentinelaStatusText('Rastreador en pausa');
-                    setIsScanningBio(false);
-                    setIsCentinelaLocked(true);
-                }, 5000);
-            }
-        } else {
-            setCentinelaStatusText('En pausa');
-            setIsScanningBio(false);
-        }
-    };
-
-    // ==========================================
-    // LÓGICA DE CARGA BIOMÉTRICA (FOTO)
-    // ==========================================
-    const handleBioFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setUploadedBioImage(event.target?.result as string);
-            };
-            reader.readAsDataURL(file);
-
-            setIsSearching(false);
-            setIsScanningBio(true);
-            setHasSearched(false);
-
-            setTimeout(() => {
-                setIsScanningBio(false);
-                setHasSearched(true);
-                setHasResults(true);
-            }, 2500);
-
-            if (!isBioScannerLocked) {
-                setTimeout(() => {
-                    setIsBioScannerLocked(true);
-                }, 5000);
-            }
-        }
-    };
-
-    // ==========================================
-    // EJECUCIÓN DE BÚSQUEDA Y PROGRESO
-    // ==========================================
-    const handleTriggerSearch = () => {
-        setIsScanningBio(false);
-        setIsSearching(true);
-        setHasSearched(false);
-        setSearchProgress(0);
-
-        let current = 0;
-        const interval = setInterval(() => {
-            current += 5;
-            setSearchProgress(current);
-            if (current >= 100) {
-                clearInterval(interval);
-                setIsSearching(false);
-                setHasSearched(true);
-                setHasResults(globalQuery.trim() !== '');
-            }
-        }, 40);
-    };
-
     const executeIaSearch = (query: string) => {
         const trimmed = query.trim();
         if (!trimmed) return;
-
-        setRecentSearches((prev) => {
-            const filtered = prev.filter(
-                (item) => item.toLowerCase() !== trimmed.toLowerCase()
-            );
-            return [trimmed, ...filtered].slice(0, 10);
-        });
-
         setGlobalQuery(trimmed);
         setIsSearchDropdownOpen(false);
     };
 
     const removeRecentSearch = (e: React.MouseEvent, index: number) => {
         e.stopPropagation();
+        removeRecentSearchStorage(recentSearches[index]);
         setRecentSearches((prev) => prev.filter((_, i) => i !== index));
     };
 
     // ==========================================
-    // MANEJO DE TAGS Y PILLS MULTI-SELECT
+    // FILTROS
     // ==========================================
-    const togglePillFilter = (group: 'tipo' | 'tamano', value: string) => {
-        setPillFilters((prev) => {
-            const currentGroup = prev[group];
-            const exists = currentGroup.includes(value);
-            return {
-                ...prev,
-                [group]: exists
-                    ? currentGroup.filter((v) => v !== value)
-                    : [...currentGroup, value],
-            };
-        });
+    const [filterReportType, setFilterReportType] = useState('');
+    const [filterTiempo, setFilterTiempo] = useState('');
+
+    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+    const [isZoneHighlighted, setIsZoneHighlighted] = useState(false);
+    const [filterDepartamento, setFilterDepartamento] = useState('');
+    const [filterProvincia, setFilterProvincia] = useState('');
+    const [filterDistrito, setFilterDistrito] = useState('');
+
+    // Selección única (no multi) en tipo de mascota.
+    const [petTypeFilter, setPetTypeFilter] = useState('');
+
+    const selectPetTypeFilter = (value: string) => {
+        setPetTypeFilter((prev) => (prev === value ? '' : value));
     };
 
-    const handleAddCustomTag = (type: 'raza' | 'color') => {
-        const val = type === 'raza' ? inputTagRaza.trim() : inputTagColor.trim();
-        if (val && !customTags[type].includes(val)) {
-            setCustomTags((prev) => ({
-                ...prev,
-                [type]: [...prev[type], val],
-            }));
-            if (type === 'raza') setInputTagRaza('');
-            else setInputTagColor('');
+    // ==========================================
+    // UBICACIÓN DINÁMICA POR PAÍS (mismo patrón que DatosSection)
+    // ==========================================
+    const [locationLabels, setLocationLabels] = useState<[string, string, string] | null>(null);
+    const [nivel1Options, setNivel1Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel2Options, setNivel2Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel3Options, setNivel3Options] = useState<{ value: string; label: string }[]>([]);
+    const [hasLevel3, setHasLevel3] = useState(true);
+
+    useEffect(() => {
+        if (!countryCode) return;
+        let isCancelled = false;
+        getCountryByAbbr(countryCode).then((c) => {
+            if (!isCancelled) setLocationLabels(c?.locationLabels ?? null);
+        });
+        countryHasLevel3(countryCode).then((result) => {
+            if (!isCancelled) setHasLevel3(result);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [countryCode]);
+
+    useEffect(() => {
+        getLevel1Options(countryCode).then(setNivel1Options);
+    }, [countryCode]);
+
+    useEffect(() => {
+        getLevel2Options(countryCode, filterDepartamento).then(setNivel2Options);
+    }, [countryCode, filterDepartamento]);
+
+    useEffect(() => {
+        getLevel3Options(countryCode, filterDepartamento, filterProvincia).then(setNivel3Options);
+    }, [countryCode, filterDepartamento, filterProvincia]);
+
+    const clearLocationFilters = () => {
+        setFilterDepartamento('');
+        setFilterProvincia('');
+        setFilterDistrito('');
+    };
+
+    const deepestLocationValue = hasLevel3 ? filterDistrito : filterProvincia;
+    const hasIncompleteLocation = () => !deepestLocationValue && !!(filterDepartamento || filterProvincia);
+
+    const deepestLocationLabel = hasLevel3
+        ? locationLabels?.[2] ?? 'distrito'
+        : locationLabels?.[1] ?? 'provincia';
+
+    const bioFileInputRef = useRef<HTMLInputElement>(null);
+    const [bioImagePreview, setBioImagePreview] = useState<string | null>(null);
+    const [isAnalyzingBio, setIsAnalyzingBio] = useState(false);
+    const [bioAnalysisError, setBioAnalysisError] = useState<string | null>(null);
+    const [bioAnalysisResult, setBioAnalysisResult] = useState<AnalyzeImageResult | null>(null);
+    const [bioAttributes, setBioAttributes] = useState<{ id: string; label: string }[]>([]);
+    const [isBioConfirmed, setIsBioConfirmed] = useState(false);
+    const isBioLocked = !hasToolsAccess;
+
+    const resetBioScanner = () => {
+        setBioImagePreview(null);
+        setBioAnalysisError(null);
+        setBioAnalysisResult(null);
+        setBioAttributes([]);
+        setIsBioConfirmed(false);
+    };
+
+    const handleBioFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // permite volver a elegir el mismo archivo después
+
+        if (!file) return;
+
+        if (isBioLocked) {
+            showToast('Publica un aviso para desbloquear la búsqueda por foto.', 'info');
+            return;
+        }
+        if (!file.type.startsWith('image/')) {
+            showToast('Solo se aceptan imágenes.', 'error');
+            return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+            showToast('La imagen no debe superar los 8MB.', 'error');
+            return;
+        }
+
+        setBioAnalysisError(null);
+        setBioAnalysisResult(null);
+        setBioAttributes([]);
+        setIsBioConfirmed(false);
+        setIsAnalyzingBio(true);
+
+        try {
+            const dataUrl = await compressImage(file);
+            setBioImagePreview(dataUrl);
+
+            const base64 = dataUrl.split(',')[1] ?? dataUrl;
+            const result = await analyzeImage(base64);
+
+            if (!result.is_pet) {
+                setBioAnalysisError(
+                    result.validation_error || 'No identificamos una mascota en la foto. Intenta con otra.'
+                );
+                return;
+            }
+
+            setBioAnalysisResult(result);
+            setBioAttributes(buildBioAttributeChips(result));
+            // No se confirma sola: queda editable (chips con x) hasta que el
+            // usuario pulse "Usar en búsqueda" a propósito.
+            setIsBioConfirmed(false);
+        } catch (err) {
+            setBioAnalysisError('No pudimos analizar la foto. Intenta de nuevo.');
+        } finally {
+            setIsAnalyzingBio(false);
         }
     };
 
-    const handleRemoveCustomTag = (type: 'raza' | 'color', index: number) => {
-        setCustomTags((prev) => ({
-            ...prev,
-            [type]: prev[type].filter((_, i) => i !== index),
-        }));
+    const handleRemoveBioAttribute = (id: string) => {
+        setBioAttributes((prev) => prev.filter((c) => c.id !== id));
     };
 
-    // Conteo total de filtros activos para determinar si mostrar la barra
-    const activeTagsCount =
-        (activePetPill && activePetPill !== 'nuevo' ? 1 : 0) +
-        (globalQuery.trim() ? 1 : 0) +
-        (filterTipoAviso ? 1 : 0) +
+    const handleConfirmBioAttributes = () => {
+        if (bioAttributes.length > 0) setIsBioConfirmed(true);
+    };
+
+
+    const [isSearching, setIsSearching] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
+    const [searchError, setSearchError] = useState<string | null>(null);
+    const [results, setResults] = useState<PetData[]>([]);
+    const [resultsSearchMeta, setResultsSearchMeta] = useState<SearchMeta | null>(null);
+
+    const applyClientSideFilters = (
+        reports: (Report | SearchResult)[]
+    ): (Report | SearchResult)[] => {
+        if (isMascotaMode) return reports;
+
+        let filtered = reports;
+
+        if (filterReportType) {
+            filtered = filtered.filter((r) => r.report_type === filterReportType);
+        }
+        if (petTypeFilter) {
+            filtered = filtered.filter((r) => r.pet_type === petTypeFilter);
+        }
+        if (filterTiempo) {
+            const maxHours = TIEMPO_HOURS[filterTiempo];
+            if (maxHours) {
+                const limit = Date.now() - maxHours * 60 * 60 * 1000;
+                filtered = filtered.filter((r) => {
+                    const ref = r.published_at || r.created_at;
+                    return ref ? new Date(ref).getTime() >= limit : true;
+                });
+            }
+        }
+
+        return filtered;
+    };
+
+    const hasAnyCriteria = () => {
+        if (isMascotaMode) return !!selectedPetReport;
+        return !!(
+            globalQuery.trim() ||
+            filterReportType ||
+            filterTiempo ||
+            filterDepartamento ||
+            filterProvincia ||
+            filterDistrito ||
+            petTypeFilter ||
+            (isBioConfirmed && bioAttributes.length > 0)
+        );
+    };
+
+    const hasConfirmedPhoto = !isMascotaMode && isBioConfirmed && !!bioAnalysisResult;
+    const [centinela, setCentinela] = useState<CentinelaWatch | null>(null);
+    const [isCentinelaToggling, setIsCentinelaToggling] = useState(false);
+    const [centinelaMatches, setCentinelaMatches] = useState<CentinelaMatch[]>([]);
+    const [centinelaMatchPets, setCentinelaMatchPets] = useState<Record<string, PetData>>({});
+    const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+
+    useEffect(() => {
+        if (!hasToolsAccess) return;
+        let isCancelled = false;
+
+        (async () => {
+            try {
+                const data = await getMyCentinela();
+                if (isCancelled) return;
+
+                setCentinelaEstaActivo(!!data?.activo);
+
+                if (data?.activo && data.report_id) {
+                    setSearchMode('mascota');
+                    setActivePetPill(data.report_id);
+                    try {
+                        const report = await fetchReport(data.report_id);
+                        if (isCancelled) return;
+                        setSelectedPetReport(report);
+                    } catch {
+                        // silencioso — si falla, el criterio queda incompleto,
+                    }
+                    setCentinela(data);
+                    return;
+                }
+
+                setCentinela(data);
+
+                if (data?.activo) {
+                    setSearchMode('abierta');
+                    if (data.query_text) setGlobalQuery(data.query_text);
+                    if (data.district) {
+                        setFilterDistrito(data.district);
+                        if (countryCode) {
+                            getTerritoryTree(countryCode).then((tree) => {
+                                if (isCancelled) return;
+                                for (const dep of tree) {
+                                    for (const prov of dep.children ?? []) {
+                                        if (prov.name === data.district) {
+                                            setFilterDepartamento(dep.name);
+                                            setFilterProvincia(prov.name);
+                                            return;
+                                        }
+                                        if ((prov.children ?? []).some((d) => d.name === data.district)) {
+                                            setFilterDepartamento(dep.name);
+                                            setFilterProvincia(prov.name);
+                                            return;
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    if (data.image_features) {
+                        setBioAnalysisResult(data.image_features);
+                        setBioAttributes(buildBioAttributeChips(data.image_features));
+                        setIsBioConfirmed(true);
+                    }
+                    if (data.image_url) setBioImagePreview(data.image_url);
+
+                    if (data.report_type) setFilterReportType(data.report_type);
+                    if (data.pet_type) setPetTypeFilter(data.pet_type);
+                }
+            } catch {
+            }
+        })();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [hasToolsAccess]);
+
+    const loadCentinelaMatches = async () => {
+        setIsLoadingMatches(true);
+        try {
+            const matches = await getCentinelaMatches(false);
+            setCentinelaMatches(matches);
+
+            const missing = matches.filter((m) => !centinelaMatchPets[m.report_id]);
+            const fetched = await Promise.all(
+                missing.map((m) => fetchReport(m.report_id).catch(() => null))
+            );
+            setCentinelaMatchPets((prev) => {
+                const next = { ...prev };
+                fetched.forEach((r, i) => {
+                    if (r) next[missing[i].report_id] = reportToPetData(r);
+                });
+                return next;
+            });
+        } catch {
+            // silencioso — la lista simplemente queda como estaba
+        } finally {
+            setIsLoadingMatches(false);
+        }
+    };
+
+    useEffect(() => {
+        if (centinela?.activo) {
+            loadCentinelaMatches();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [centinela?.activo, centinela?.id]);
+
+    const handleToggleCentinela = async () => {
+        if (!hasToolsAccess || isCentinelaToggling) return;
+
+        setIsCentinelaToggling(true);
+        try {
+            if (centinela?.activo) {
+                await turnOffCentinela();
+                setCentinela((prev) => (prev ? { ...prev, activo: false } : prev));
+                setCentinelaEstaActivo(false);
+            } else {
+                if (!hasAnyCriteria()) {
+                    showToast('Ingresa un criterio de búsqueda antes de activar el Centinela.', 'info');
+                    return;
+                }
+                if (!isMascotaMode && hasIncompleteLocation()) {
+                    showToast(
+                        `Completa la zona de búsqueda hasta ${deepestLocationLabel} o quítala, para poder guardarla en el Centinela.`,
+                        'info'
+                    );
+                    return;
+                }
+
+                const criteria = getCurrentSearchCriteria();
+
+                const created = await createOrReplaceCentinela({
+                    query_text: criteria.queryText || null,
+                    district: criteria.district || null,
+                    image_features: hasConfirmedPhoto ? bioAnalysisResult : null,
+                    image_base64:
+                        hasConfirmedPhoto && bioImagePreview?.startsWith('data:')
+                            ? bioImagePreview.split(',')[1] ?? bioImagePreview
+                            : null,
+                    report_type: criteria.reportType,
+                    pet_type: criteria.petType,
+                    report_id: criteria.reportId,
+                });
+                setCentinela(created);
+                setCentinelaEstaActivo(!!created.activo);
+            }
+        } catch (err) {
+            showToast('No pudimos actualizar el Centinela. Intenta de nuevo.', 'error');
+        } finally {
+            setIsCentinelaToggling(false);
+        }
+    };
+
+    const handleDismissMatch = async (matchId: string) => {
+        setCentinelaMatches((prev) => prev.filter((m) => m.id !== matchId));
+        try {
+            await markCentinelaMatchVisto(matchId);
+        } catch {
+        }
+    };
+
+    const centinelaMatchIds = new Set(centinelaMatches.map((m) => m.report_id));
+    const visibleResults = centinela?.activo
+        ? results.filter((pet) => !centinelaMatchIds.has(pet.id))
+        : results;
+
+    const centinelaActiveSince = centinela?.created_at
+        ? new Date(centinela.created_at).toLocaleDateString(getLocaleForCountry(countryCode), {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        })
+        : null;
+
+    const handleTriggerSearch = async () => {
+        if (!countryCode) return;
+
+        if (!hasAnyCriteria()) {
+            showToast('Ingresa una característica o elige un filtro antes de buscar.', 'info');
+            return;
+        }
+        if (!isMascotaMode && hasIncompleteLocation()) {
+            showToast(
+                `Completa la zona de búsqueda hasta ${deepestLocationLabel} o quítala para buscar sin filtrar por ubicación.`,
+                'info'
+            );
+            return;
+        }
+
+        const criteria = getCurrentSearchCriteria();
+
+        if (hasConfirmedPhoto && !criteria.district) {
+            showToast('Selecciona una zona de búsqueda.', 'info');
+            setIsAdvancedOpen(true);
+            setIsZoneHighlighted(true);
+            return;
+        }
+
+        setIsSearching(true);
+        setSearchError(null);
+
+        try {
+            let items: (Report | SearchResult)[];
+
+            if (hasConfirmedPhoto) {
+                const base64 = bioImagePreview?.startsWith('data:')
+                    ? bioImagePreview.split(',')[1] ?? bioImagePreview
+                    : undefined;
+                const response = await searchPets({
+                    district: criteria.district,
+                    text: criteria.queryText || undefined,
+                    image_base64: base64,
+                    image_features: bioAnalysisResult!,
+                    country_code: countryCode,
+                });
+                items = response.results;
+                setResultsSearchMeta(response.meta ?? null);
+            } else {
+                const response = await fetchReports({
+                    country_code: countryCode,
+                    status: 'active',
+                    search: criteria.queryText || undefined,
+                    report_type: criteria.reportType || undefined,
+                    district: criteria.district || undefined,
+                    pet_type: criteria.petType || undefined,
+                    strict: true,
+                    limit: 100,
+                });
+                items = response.items;
+                setResultsSearchMeta(null);
+            }
+
+            const seen = new Set<string>();
+            const deduped = items.filter((item) => {
+                if (isMascotaMode && criteria.reportId && item.id === criteria.reportId) return false;
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return true;
+            });
+
+            const filteredReports = applyClientSideFilters(deduped);
+            setResults(filteredReports.map(reportToPetData));
+
+            if (!isMascotaMode && globalQuery.trim()) {
+                addRecentSearch(globalQuery.trim());
+                setRecentSearches(getRecentSearches());
+            }
+        } catch (err) {
+            setSearchError('No pudimos completar la búsqueda. Intenta de nuevo en unos minutos.');
+            setResults([]);
+        } finally {
+            setIsSearching(false);
+            setHasSearched(true);
+        }
+    };
+
+    useEffect(() => {
+        if (centinela?.activo) {
+            handleTriggerSearch();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [centinela?.id, centinela?.activo]);
+
+    useEffect(() => {
+        if (isMascotaMode && selectedPetReport && !centinela?.activo) {
+            handleTriggerSearch();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchMode, selectedPetReport?.id]);
+
+    const handleSearchInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setIsSearchDropdownOpen(false);
+            handleTriggerSearch();
+        }
+    };
+
+    const handleOpenDetail = (pet: PetData) => {
+        if (pet.isExternal && pet.externalUrl) {
+            window.open(pet.externalUrl, '_blank');
+            return;
+        }
+        window.open(`/?id=${pet.id}`, '_blank');
+    };
+
+
+    const renderPetCard = (
+        pet: PetData,
+        options?: { onDismiss?: () => void }
+    ) => {
+        const isSystemResult = !pet.isExternal;
+
+        return (
+            <div
+                key={pet.id}
+                className="pet-card pet-card-horizontal"
+                onClick={() => handleOpenDetail(pet)}
+                style={{ cursor: 'pointer' }}
+            >
+                <div className="card-horizontal-media">
+                    <div className="card-badges-horizontal">
+                        {pet.isExternal ? (
+                            <span
+                                className="badge-horizontal"
+                                style={
+                                    pet.externalType === 'facebook'
+                                        ? { backgroundColor: '#1877f2' }
+                                        : pet.externalType === 'instagram'
+                                            ? { backgroundColor: '#cc2366' }
+                                            : pet.externalType === 'tiktok'
+                                                ? { backgroundColor: 'var(--brand-main)' }
+                                                : { backgroundColor: '#4285f4' }
+                                }
+                            >
+                                {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
+                                {pet.externalType === 'instagram' && <i className="fa-brands fa-instagram"></i>}
+                                {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
+                                {pet.externalType === 'google' && <i className="fa-brands fa-google"></i>}
+                                {' '}{pet.badge}
+                            </span>
+                        ) : (
+                            <span className={`badge-horizontal ${pet.badgeStyle}`}>{pet.badge}</span>
+                        )}
+                    </div>
+
+                    <img src={pet.imgSrc} className="card-img" alt={pet.title} />
+                </div>
+
+                <div className="card-horizontal-body">
+                    <div className="card-body">
+                        <div className="card-horizontal-header-row">
+                            <h3 className="card-title-horizontal">{pet.title}</h3>
+                            {options?.onDismiss && (
+                                <button
+                                    type="button"
+                                    className="btn-dismiss-match tooltip"
+                                    data-tooltip="Descartar"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        options.onDismiss?.();
+                                    }}
+                                >
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                            )}
+                        </div>
+                        <div className="card-meta-horizontal">
+                            <span>
+                                <i className="ti ti-pin"></i> {formatPetLocation(pet)}
+                            </span>
+                            <span>
+                                <i className="ti ti-calendar-bolt"></i> {pet.date || '-'}
+                            </span>
+                        </div>
+                        {pet.reward && pet.reward !== 'S/. 0' && pet.reward !== '0' && (
+                            <div className="reward-container">
+                                <span className="reward-label">Recompensa</span>
+                                <span className="reward-amount">{pet.reward}</span>
+                            </div>
+                        )}
+                        {pet.desc && (
+                            <div className="card-desc-horizontal">{pet.desc}</div>
+                        )}
+                    </div>
+
+                    <div className="card-footer-horizontal">
+                        {isSystemResult ? (
+                            <>
+                                {pet.badgeStyle === 'badge-adopt' || pet.badgeStyle === 'badge-adopt-premium' ? (
+                                    <span>
+                                        <i className="fa-solid fa-heart"></i> Adopción Responsable
+                                    </span>
+                                ) : (
+                                    <div>
+                                        <span>
+                                            <i className="ti ti-share"></i> {pet.shares}
+                                        </span>
+                                        <span>
+                                            <i className="ti ti-users"></i> {pet.views}
+                                        </span>
+                                    </div>
+                                )}
+                                {pet.badgeStyle === 'badge-adopt' || pet.badgeStyle === 'badge-adopt-premium' ? (
+                                    <button type="button" className="btn-purple-mini">¡ADOPTAR!</button>
+                                ) : pet.badgeStyle === 'badge-found' ? (
+                                    <button type="button" className="btn-found-mini">CONSULTAR</button>
+                                ) : pet.badgeStyle === 'badge-sight' ? (
+                                    <button type="button" className="btn-yellow-mini">¡LO VI!</button>
+                                ) : (
+                                    <button type="button" className="btn-primary-mini">¡LO VI!</button>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <span>
+                                    <i className="ti ti-world-www"></i> Indexado
+                                </span>
+                                <span
+                                    style={
+                                        pet.externalType === 'facebook'
+                                            ? { color: '#1877f2' }
+                                            : pet.externalType === 'instagram'
+                                                ? { color: '#cc2366' }
+                                                : pet.externalType === 'google'
+                                                    ? { color: '#4285f4' }
+                                                    : {}
+                                    }
+                                >
+                                    {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
+                                    {pet.externalType === 'instagram' && <i className="fa-brands fa-instagram"></i>}
+                                    {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
+                                    {pet.externalType === 'google' && <i className="fa-brands fa-google"></i>}
+                                    {' '}
+                                    {pet.externalType === 'facebook'
+                                        ? 'Facebook'
+                                        : pet.externalType === 'instagram'
+                                            ? 'Instagram'
+                                            : pet.externalType === 'tiktok'
+                                                ? 'TikTok'
+                                                : 'Origen Externo'}
+                                </span>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const activeTagsCount = isMascotaMode
+        ? (activePetPill !== 'nuevo' ? 1 : 0)
+        : (globalQuery.trim() ? 1 : 0) +
+        (filterReportType ? 1 : 0) +
         (filterTiempo ? 1 : 0) +
-        (filterDepartamento ? 1 : 0) +
-        (filterProvincia ? 1 : 0) +
-        (filterDistrito ? 1 : 0) +
-        pillFilters.tipo.length +
-        pillFilters.tamano.length +
-        customTags.raza.length +
-        customTags.color.length +
-        (includePhotoInCentinela || uploadedBioImage ? 1 : 0);
+        (filterDepartamento || filterProvincia || filterDistrito ? 1 : 0) +
+        (petTypeFilter ? 1 : 0) +
+        (isBioConfirmed && bioAttributes.length > 0 ? 1 : 0);
 
     return (
         <main className="main-content">
             <section id="view-ia-search" className="tab-view animate-fade-in">
                 <div className="ia-dashboard-grid">
                     {/* ==========================================
-              COLUMNA IZQUIERDA (CONTROLES Y FILTROS)
-             ========================================== */}
+                        COLUMNA IZQUIERDA (CONTROLES Y FILTROS)
+                        ========================================== */}
                     <div className="ia-col-left">
                         <div className="ia-box form-box">
-                            {/* PET PILLS */}
-                            <div className="pet-pills-flex">
-                                <button
-                                    className={`pill-btn ${activePetPill === 'toby' ? 'active' : ''}`}
-                                    data-pet="toby"
-                                    onClick={() => setActivePetPill('toby')}
+                            {centinela?.activo && (
+                                <div className="layer-blocked"
                                 >
-                                    Toby
-                                </button>
-                                <button
-                                    className={`pill-btn ${activePetPill === 'benji' ? 'active' : ''}`}
-                                    data-pet="benji"
-                                    onClick={() => setActivePetPill('benji')}
-                                >
-                                    Benji
-                                </button>
-                                <button
-                                    className={`pill-btn ${activePetPill === 'nuevo' || !activePetPill ? 'active' : ''}`}
-                                    data-pet="nuevo"
-                                    onClick={() => setActivePetPill('nuevo')}
-                                >
-                                    <i className="ti ti-refresh"></i> Nueva búsqueda
-                                </button>
-                            </div>
-
-                            {/* INPUT DE BÚSQUEDA GLOBAL */}
-                            <div
-                                className="input-group-custom global-search-group"
-                                ref={searchContainerRef}
-                            >
-                                <i className="search-icon"></i>
-                                <input
-                                    type="text"
-                                    id="ia-global-query"
-                                    placeholder="Raza, color, características..."
-                                    value={globalQuery}
-                                    onChange={(e) => setGlobalQuery(e.target.value)}
-                                    onFocus={() => setIsSearchDropdownOpen(true)}
-                                />
-
-                                {/* DROPDOWN DE BÚSQUEDA */}
-                                <div
-                                    className={`search-dropdown-results search-ia ${isSearchDropdownOpen ? 'is-visible' : ''
-                                        }`}
-                                    id="ia-search-dropdown"
-                                >
-                                    {!globalQuery.trim() ? (
-                                        <>
-                                            <div className="dropdown-section-header">
-                                                <span>Recientes</span>
-                                            </div>
-                                            {recentSearches.length === 0 ? (
-                                                <div className="dropdown-section-header">
-                                                    No hay búsquedas recientes
-                                                </div>
-                                            ) : (
-                                                recentSearches.slice(0, 10).map((search, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="search-result-item"
-                                                        data-type="recent"
-                                                        data-value={search}
-                                                        onClick={() => executeIaSearch(search)}
-                                                    >
-                                                        <div className="search-item-left">
-                                                            <div className="search-item-icon">
-                                                                <i className="ti ti-clock"></i>
-                                                            </div>
-                                                            <div className="search-item-info">
-                                                                <span className="search-item-title">{search}</span>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            className="search-item-remove-btn"
-                                                            data-index={idx}
-                                                            onClick={(e) => removeRecentSearch(e, idx)}
-                                                        >
-                                                            <i className="ti ti-x"></i>
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {mockPostsIA.filter((item) =>
-                                                item.title.toLowerCase().includes(globalQuery.toLowerCase())
-                                            ).length === 0 ? (
-                                                <div
-                                                    className="search-result-item"
-                                                    data-type="suggest"
-                                                    data-value={globalQuery}
-                                                    onClick={() => executeIaSearch(globalQuery)}
-                                                >
-                                                    <div className="search-item-left">
-                                                        <div className="search-item-icon">
-                                                            <i className="ti ti-search"></i>
-                                                        </div>
-                                                        <div className="search-item-info">
-                                                            <span className="search-item-title">
-                                                                Buscar &quot;<strong>{globalQuery}</strong>&quot;
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                mockPostsIA
-                                                    .filter((item) =>
-                                                        item.title
-                                                            .toLowerCase()
-                                                            .includes(globalQuery.toLowerCase())
-                                                    )
-                                                    .map((item, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="search-result-item"
-                                                            data-type="suggest"
-                                                            data-value={item.title}
-                                                            onClick={() => executeIaSearch(item.title)}
-                                                        >
-                                                            <div className="search-item-left">
-                                                                <div className="search-item-icon">
-                                                                    <i className="ti ti-search"></i>
-                                                                </div>
-                                                                <div className="search-item-info">
-                                                                    <span className="search-item-title">
-                                                                        {item.title}
-                                                                    </span>
-                                                                    <span className="search-item-subtitle">
-                                                                        {item.subtitle}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className={`clear-search-btn ${globalQuery.length > 0 ? 'active' : ''
-                                        }`}
-                                    id="btn-clear-all"
-                                    onClick={() => setGlobalQuery('')}
-                                >
-                                    <i className="ti ti-x"></i>
-                                </button>
-                                <button
-                                    type="button"
-                                    id="btn-trigger-search"
-                                    className="btn-primary-search"
-                                    onClick={handleTriggerSearch}
-                                >
-                                    Buscar
-                                </button>
-                            </div>
-
-                            {/* FILTROS RÁPIDOS */}
-                            <div
-                                className="form-grid-custom"
-                                style={{ flexFlow: 'nowrap' }}
-                            >
-                                <CustomSelect
-                                    placeholder="--"
-                                    value={filterTipoAviso}
-                                    onChange={(val) => setFilterTipoAviso(val)}
-                                    options={[
-                                        { value: 'Perdidos', label: 'Perdidos' },
-                                        { value: 'Encontrados', label: 'Encontrados' },
-                                        { value: 'Avistamientos', label: 'Avistamientos' },
-                                        { value: 'Adopciones', label: 'Adopciones' },
-                                    ]}
-                                />
-                                <CustomSelect
-                                    placeholder="--"
-                                    value={filterTiempo}
-                                    onChange={(val) => setFilterTiempo(val)}
-                                    options={[
-                                        { value: 'Últimas 24 horas', label: 'Últimas 24 horas' },
-                                        { value: 'Última semana', label: 'Última semana' },
-                                        { value: 'Último mes', label: 'Último mes' },
-                                    ]}
-                                />
-                            </div>
-
-                            <div className="sources-checklist-container-modern">
-                                <div className="source-check-item-modern">
-                                    <i className="ti ti-world-search"></i> Buscamos en todo Internet (sitios, redes y más)
-                                </div>
-                            </div>
-
-                            {/* LOADER DE PROGRESO */}
-                            <div
-                                id="main-search-loader"
-                                className={`main-loader-container ${isSearching ? '' : 'hidden-view'
-                                    }`}
-                            >
-                                <div className="loader-label-row">
-                                    <span>
-                                        <i className="fa-solid fa-circle-notch fa-spin"></i> Ejecutando escaneo profundo...
+                                    <span className="badge-active-attribute">
+                                        <i className="fa-solid fa-lock"></i> Centinela activado
                                     </span>
-                                    <span id="load-percentage">{searchProgress}%</span>
                                 </div>
-                                <div className="main-progress-bg">
-                                    <div
-                                        id="main-progress-bar"
-                                        className="main-progress-bar"
-                                        style={{ width: `${searchProgress}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-
-                            {/* DESPLEGABLE DE FILTROS AVANZADOS */}
-                            <button
-                                type="button"
-                                className={`btn-toggle-advanced-filters ${isAdvancedOpen ? 'open' : ''
-                                    }`}
-                                id="btn-toggle-advanced"
-                                onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-                            >
-                                <span>
-                                    <i className="ti ti-filter-2-search"></i> Filtros avanzados
-                                </span>
-                                <i className="fa-solid fa-chevron-down toggle-chevron"></i>
-                            </button>
-
+                            )}
                             <div
-                                className="advanced-filters-panel"
-                                id="advanced-filters-panel"
-                                style={{ display: isAdvancedOpen ? 'flex' : 'none' }}
+                                style={
+                                    centinela?.activo
+                                        ? { opacity: 0.5, pointerEvents: 'none' }
+                                        : undefined
+                                }
                             >
-                                <h3>Zona de búsqueda</h3>
-                                <div className="grid-3col-filters">
-                                    <div className="filter-group">
-                                        <CustomSelect
-                                            id="filter-departamento"
-                                            placeholder="--"
-                                            value={filterDepartamento}
-                                            onChange={(val) => setFilterDepartamento(val)}
-                                            options={[{ value: 'Lima', label: 'Lima' }]}
-                                        />
-                                    </div>
-                                    <div className="filter-group">
-                                        <CustomSelect
-                                            id="filter-provincia"
-                                            placeholder="--"
-                                            value={filterProvincia}
-                                            onChange={(val) => setFilterProvincia(val)}
-                                            options={[{ value: 'Lima', label: 'Lima' }]}
-                                        />
-                                    </div>
-                                    <div className="filter-group">
-                                        <CustomSelect
-                                            id="filter-distrito"
-                                            placeholder="--"
-                                            value={filterDistrito}
-                                            onChange={(val) => setFilterDistrito(val)}
-                                            options={[
-                                                { value: 'La Molina', label: 'La Molina' },
-                                                { value: 'Miraflores', label: 'Miraflores' },
-                                                {
-                                                    value: 'Santiago de Surco',
-                                                    label: 'Santiago de Surco',
-                                                },
-                                            ]}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="filter-divider"></div>
-
-                                <div className="filter-group">
-                                    <label className="filter-label">Tipo de mascota</label>
-                                    <div className="pill-multi-group">
-                                        {['Perro', 'Gato', 'Ave'].map((t) => (
-                                            <button
-                                                key={t}
-                                                type="button"
-                                                className={`pill-multi-btn ${pillFilters.tipo.includes(t) ? 'active' : ''
-                                                    }`}
-                                                data-group="tipo"
-                                                data-value={t}
-                                                onClick={() => togglePillFilter('tipo', t)}
-                                            >
-                                                <i
-                                                    className={`fa-solid ${t === 'Perro'
-                                                        ? 'fa-dog'
-                                                        : t === 'Gato'
-                                                            ? 'fa-cat'
-                                                            : 'fa-dove'
-                                                        }`}
-                                                ></i>{' '}
-                                                {t}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="filter-divider"></div>
-
-                                {/* TAGS CUSTOM (RAZA / COLOR) */}
-                                <div className="grid-2col-filters">
-                                    <div className="filter-group">
-                                        <label className="filter-label">Raza o especie</label>
-                                        <div className="tag-input-group">
-                                            <input
-                                                type="text"
-                                                id="input-tag-raza"
-                                                className="tag-input-field"
-                                                value={inputTagRaza}
-                                                onChange={(e) => setInputTagRaza(e.target.value)}
-                                                onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        handleAddCustomTag('raza');
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn-tag-add"
-                                                data-target="raza"
-                                                onClick={() => handleAddCustomTag('raza')}
-                                            >
-                                                <i className="fa-solid fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="filter-group">
-                                        <label className="filter-label">Color / Pelaje</label>
-                                        <div className="tag-input-group">
-                                            <input
-                                                type="text"
-                                                id="input-tag-color"
-                                                className="tag-input-field"
-                                                value={inputTagColor}
-                                                onChange={(e) => setInputTagColor(e.target.value)}
-                                                onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        handleAddCustomTag('color');
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn-tag-add"
-                                                data-target="color"
-                                                onClick={() => handleAddCustomTag('color')}
-                                            >
-                                                <i className="fa-solid fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* CONTENEDOR DE TAGS CUSTOM */}
-                                {(customTags.raza.length > 0 || customTags.color.length > 0) && (
-                                    <div
-                                        id="container-custom-tags"
-                                        className="custom-tags-flex"
-                                        style={{ display: 'flex' }}
+                                {/* PET PILLS — avisos activos propios */}
+                                <div className="pet-pills-flex">
+                                    {activeMyReports.map((report) => (
+                                        <button
+                                            key={report.id}
+                                            type="button"
+                                            className={`pill-btn ${activePetPill === report.id ? 'active' : ''}`}
+                                            onClick={() => handleSelectPetPill(report)}
+                                        >
+                                            {report.title || 'Sin título'}
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        className={`pill-btn pill-btn-reset ${activePetPill === 'nuevo' ? 'active' : ''}`}
+                                        onClick={handleResetPetPill}
                                     >
-                                        {customTags.raza.map((val, idx) => (
-                                            <span key={`raza-${idx}`} className="badge-custom-tag tag-raza">
-                                                Raza: {val}{' '}
-                                                <i
-                                                    className="fa-solid fa-xmark remove-tag-btn"
-                                                    onClick={() => handleRemoveCustomTag('raza', idx)}
-                                                ></i>
-                                            </span>
-                                        ))}
-                                        {customTags.color.map((val, idx) => (
-                                            <span key={`color-${idx}`} className="badge-custom-tag tag-color">
-                                                Color: {val}{' '}
-                                                <i
-                                                    className="fa-solid fa-xmark remove-tag-btn"
-                                                    onClick={() => handleRemoveCustomTag('color', idx)}
-                                                ></i>
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                        <i className="ti ti-refresh"></i> Nueva búsqueda
+                                    </button>
+                                </div>
 
-                                <div className="filter-divider"></div>
+                                <div
+                                    className="input-group-custom global-search-group"
+                                    ref={searchContainerRef}
+                                    style={
+                                        isMascotaMode
+                                            ? { opacity: 0.5, pointerEvents: 'none' }
+                                            : undefined
+                                    }
+                                >
+                                    <i className="search-icon"></i>
+                                    <input
+                                        type="text"
+                                        id="ia-global-query"
+                                        autoComplete="off"
+                                        placeholder="Raza, color, características..."
+                                        value={globalQuery}
+                                        disabled={isMascotaMode}
+                                        onChange={(e) => setGlobalQuery(e.target.value)}
+                                        onFocus={() => setIsSearchDropdownOpen(true)}
+                                        onKeyDown={handleSearchInputKeyDown}
+                                    />
 
-                                <div className="filter-group">
-                                    <label className="filter-label">Tamaño</label>
-                                    <div className="pill-multi-group">
-                                        {['Pequeño', 'Mediano', 'Grande'].map((size) => (
-                                            <button
-                                                key={size}
-                                                type="button"
-                                                className={`pill-multi-btn ${pillFilters.tamano.includes(size) ? 'active' : ''
-                                                    }`}
-                                                data-group="tamano"
-                                                data-value={size}
-                                                onClick={() => togglePillFilter('tamano', size)}
+                                    {/* DROPDOWN DE RECIENTES (compartido con Home) */}
+                                    <div
+                                        className={`search-dropdown-results search-ia ${isSearchDropdownOpen ? 'is-visible' : ''
+                                            }`}
+                                        id="ia-search-dropdown"
+                                    >
+                                        {!globalQuery.trim() ? (
+                                            <>
+                                                <div className="dropdown-section-header">
+                                                    <span>Recientes</span>
+                                                </div>
+                                                <div className="dropdown-scroll">
+                                                    {recentSearches.length === 0 ? (
+                                                        <div className="dropdown-empty-message">No hay búsquedas recientes</div>
+                                                    ) : (
+                                                        recentSearches.slice(0, 10).map((search, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="search-result-item"
+                                                                data-type="recent"
+                                                                data-value={search}
+                                                                onClick={() => executeIaSearch(search)}
+                                                            >
+                                                                <div className="search-item-left">
+                                                                    <div className="search-item-icon">
+                                                                        <i className="ti ti-clock"></i>
+                                                                    </div>
+                                                                    <div className="search-item-info">
+                                                                        <span className="search-item-title">{search}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    className="search-item-remove-btn"
+                                                                    data-index={idx}
+                                                                    onClick={(e) => removeRecentSearch(e, idx)}
+                                                                >
+                                                                    <i className="ti ti-x"></i>
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div
+                                                className="search-result-item"
+                                                data-type="suggest"
+                                                data-value={globalQuery}
+                                                onClick={() => executeIaSearch(globalQuery)}
                                             >
-                                                {size}
-                                            </button>
-                                        ))}
+                                                <div className="search-item-left">
+                                                    <div className="search-item-icon">
+                                                        <i className="ti ti-search"></i>
+                                                    </div>
+                                                    <div className="search-item-info">
+                                                        <span className="search-item-title">
+                                                            Buscar &quot;<strong>{globalQuery}</strong>&quot;
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className={`clear-search-btn ${globalQuery.length > 0 ? 'active' : ''}`}
+                                        id="btn-clear-all"
+                                        onClick={() => setGlobalQuery('')}
+                                    >
+                                        <i className="ti ti-x"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="btn-trigger-search"
+                                        className="btn-primary-search"
+                                        onClick={handleTriggerSearch}
+                                        disabled={isSearching || !countryCode || isMascotaMode}
+                                    >
+                                        Buscar
+                                    </button>
+                                </div>
+
+                                {/* FILTROS RÁPIDOS movidos a "Filtros avanzados" (más abajo),
+                                para dejar el buscador más libre. */}
+
+                                <div className="sources-checklist-container-modern" style={
+                                    isMascotaMode
+                                        ? { opacity: 0.5, pointerEvents: 'none' }
+                                        : undefined
+                                }>
+                                    <div className="source-check-item-modern">
+                                        <i className="ti ti-world-search"></i> Buscamos en Internet (sitios, redes y más)
+                                    </div>
+                                </div>
+
+                                {/* DESPLEGABLE DE FILTROS AVANZADOS */}
+                                <button
+                                    type="button"
+                                    className={`btn-toggle-advanced-filters ${isAdvancedOpen ? 'open' : ''}`}
+                                    id="btn-toggle-advanced"
+                                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                                    style={
+                                        isMascotaMode
+                                            ? { opacity: 0.5, pointerEvents: 'none' }
+                                            : undefined
+                                    }
+                                >
+                                    <span>
+                                        <i className="ti ti-filter-2-search"></i> Filtros avanzados
+                                    </span>
+                                    <i className="fa-solid fa-chevron-down toggle-chevron"></i>
+                                </button>
+
+                                <div
+                                    className="advanced-filters-panel"
+                                    id="advanced-filters-panel"
+                                    style={{
+                                        display: isAdvancedOpen ? 'flex' : 'none',
+                                        opacity: isMascotaMode ? 0.5 : 1,
+                                        pointerEvents: isMascotaMode ? 'none' : undefined,
+                                    }}
+                                >
+                                    <div className="grid-2col-filters">
+                                        <div className="filter-group">
+                                            <CustomSelect
+                                                placeholder="Tipo de aviso"
+                                                value={filterReportType}
+                                                onChange={(val) => setFilterReportType(val)}
+                                                options={REPORT_TYPE_OPTIONS}
+                                            />
+                                        </div>
+                                        <div className="filter-group">
+                                            <CustomSelect
+                                                placeholder="Fecha"
+                                                value={filterTiempo}
+                                                onChange={(val) => setFilterTiempo(val)}
+                                                options={TIEMPO_OPTIONS}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="filter-divider"></div>
+
+                                    <h3 className={isZoneHighlighted ? 'zone-label-error' : ''}>Zona de búsqueda</h3>
+                                    <div className={hasLevel3 ? 'grid-3col-filters' : 'grid-2col'}>
+                                        <div className={`filter-group ${isZoneHighlighted ? 'filter-group-error' : ''}`}>
+                                            <CustomSelect
+                                                id="filter-departamento"
+                                                placeholder={locationLabels?.[0] ?? '--'}
+                                                value={filterDepartamento}
+                                                onChange={(val) => {
+                                                    setFilterDepartamento(val);
+                                                    setFilterProvincia('');
+                                                    setFilterDistrito('');
+                                                }}
+                                                options={nivel1Options}
+                                                searchable={true}
+                                            />
+                                        </div>
+                                        <div className={`filter-group ${isZoneHighlighted ? 'filter-group-error' : ''}`}>
+                                            <CustomSelect
+                                                id="filter-provincia"
+                                                placeholder={locationLabels?.[1] ?? '--'}
+                                                value={filterProvincia}
+                                                onChange={(val) => {
+                                                    setFilterProvincia(val);
+                                                    setFilterDistrito('');
+                                                    if (!hasLevel3) {
+                                                        setIsZoneHighlighted(false);
+                                                    }
+                                                }}
+                                                options={nivel2Options}
+                                                searchable={true}
+                                            />
+                                        </div>
+                                        {hasLevel3 && (
+                                            <div className={`filter-group ${isZoneHighlighted ? 'filter-group-error' : ''}`}>
+                                                <CustomSelect
+                                                    id="filter-distrito"
+                                                    placeholder={locationLabels?.[2] ?? '--'}
+                                                    value={filterDistrito}
+                                                    onChange={(val) => {
+                                                        setFilterDistrito(val);
+                                                        setIsZoneHighlighted(false);
+                                                    }}
+                                                    options={nivel3Options}
+                                                    searchable={true}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="filter-divider"></div>
+
+                                    <div className="filter-group">
+                                        <label className="filter-label">Tipo de mascota</label>
+                                        <div className="pill-multi-group">
+                                            {PET_TYPE_OPTIONS.map((t) => (
+                                                <button
+                                                    key={t.value}
+                                                    type="button"
+                                                    className={`pill-multi-btn ${petTypeFilter === t.value ? 'active' : ''
+                                                        }`}
+                                                    onClick={() => selectPetTypeFilter(t.value)}
+                                                >
+                                                    <i className={`fa-solid ${t.icon}`}></i> {t.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* ==========================================
-              COLUMNA CENTRO (CENTINELA / RASTREADOR)
-             ========================================== */}
                     <div className="ia-col-center">
                         <div
-                            className={`ia-box centinela-premium-box ${isCentinelaLocked ? 'premium-locked' : ''
-                                } ${isCentinelaActive ? 'centinela-active' : ''}`}
+                            className={`ia-box centinela-premium-box ${hasToolsAccess ? '' : 'premium-locked'}`}
                             id="centinela-box"
                         >
-                            <div className="wrapper-premium-notice">
-                                <div className="premium-notice-banner">
-                                    <Link href="/publicar" className="notice-main-link">
-                                        <div className="notice-icon">
-                                            <i className="ti ti-settings-search"></i>
-                                        </div>
-                                        <div className="notice-text">
-                                            <h5>Publica un aviso</h5>
-                                            <p>y activa la herramienta avanzada de búsqueda automática 24/7</p>
-                                        </div>
-                                    </Link>
-                                    <button
-                                        type="button"
-                                        className="notice-alt-btn"
-                                        data-open-planes-modal="" onClick={triggerOpenPlanesModal}
-                                    >
-                                        o activa la herramienta sin publicar aviso
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="centinela-header-row">
-                                <button
-                                    type="button"
-                                    className="btn-centinela-setting"
-                                    onClick={() => setIsCentinelaConfigOpen(!isCentinelaConfigOpen)}
-                                >
-                                    <i className={isCentinelaConfigOpen ? 'ti ti-settings-check' : 'ti ti-settings'}></i>{' '}
-                                    <span>{isCentinelaConfigOpen ? 'Guardar' : 'Ajustes'}</span>
-                                </button>
+                            <div className="centinela-header-row" >
+                                {/* Botón de Ajustes y centinela-config-flow comentados: no hay
+                                    frecuencia/alertas configurables todavía. */}
                                 <label className="ui-switch">
                                     <input
                                         type="checkbox"
-                                        id="chk-centinela-toggle"
-                                        checked={isCentinelaActive}
-                                        onChange={handleCentinelaToggle}
+                                        checked={!!centinela?.activo}
+                                        disabled={!hasToolsAccess || isCentinelaToggling}
+                                        onChange={handleToggleCentinela}
                                     />
                                     <span className="ui-slider-btn"></span>
                                 </label>
-                                <h4>Buscador automático 24/7 </h4>
+                                <h4>Buscador automático 24/7</h4>
                             </div>
 
                             <div
-                                id="centinela-config-flow"
-                                className={isCentinelaConfigOpen ? '' : 'hidden-centinela-config-flow'}
-                            >
-                                <div className="centinela-row-field">
-                                    <div className="centinela-field">
-                                        <label className="label">Frecuencia:</label>
-                                        <CustomSelect
-                                            id="sel-centinela-freq"
-                                            placeholder="--"
-                                            value={centinelaFreq}
-                                            onChange={(val) => setCentinelaFreq(val)}
-                                            options={[
-                                                { value: 'Cada hora', label: 'Cada hora' },
-                                                { value: 'Cada 2 horas', label: 'Cada 2 horas' },
-                                                { value: 'Cada día', label: 'Cada día' },
-                                            ]}
-                                        />
-                                    </div>
-                                    <div className="centinela-field">
-                                        <label className="label">¿Incluir búsqueda por foto?</label>
-                                        <label className="ui-switch">
-                                            <input
-                                                type="checkbox"
-                                                id="chk-centinela-include-photo"
-                                                checked={includePhotoInCentinela}
-                                                onChange={(e) => setIncludePhotoInCentinela(e.target.checked)}
-                                            />
-                                            <span className="ui-slider-btn"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                className={`antivirus-scan-wrapper ${isCentinelaActive ? 'state-scanning' : ''
-                                    }`}
+                                className={`antivirus-scan-wrapper ${centinela?.activo ? 'state-scanning' : ''}`}
                                 id="antivirus-wrapper-container"
                             >
-                                <div className="antivirus-status-text-row">
+                                <div className="antivirus-status-text-row" style={
+                                    isBioLocked
+                                        ? { opacity: 0.5, pointerEvents: 'none' }
+                                        : undefined
+                                }>
                                     <span id="antivirus-status-title">
-                                        {isCentinelaActive ? (
+                                        {centinela?.activo ? (
                                             <>
-                                                <i className="icon-loading"></i>Activo
-                                            </>
-                                        ) : isCentinelaLocked ? (
-                                            <>
-                                                <i
-                                                    className="fa-solid fa-circle-xmark"
-                                                    style={{ color: 'var(--brand-red)' }}
-                                                ></i>{' '}
-                                                Rastreador en pausa
+                                                <i className="icon-loading"></i> Activo desde {centinelaActiveSince}
                                             </>
                                         ) : (
                                             <>
-                                                <i className="fa-solid fa-circle-pause"></i> En pausa
+                                                <i className="fa-solid fa-circle-pause"></i> Apagado
                                             </>
                                         )}
                                     </span>
                                     <span
                                         id="antivirus-status-desc"
-                                        className={isCentinelaActive ? '' : 'hidden-view'}
+                                        className={centinela?.activo ? '' : 'hidden-view'}
                                     >
-                                        Buscando, rastreando...
+                                        Buscando, nuevos avisos…
                                     </span>
+
                                 </div>
                                 <div className="antivirus-track">
                                     <div className="antivirus-laser-bar"></div>
                                 </div>
                             </div>
+
+                            {isGatingReady && !hasToolsAccess && (
+                                <div className="first-visit-banner">
+                                    <Link href="/publicar"><i className="fa-solid fa-lock"></i> <b>Publica</b> un aviso para <b>desbloquear</b></Link>
+                                </div>
+                            )}
                         </div>
 
-                        {/* BANNER PRIMERA VISITA */}
-                        <div
-                            id="first-visit-banner"
-                            className={`first-visit-banner ${isFirstVisitBannerVisible ? 'is-visible' : ''
-                                }`}
-                        >
-                            <div className="fvb-text">
-                                <h5>Publica un aviso</h5>
-                                <p>
-                                    Para que <b>Centinela IA</b> empiece a buscar automáticamente, o realiza una búsqueda manual.
-                                </p>
-                            </div>
-                            <div className="fvb-actions">
-                                <Link href="/publicar" className="btn-primary-mini">
-                                    Publicar aviso
-                                </Link>
-                                <button
-                                    type="button"
-                                    className="fvb-alt-link"
-                                    data-open-planes-modal=""
-                                    onClick={triggerOpenPlanesModal}
-                                >
-                                    Activar sin publicar aviso
-                                </button>
-                            </div>
-                            <button
-                                type="button"
-                                className="fvb-close"
-                                aria-label="Cerrar"
-                                onClick={() => setIsFirstVisitBannerVisible(false)}
-                            >
-                                <i className="ti ti-x"></i>
-                            </button>
-                        </div>
+                        {isMascotaMode && (
+                            <p className="empty-criteria-message" style={{ 'margin': '0.5em 0' }}>
+                                <i className="ti ti-info-circle"></i> Quita el aviso seleccionado, para búsqueda manual.
+                            </p>
+                        )}
 
                         {/* BARRA DE TAGS ACTIVOS */}
                         <div
                             id="container-active-tags"
                             className="active-tags-flex"
                             style={{
-                                display:
-                                    activeTagsCount > 0 || isCentinelaActive ? 'flex' : 'none',
+                                display: activeTagsCount > 0 ? 'flex' : 'none',
+                                opacity: centinela?.activo ? 0.5 : 1,
+                                pointerEvents: centinela?.activo ? 'none' : undefined,
                             }}
                         >
-                            {activePetPill &&
-                                activePetPill !== 'nuevo' &&
-                                anunciosMock[activePetPill] && (
-                                    <span className="badge-active-attribute badge-pill-pet">
-                                        <i className="fa-solid fa-paw"></i> Mascota:{' '}
-                                        {anunciosMock[activePetPill].nombre}{' '}
-                                        <i
-                                            className="fa-solid fa-xmark remove-tag-btn"
-                                            onClick={() => setActivePetPill('nuevo')}
-                                        ></i>
-                                    </span>
-                                )}
+                            {activePetPill !== 'nuevo' && (
+                                <span className="badge-active-attribute badge-pill-pet">
+                                    <i className="fa-solid fa-paw"></i> {selectedPetReport?.title || 'Mascota seleccionada'}{' '}
+                                    <i
+                                        className="fa-solid fa-xmark remove-tag-btn"
+                                        onClick={handleResetPetPill}
+                                    ></i>
+                                </span>
+                            )}
 
-                            {globalQuery.trim() && (
+                            {!isMascotaMode && globalQuery.trim() && (
                                 <span className="badge-active-attribute">
                                     <i className="ti ti-search"></i> Criterio: &quot;{globalQuery}&quot;{' '}
                                     <i
@@ -894,19 +1310,21 @@ export default function BuscarIAPage() {
                                 </span>
                             )}
 
-                            {filterTipoAviso && (
+                            {!isMascotaMode && filterReportType && (
                                 <span className="badge-active-attribute">
-                                    <i className="fa-solid fa-filter"></i> {filterTipoAviso}{' '}
+                                    <i className="fa-solid fa-filter"></i>{' '}
+                                    {REPORT_TYPE_OPTIONS.find((o) => o.value === filterReportType)?.label}{' '}
                                     <i
                                         className="fa-solid fa-xmark remove-tag-btn"
-                                        onClick={() => setFilterTipoAviso('')}
+                                        onClick={() => setFilterReportType('')}
                                     ></i>
                                 </span>
                             )}
 
-                            {filterTiempo && (
+                            {!isMascotaMode && filterTiempo && (
                                 <span className="badge-active-attribute">
-                                    <i className="fa-solid fa-filter"></i> {filterTiempo}{' '}
+                                    <i className="fa-solid fa-filter"></i>{' '}
+                                    {TIEMPO_OPTIONS.find((o) => o.value === filterTiempo)?.label}{' '}
                                     <i
                                         className="fa-solid fa-xmark remove-tag-btn"
                                         onClick={() => setFilterTiempo('')}
@@ -914,14 +1332,14 @@ export default function BuscarIAPage() {
                                 </span>
                             )}
 
-                            {(includePhotoInCentinela || uploadedBioImage) && (
+                            {!isMascotaMode && isBioConfirmed && bioAttributes.length > 0 && (
                                 <span className="badge-active-attribute badge-photo-attached">
-                                    <i className="fa-solid fa-camera"></i> Con Foto{' '}
+                                    <i className="fa-solid fa-camera"></i> Datos de IA{' '}
                                     <i
                                         className="fa-solid fa-xmark remove-tag-btn"
                                         onClick={() => {
-                                            setIncludePhotoInCentinela(false);
-                                            setUploadedBioImage(null);
+                                            setIsBioConfirmed(false);
+                                            setIsZoneHighlighted(false);
                                         }}
                                     ></i>
                                 </span>
@@ -929,75 +1347,60 @@ export default function BuscarIAPage() {
 
                             {activeTagsCount === 0 && (
                                 <p className="empty-criteria-message">
-                                    <i className="ti ti-info-circle"></i> Ingresa características de tu mascota y te avisaremos si encontramos coincidencias.
+                                    <i className="ti ti-info-circle"></i> Ingresa características de tu mascota y busca en el portal.
                                 </p>
                             )}
                         </div>
 
-                        {/* TAGS AVANZADOS DE UBICACIÓN Y PILLS */}
+                        {/* TAGS AVANZADOS DE UBICACIÓN Y PILLS — solo aplican en
+                            modo "Búsqueda Abierta". */}
                         <div
                             id="container-active-tags-avanced"
                             className="active-tags-flex-avanced"
+                            style={{
+                                display: isMascotaMode ? 'none' : undefined,
+                                opacity: centinela?.activo ? 0.5 : 1,
+                                pointerEvents: centinela?.activo ? 'none' : undefined,
+                            }}
                         >
-                            {filterDepartamento && (
+                            {(filterDepartamento || filterProvincia || filterDistrito) && (
                                 <span className="badge-active-attribute-avanced">
-                                    <i className="fa-solid fa-location-dot"></i> {filterDepartamento}{' '}
+                                    <i className="fa-solid fa-location-dot"></i>{' '}
+                                    {[filterDepartamento, filterProvincia, filterDistrito].filter(Boolean).join(', ')}{' '}
                                     <i
                                         className="fa-solid fa-xmark remove-tag-btn"
-                                        onClick={() => setFilterDepartamento('')}
-                                    ></i>
-                                </span>
-                            )}
-                            {filterProvincia && (
-                                <span className="badge-active-attribute-avanced">
-                                    <i className="fa-solid fa-location-dot"></i> {filterProvincia}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
-                                        onClick={() => setFilterProvincia('')}
-                                    ></i>
-                                </span>
-                            )}
-                            {filterDistrito && (
-                                <span className="badge-active-attribute-avanced">
-                                    <i className="fa-solid fa-location-dot"></i> {filterDistrito}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
-                                        onClick={() => setFilterDistrito('')}
+                                        onClick={clearLocationFilters}
                                     ></i>
                                 </span>
                             )}
 
-                            {pillFilters.tipo.map((val) => (
-                                <span key={`pill-tipo-${val}`} className="badge-active-attribute-avanced">
-                                    <i
-                                        className={`fa-solid ${val === 'Perro'
-                                            ? 'fa-dog'
-                                            : val === 'Gato'
-                                                ? 'fa-cat'
-                                                : 'fa-dove'
-                                            }`}
-                                    ></i>{' '}
-                                    {val}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
-                                        onClick={() => togglePillFilter('tipo', val)}
-                                    ></i>
-                                </span>
-                            ))}
-
-                            {pillFilters.tamano.map((val) => (
-                                <span key={`pill-tamano-${val}`} className="badge-active-attribute-avanced">
-                                    {val}{' '}
+                            {petTypeFilter && (
+                                <span className="badge-active-attribute-avanced">
+                                    {(() => {
+                                        const opt = PET_TYPE_OPTIONS.find((o) => o.value === petTypeFilter);
+                                        return (
+                                            <>
+                                                {opt && <i className={`fa-solid ${opt.icon}`}></i>} {opt?.label ?? petTypeFilter}
+                                            </>
+                                        );
+                                    })()}{' '}
                                     <i
                                         className="fa-solid fa-xmark remove-tag-btn"
-                                        onClick={() => togglePillFilter('tamano', val)}
+                                        onClick={() => setPetTypeFilter('')}
                                     ></i>
                                 </span>
-                            ))}
+                            )}
                         </div>
 
-                        {/* EMPTY STATE */}
-                        {!isSearching && !isScanningBio && !hasSearched && (
+                        {isSearching && (
+                            <div className="loading-state-centered">
+                                <div className="loading-spinner"></div>
+                                <p>Buscando coincidencias...</p>
+                            </div>
+                        )}
+
+                        {/* EMPTY STATE — solo si no hay búsqueda manual ni Centinela activo */}
+                        {!isSearching && !hasSearched && !centinela?.activo && (
                             <div className="search-empty-state">
                                 <div className="empty-search">
                                     <i></i>
@@ -1011,196 +1414,69 @@ export default function BuscarIAPage() {
                             </div>
                         )}
 
-                        {/* SCANNING LOADER */}
-                        <div
-                            id="ia-scanning-state"
-                            className={`ia-scanning-state ${isScanningBio ? '' : 'hidden-view'
-                                }`}
-                        >
-                            <div className="loading-centinela">
-                                <div className="loading-ia"></div>
-                                <p>Buscando coincidencias...</p>
-                            </div>
-                        </div>
+                        {!isSearching && (hasSearched || centinela?.activo) && (
+                            <div id="ia-results-area" className="ia-results-right-column">
+                                <h4 className="results-sidebar-title">
+                                    Coincidencias encontradas
+                                    <span className="results-count-badge">{visibleResults.length} resultados</span>
+                                </h4>
 
-                        {/* ÁREA DE RESULTADOS */}
-                        <div
-                            id="ia-results-area"
-                            className={`ia-results-right-column ${hasSearched ? '' : 'hidden-view'
-                                }`}
-                        >
-                            <h4 className="results-sidebar-title">
-                                Coincidencias encontradas
-                                <span className="results-count-badge">
-                                    {hasResults ? '7 resultados' : '0 resultados'}
-                                </span>
-                            </h4>
-
-                            {/* SIN RESULTADOS */}
-                            {!hasResults && (
-                                <div className="no-results-state">
-                                    <div className="no-results-icon">
-                                        <i className="ti ti-map-question"></i>
-                                    </div>
-                                    <h5 className="no-results-title">Sin coincidencias</h5>
-                                    <p className="no-results-desc">
-                                        No encontramos resultados para <b>&quot;{globalQuery || 'tu búsqueda'}&quot;</b>.<br />
-                                        Intenta con otros términos o activa el <b>Buscador 24/7</b> para rastreo continuo.
+                                {resultsSearchMeta && !centinela?.activo && (
+                                    <p className="empty-criteria-message" style={{ 'marginBottom': '1em' }}>
+                                        <i className="fa-solid fa-wand-magic-sparkles"></i> {resultsSearchMeta.image_summary}
+                                        {typeof resultsSearchMeta.phash_matches === 'number' &&
+                                            ` · ${resultsSearchMeta.phash_matches} coincidencias por imagen`}
                                     </p>
-                                </div>
-                            )}
+                                )}
 
-                            {/* CON RESULTADOS (STACK HORIZONTAL DE TARJETAS) */}
-                            {hasResults && (
-                                <div className="horizontal-results-stack">
-                                    {searchResults.map(({ pet, matchPercent }) => {
-                                        const isSystemResult = !pet.isExternal;
+                                {hasToolsAccess && centinela?.activo && (
+                                    <div className="centinela-watching-status">
+                                        <i></i>
+                                        Centinela sigue buscando...
+                                    </div>
+                                )}
 
-                                        return (
-                                            <div
-                                                key={pet.id}
-                                                className="pet-card pet-card-horizontal"
-                                                onClick={() => handleResultClick({ pet, matchPercent })}
-                                                style={{ cursor: 'pointer' }}
-                                            >
-                                                <div className="card-horizontal-media">
-                                                    <div className="card-badges-horizontal">
-                                                        {pet.isExternal ? (
-                                                            <span
-                                                                className="badge-horizontal"
-                                                                style={
-                                                                    pet.externalType === 'facebook'
-                                                                        ? { backgroundColor: '#1877f2' }
-                                                                        : pet.externalType === 'instagram'
-                                                                            ? { backgroundColor: '#cc2366' }
-                                                                            : pet.externalType === 'tiktok'
-                                                                                ? { backgroundColor: 'var(--brand-main)' }
-                                                                                : { backgroundColor: '#4285f4' }
-                                                                }
-                                                            >
-                                                                {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
-                                                                {pet.externalType === 'instagram' && <i className="fa-brands fa-instagram"></i>}
-                                                                {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                                                                {pet.externalType === 'google' && <i className="fa-brands fa-google"></i>}
-                                                                {' '}{pet.badge}
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`badge-horizontal ${pet.badgeStyle}`}>{pet.badge}</span>
-                                                        )}
-                                                    </div>
-                                                    <img src={pet.imgSrc} className="card-img" alt={pet.title} />
-                                                </div>
+                                {hasToolsAccess && centinela?.activo && centinelaMatches.length > 0 && (
+                                    <div className="horizontal-results-stack" style={{ marginBottom: 16 }}>
+                                        {centinelaMatches.map((m) => {
+                                            const pet = centinelaMatchPets[m.report_id];
+                                            if (!pet) return null;
+                                            return renderPetCard(pet, { onDismiss: () => handleDismissMatch(m.id) });
+                                        })}
+                                    </div>
+                                )}
 
-                                                <div className="card-horizontal-body">
-                                                    <div className="card-body">
-                                                        <div className="card-horizontal-header-row">
-                                                            <h3 className="card-title-horizontal">{pet.title}</h3>
-                                                            {isSystemResult ? (
-                                                                <span className="ia-matches-badge-horizontal">
-                                                                    <i className="fa-solid fa-brain"></i> {matchPercent}% Match
-                                                                </span>
-                                                            ) : (
-                                                                <span
-                                                                    className="ia-matches-badge-horizontal"
-                                                                    style={
-                                                                        pet.externalType === 'facebook'
-                                                                            ? { color: '#1877f2', backgroundColor: 'rgb(24 119 242 / 13%)' }
-                                                                            : pet.externalType === 'instagram'
-                                                                                ? { color: '#cc2366', backgroundColor: 'rgb(204 35 102 / 22%)' }
-                                                                                : pet.externalType === 'google'
-                                                                                    ? { color: '#4285f4', backgroundColor: 'rgb(66 133 244 / 13%)' }
-                                                                                    : {}
-                                                                    }
-                                                                >
-                                                                    <i className="fa-solid fa-lock"></i> {matchPercent}% Match
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="card-meta-horizontal">
-                                                            <span>
-                                                                <i className="ti ti-pin"></i> {pet.district || '-'}
-                                                            </span>
-                                                            <span>
-                                                                <i className="ti ti-calendar-bolt"></i> {pet.date || '-'}
-                                                            </span>
-                                                        </div>
-                                                        {pet.reward && pet.reward !== 'S/. 0' && pet.reward !== '0' && (
-                                                            <div className="reward-container">
-                                                                <span className="reward-label">Recompensa</span>
-                                                                <span className="reward-amount">{pet.reward}</span>
-                                                            </div>
-                                                        )}
-                                                        {pet.isExternal && pet.desc && (
-                                                            <div className="card-desc-horizontal">{pet.desc}</div>
-                                                        )}
-                                                    </div>
+                                {searchError && (
+                                    <div className="no-results-state">
+                                        <div className="no-results-icon">
+                                            <i className="ti ti-alert-triangle"></i>
+                                        </div>
+                                        <h5 className="no-results-title">Ocurrió un error</h5>
+                                        <p className="no-results-desc">{searchError}</p>
+                                    </div>
+                                )}
 
-                                                    <div className="card-footer-horizontal">
-                                                        {isSystemResult ? (
-                                                            <>
-                                                                <div>
-                                                                    <span>
-                                                                        <i className="ti ti-share"></i> {pet.shares}
-                                                                    </span>
-                                                                    <span>
-                                                                        <i className="ti ti-users"></i> {pet.views}
-                                                                    </span>
-                                                                </div>
-                                                                {pet.badgeStyle === 'badge-adopt' ? (
-                                                                    <button type="button" className="btn-purple-mini">¡ADOPTAR!</button>
-                                                                ) : pet.badgeStyle === 'badge-found' ? (
-                                                                    <button type="button" className="btn-found-mini">CONSULTAR</button>
-                                                                ) : pet.badgeStyle === 'badge-sight' ? (
-                                                                    <button type="button" className="btn-yellow-mini">¡LO VI!</button>
-                                                                ) : (
-                                                                    <button type="button" className="btn-primary-mini">¡LO VI!</button>
-                                                                )}
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <span>
-                                                                    <i className="ti ti-world-www"></i> Indexado
-                                                                </span>
-                                                                <span
-                                                                    style={
-                                                                        pet.externalType === 'facebook'
-                                                                            ? { color: '#1877f2' }
-                                                                            : pet.externalType === 'google'
-                                                                                ? { color: '#4285f4' }
-                                                                                : {}
-                                                                    }
-                                                                >
-                                                                    {pet.externalType === 'facebook' && (
-                                                                        <>
-                                                                            <i className="fa-brands fa-facebook"></i> Facebook
-                                                                        </>
-                                                                    )}
-                                                                    {pet.externalType === 'instagram' && (
-                                                                        <>
-                                                                            <i className="fa-brands fa-instagram"></i> Instagram
-                                                                        </>
-                                                                    )}
-                                                                    {pet.externalType === 'tiktok' && (
-                                                                        <>
-                                                                            <i className="fa-brands fa-tiktok"></i> TikTok
-                                                                        </>
-                                                                    )}
-                                                                    {pet.externalType === 'google' && (
-                                                                        <>
-                                                                            <i className="fa-brands fa-google"></i> Origen Externo
-                                                                        </>
-                                                                    )}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                {!searchError && !centinela?.activo && hasSearched && results.length === 0 && (
+                                    <div className="no-results-state">
+                                        <div className="no-results-icon">
+                                            <i className="ti ti-search"></i>
+                                        </div>
+                                        <h5 className="no-results-title">Sin coincidencias</h5>
+                                        <p className="no-results-desc">
+                                            <b>&quot;{isMascotaMode ? (selectedPetReport?.title || 'tu mascota') : (globalQuery || 'tu búsqueda')}&quot;</b>.
+                                            <br />
+                                            Intenta con otros términos o filtros.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!searchError && visibleResults.length > 0 && (
+                                    <div className="horizontal-results-stack">
+                                        {visibleResults.map((pet) => renderPetCard(pet))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* ==========================================
@@ -1208,90 +1484,158 @@ export default function BuscarIAPage() {
              ========================================== */}
                     <div className="ia-col-right">
                         <div
-                            className={`ia-box premium-scanner-box ${isBioScannerLocked ? 'premium-locked' : ''
-                                }`}
+                            className={`ia-box premium-scanner-box ${isBioLocked ? 'premium-locked' : ''}`}
                             id="scanner-biometrico-box"
                         >
-                            <div className="wrapper-premium-notice">
-                                <div className="premium-notice-banner">
-                                    <Link href="/publicar" className="notice-main-link">
-                                        <div className="notice-icon">
-                                            <i className="ti ti-camera-search"></i>
-                                        </div>
-                                        <div className="notice-text">
-                                            <h5>Publica un aviso</h5>
-                                            <p>y activa la búsqueda por foto avanzada</p>
-                                        </div>
-                                    </Link>
-                                    <button
-                                        type="button"
-                                        className="notice-alt-btn"
-                                        data-open-planes-modal=""
-                                        onClick={triggerOpenPlanesModal}
-                                    >
-                                        o activa la herramienta sin publicar aviso
-                                    </button>
+                            {centinela?.activo && (
+                                <div className="layer-blocked"
+                                >
+                                    <span className="badge-active-attribute">
+                                        <i className="fa-solid fa-lock"></i> Centinela activado
+                                    </span>
                                 </div>
-                            </div>
-
+                            )}
                             <div
-                                className={`dropzone-biometric-modern ${uploadedBioImage ? 'hidden-padding' : ''
-                                    }`}
-                                id="ia-dropzone"
+                                style={
+                                    centinela?.activo || isMascotaMode || isBioLocked
+                                        ? { opacity: 0.5, pointerEvents: 'none' }
+                                        : undefined
+                                }
                             >
                                 <input
                                     type="file"
-                                    id="ia-file-input"
                                     accept="image/*"
+                                    ref={bioFileInputRef}
                                     onChange={handleBioFileChange}
+                                    disabled={isBioLocked}
+                                    style={{ display: 'none' }}
                                 />
 
-                                <div className="scanner-corners">
-                                    <span className="corner tl"></span>
-                                    <span className="corner tr"></span>
-                                    <span className="corner bl"></span>
-                                    <span className="corner br"></span>
-                                </div>
-
-                                {!uploadedBioImage && (
+                                {!bioImagePreview && !bioAnalysisResult && !isAnalyzingBio && (
                                     <div
-                                        id="dropzone-text-container"
-                                        className="dropzone-content-wrapper"
+                                        className="dropzone-biometric-modern"
+                                        id="ia-dropzone"
+                                        onClick={() => !isBioLocked && !isMascotaMode && bioFileInputRef.current?.click()}
+                                        style={{ cursor: isBioLocked || isMascotaMode ? 'default' : 'pointer' }}
                                     >
-                                        <div className="bio-pulse-radar">
-                                            <div className="pulse-wave"></div>
-                                            <i className="ti ti-camera-plus bio-icon-tech"></i>
+                                        <div className="scanner-corners">
+                                            <span className="corner tl"></span>
+                                            <span className="corner tr"></span>
+                                            <span className="corner bl"></span>
+                                            <span className="corner br"></span>
                                         </div>
-                                        <p className="bio-main-text">Sube una foto de tu mascota</p>
-                                        <p className="bio-sub-text">
-                                            Analizaremos la imagen para buscar posibles <b>coincidencias</b> en <b>Internet y Redes sociales.</b>
-                                        </p>
-                                        <span className="bio-upload-badge">
-                                            <i className="ti ti-upload"></i> Arrastrar o seleccionar
-                                        </span>
+
+                                        <div id="dropzone-text-container" className="dropzone-content-wrapper">
+                                            <div className="bio-pulse-radar">
+                                                <div className="pulse-wave"></div>
+                                                <i className="ti ti-camera-plus bio-icon-tech"></i>
+                                            </div>
+                                            <p className="bio-main-text">Sube una foto de tu mascota</p>
+                                            <p className="bio-sub-text">
+                                                {isMascotaMode ? (
+                                                    <>Buscando con la foto de tu mascota seleccionada.</>
+                                                ) : isBioLocked ? (
+                                                    <>Disponible con un aviso que incluya Centinela IA.</>
+                                                ) : (
+                                                    <>Analizaremos la imagen para buscar posibles <b>coincidencias</b>.</>
+                                                )}
+                                            </p>
+                                            <span className="bio-upload-badge">
+                                                <i className="ti ti-upload"></i> Seleccionar imagen
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
 
-                                {uploadedBioImage && (
-                                    <div
-                                        className="preview-img-container"
-                                        id="ia-preview-wrapper"
-                                    >
-                                        <img
-                                            id="img-ia-preview"
-                                            className="preview-img-bio"
-                                            src={uploadedBioImage}
-                                            alt="Previsualización"
-                                        />
-                                        <div className="biometric-laser-line"></div>
+                                {isAnalyzingBio && (
+                                    <div className="dropzone-biometric-modern" id="ia-dropzone-scanning">
+                                        <div className="scanner-corners">
+                                            <span className="corner tl"></span>
+                                            <span className="corner tr"></span>
+                                            <span className="corner bl"></span>
+                                            <span className="corner br"></span>
+                                        </div>
+                                        {bioImagePreview && (
+                                            <div className="preview-img-container" id="ia-preview-wrapper">
+                                                <img
+                                                    id="img-ia-preview"
+                                                    className="preview-img-bio"
+                                                    src={bioImagePreview}
+                                                    alt="Analizando"
+                                                />
+                                                <div className="biometric-laser-line"></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {(bioImagePreview || bioAnalysisResult) && !isAnalyzingBio && (
+                                    <div className="bio-result-wrapper">
+                                        {bioImagePreview && (
+                                            <div className="divBioImagePreview">
+                                                <img
+                                                    src={bioImagePreview}
+                                                    alt="Foto analizada"
+                                                    className="photoBioImagePreview"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={resetBioScanner}
+                                                    aria-label="Quitar foto"
+                                                    className="buttonRemoveBioImagePreview"
+                                                >
+                                                    <i className="ti ti-x"></i>
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {bioAnalysisError && (
+                                            <div className="admin-info-box" style={{ marginTop: 12 }}>
+                                                <i className="ti ti-info-circle"></i>
+                                                <p>{bioAnalysisError}</p>
+                                            </div>
+                                        )}
+
+                                        {!bioAnalysisError && bioAttributes.length > 0 && (
+                                            <div className={`resultScannerImage ${isBioConfirmed ? 'disabled' : ''}`}>
+                                                <div className="pill-multi-group">
+                                                    {bioAttributes.map((chip) => (
+                                                        <span key={chip.id} className="badge-custom-tag">
+                                                            {chip.label}
+                                                            {!isBioConfirmed && (
+                                                                <i
+                                                                    className="fa-solid fa-xmark remove-tag-btn"
+                                                                    onClick={() => handleRemoveBioAttribute(chip.id)}
+                                                                ></i>
+                                                            )}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn-primary-mini"
+                                                    onClick={handleConfirmBioAttributes}
+                                                    disabled={isBioConfirmed || bioAttributes.length === 0}
+                                                >
+                                                    {isBioConfirmed ? 'Aplicado a la búsqueda' : 'Usar en búsqueda'}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
+
+                            {isGatingReady && isBioLocked && (
+                                <div className="first-visit-banner">
+                                    <Link href="/publicar"><i className="fa-solid fa-lock"></i> <b>Publica</b> un aviso para <b>desbloquear</b></Link>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </section>
-            <PlanesModal />
+            {/* PlanesModal oculto por decisión de negocio — no se vende como
+                producto aparte mientras el scraping no esté al 100%. */}
         </main>
     );
 }

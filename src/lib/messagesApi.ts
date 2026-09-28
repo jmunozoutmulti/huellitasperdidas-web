@@ -26,6 +26,7 @@ export interface ConversationMessage {
     sender_id: string;
     body: string;
     created_at: string;
+    image_url?: string | null;
 }
 
 // Inicia (o reutiliza) una conversación sobre un aviso específico.
@@ -66,6 +67,20 @@ export async function replyToConversation(conversationId: string, message: strin
         return await authFetchJson<ConversationMessage>(`/v1/conversations/${conversationId}/messages`, {
             method: 'POST',
             body: JSON.stringify({ message }),
+        });
+    } catch (err) {
+        if (err instanceof ApiError) throw new MessagesApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+export async function uploadMessageImage(messageId: string, file: File): Promise<ConversationMessage> {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        return await authFetchJson<ConversationMessage>(`/v1/messages/${messageId}/image`, {
+            method: 'POST',
+            body: formData,
         });
     } catch (err) {
         if (err instanceof ApiError) throw new MessagesApiError(err.status, err.message);

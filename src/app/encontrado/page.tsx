@@ -5,6 +5,7 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/encontrado.css';
 import { useApp } from '@/context/AppContext';
 import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { useRouter } from 'next/navigation';
 import { generateFlyerImage } from '@/lib/flyerExport';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
@@ -12,9 +13,9 @@ import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE 
 import { validateText } from '@/lib/textValidation';
 import { showToast } from '@/components/global/Toast';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import ModalAgregarNumero from '@/components/global/ModalAgregarNumero';
-import { getCountryByAbbr, type Country } from '@/lib/countries';
-import { getLevel1Options, getLevel2Options, getLevel3Options } from '@/lib/locations';
+import { getCountryByAbbr, getLocaleForCountry, type Country } from '@/lib/countries';
+import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
+import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
 
 export default function PublicarEncontradoPage() {
 
@@ -22,7 +23,16 @@ export default function PublicarEncontradoPage() {
 
     const { currentUser, isAuthChecked, isLoggedIn } = useApp();
 
-    const country = currentUser?.country || 'PE';
+    const country = currentUser?.country ?? null;
+
+    // Teléfono del aviso — independiente del de la cuenta
+    const [telefono, setTelefono] = useState('');
+
+    useEffect(() => {
+        if (currentUser?.phone) {
+            setTelefono((prev) => prev || currentUser.phone!.replace(/^\+\d+\s*/, ''));
+        }
+    }, [currentUser?.phone]);
     const [countryInfo, setCountryInfo] = useState<Country | null>(null);
     const [isLoadingWizardData, setIsLoadingWizardData] = useState(true);
 
@@ -49,6 +59,8 @@ export default function PublicarEncontradoPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [showStatusOverlay, setShowStatusOverlay] = useState(false);
+    const idempotencyKeyRef = useRef<string | null>(null);
+    const router = useRouter();
 
     // ==========================================
     // ESTADOS DEL FORMULARIO Y FLYER EN VIVO
@@ -70,6 +82,17 @@ export default function PublicarEncontradoPage() {
     const [departamento, setDepartamento] = useState('');
     const [provincia, setProvincia] = useState('');
     const [distrito, setDistrito] = useState('');
+
+    const [hasLevel3, setHasLevel3] = useState(true);
+    useEffect(() => {
+        let isCancelled = false;
+        countryHasLevel3(country).then((result) => {
+            if (!isCancelled) setHasLevel3(result);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
 
     const [nivel1Options, setNivel1Options] = useState<{ value: string; label: string }[]>([]);
     const [nivel2Options, setNivel2Options] = useState<{ value: string; label: string }[]>([]);
@@ -192,6 +215,7 @@ export default function PublicarEncontradoPage() {
                     next[index] = result;
                     return next;
                 });
+                clearFieldError('fotos');
             };
             reader.readAsDataURL(file);
         }
@@ -224,21 +248,30 @@ export default function PublicarEncontradoPage() {
         return value.replace(/<[^>]*>?/gm, '').trim();
     }
 
+    function clearFieldError(field: string) {
+        setFieldErrors((prev) => {
+            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    }
+
     function tipoMascotaToApi(valor: string): string {
-        if (valor === 'Perro') return 'dog';
-        if (valor === 'Gato') return 'cat';
-        if (valor === 'Ave') return 'bird';
-        return 'other';
+        if (valor === 'Perro') return 'perro';
+        if (valor === 'Gato') return 'gato';
+        if (valor === 'Ave') return 'ave';
+        return 'otro';
     }
     function sexoToApi(valor: string): string | null {
-        if (valor === 'Macho') return 'male';
-        if (valor === 'Hembra') return 'female';
+        if (valor === 'Macho') return 'macho';
+        if (valor === 'Hembra') return 'hembra';
         return null;
     }
     function tamanoToApi(valor: string): string | null {
-        if (valor === 'Pequeño') return 'small';
-        if (valor === 'Mediano') return 'medium';
-        if (valor === 'Grande') return 'large';
+        if (valor === 'Pequeño') return 'pequeño';
+        if (valor === 'Mediano') return 'mediano';
+        if (valor === 'Grande') return 'grande';
         return null;
     }
 
@@ -271,10 +304,19 @@ export default function PublicarEncontradoPage() {
             }
         }
 
-        if (!sanitizeText(direccion)) errors.direccion = true;
+        if (!sanitizeText(direccion)) {
+            errors.direccion = true;
+        } else {
+            const check = validateText(direccion, 10, 'La dirección');
+            if (!check.valid) {
+                errors.direccion = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         if (!departamento) errors.departamento = true;
         if (!provincia) errors.provincia = true;
-        if (!distrito) errors.distrito = true;
+        if (hasLevel3 && !distrito) errors.distrito = true;
         if (validPhotos.length === 0) errors.fotos = true;
 
         // Descripción es opcional — solo se valida si el usuario escribió algo
@@ -284,6 +326,11 @@ export default function PublicarEncontradoPage() {
                 errors.descripcion = true;
                 specificError = specificError || check.error!;
             }
+        }
+
+        if (!isValidPhone(telefono, country)) {
+            errors.telefono = true;
+            specificError = specificError || 'Ingresa un número de contacto válido';
         }
 
         setFieldErrors(errors);
@@ -335,9 +382,13 @@ export default function PublicarEncontradoPage() {
     const executeFormSubmission = async () => {
         if (!currentUser) return;
 
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = crypto.randomUUID();
+        }
+
         setIsSubmitting(true);
         try {
-            const report = await createReport({
+            const { report } = await createReport({
                 report_type: 'found',
                 pet_type: tipoMascota ? tipoMascotaToApi(tipoMascota) : null,
                 title: null, // encontrado no captura nombre de mascota
@@ -351,7 +402,7 @@ export default function PublicarEncontradoPage() {
                 lng: null,
                 event_date: fechaDia && fechaMes && fechaAnio ? `${fechaAnio}-${fechaMes}-${fechaDia}` : null,
                 contact_name: currentUser.name || null,
-                contact_phone: currentUser.phone || null,
+                contact_phone: `${countryInfo?.dialCode ?? ''} ${normalizePhoneInput(telefono, country)}`.trim() || null,
                 contact_email: currentUser.email || null,
                 meta: {
                     sex: sexoToApi(sexo),
@@ -361,7 +412,7 @@ export default function PublicarEncontradoPage() {
                     color: sanitizeText(color) || null,
                     age: null, // encontrado no captura edad
                 },
-            });
+            }, idempotencyKeyRef.current);
 
             for (const foto of validPhotos) {
                 try {
@@ -381,7 +432,7 @@ export default function PublicarEncontradoPage() {
 
             setShowStatusOverlay(true);
             setTimeout(() => {
-                window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
+                router.push('/mi-cuenta');
             }, 5000);
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
@@ -430,23 +481,16 @@ export default function PublicarEncontradoPage() {
             month: 'short',
             year: 'numeric',
         };
-        return hoy.toLocaleDateString('es-PE', opciones);
+        return hoy.toLocaleDateString(getLocaleForCountry(country), opciones);
     };
 
     return (
         <main className="main-content">
-
-            <ModalAgregarNumero
-                isOpen={isAuthChecked && isLoggedIn && !currentUser?.phone}
-                onClose={() => { }}
-                mandatory
-            />
-
             <section id="view-publish-found" className="animate-fade-in">
                 <div className="grid-publish">
                     {/* ==========================================
-              PANEL IZQUIERDO (PASOS Y SLOGAN)
-             ========================================== */}
+                        PANEL IZQUIERDO (PASOS Y SLOGAN)
+                        ========================================== */}
                     <div className="left-panel">
                         <h1>Publicar hallazgo</h1>
 
@@ -593,7 +637,7 @@ export default function PublicarEncontradoPage() {
                                         )}
                                     </div>
 
-                                    <div className="groups grid-2col box-data-flyer">
+                                    <div className="groups grid-2col">
                                         {/* TIPO DE MASCOTA */}
                                         <div
                                             className={`form-group  ${tipoMascota ? 'has-value' : ''
@@ -603,7 +647,10 @@ export default function PublicarEncontradoPage() {
                                                 id="e-tipo"
                                                 placeholder="Tipo de mascota"
                                                 value={tipoMascota}
-                                                onChange={(val) => setTipoMascota(val)}
+                                                onChange={(val) => {
+                                                    setTipoMascota(val);
+                                                    clearFieldError('tipoMascota');
+                                                }}
                                                 className={fieldErrors.tipoMascota ? 'input-error' : ''}
                                                 options={[
                                                     { value: 'Perro', label: 'Perro' },
@@ -650,7 +697,10 @@ export default function PublicarEncontradoPage() {
                                                         id="e-fecha-dia"
                                                         placeholder="Día"
                                                         value={fechaDia}
-                                                        onChange={(val) => setFechaDia(val)}
+                                                        onChange={(val) => {
+                                                            setFechaDia(val);
+                                                            clearFieldError('fecha');
+                                                        }}
                                                         options={Array.from({ length: 31 }, (_, i) => {
                                                             const val = String(i + 1).padStart(2, '0');
                                                             return { value: val, label: String(i + 1) };
@@ -661,7 +711,10 @@ export default function PublicarEncontradoPage() {
                                                         id="e-fecha-mes"
                                                         placeholder="Mes"
                                                         value={fechaMes}
-                                                        onChange={(val) => setFechaMes(val)}
+                                                        onChange={(val) => {
+                                                            setFechaMes(val);
+                                                            clearFieldError('fecha');
+                                                        }}
                                                         options={[
                                                             { value: '01', label: 'Ene' },
                                                             { value: '02', label: 'Feb' },
@@ -682,7 +735,10 @@ export default function PublicarEncontradoPage() {
                                                         id="e-fecha-anio"
                                                         placeholder="Año"
                                                         value={fechaAnio}
-                                                        onChange={(val) => setFechaAnio(val)}
+                                                        onChange={(val) => {
+                                                            setFechaAnio(val);
+                                                            clearFieldError('fecha');
+                                                        }}
                                                         options={[
                                                             { value: '2026', label: '2026' },
                                                             { value: '2025', label: '2025' },
@@ -702,7 +758,10 @@ export default function PublicarEncontradoPage() {
                                                     className={`gender-pill-btn ${sexo === 'Macho' ? 'active' : ''
                                                         }`}
                                                     data-value="Macho"
-                                                    onClick={() => setSexo('Macho')}
+                                                    onClick={() => {
+                                                        setSexo('Macho');
+                                                        clearFieldError('sexo');
+                                                    }}
                                                 >
                                                     <i className="ti ti-gender-male"></i> Macho
                                                 </button>
@@ -711,7 +770,10 @@ export default function PublicarEncontradoPage() {
                                                     className={`gender-pill-btn ${sexo === 'Hembra' ? 'active' : ''
                                                         }`}
                                                     data-value="Hembra"
-                                                    onClick={() => setSexo('Hembra')}
+                                                    onClick={() => {
+                                                        setSexo('Hembra');
+                                                        clearFieldError('sexo');
+                                                    }}
                                                 >
                                                     <i className="ti ti-venus"></i> Hembra
                                                 </button>
@@ -755,7 +817,10 @@ export default function PublicarEncontradoPage() {
                                                             : 'Ej: Labrador'
                                                 }
                                                 value={raza}
-                                                onChange={setRaza}
+                                                onChange={(val) => {
+                                                    setRaza(val);
+                                                    clearFieldError('raza');
+                                                }}
                                                 suggestions={
                                                     tipoMascota === 'Ave'
                                                         ? ESPECIES_AVE
@@ -774,7 +839,10 @@ export default function PublicarEncontradoPage() {
                                                 className={`form-input ${fieldErrors.color ? 'input-error' : ''}`}
                                                 placeholder="Ej: Blanco"
                                                 value={color}
-                                                onChange={setColor}
+                                                onChange={(val) => {
+                                                    setColor(val);
+                                                    clearFieldError('color');
+                                                }}
                                                 suggestions={tipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
                                             />
                                         </div>
@@ -785,7 +853,10 @@ export default function PublicarEncontradoPage() {
                                                 id="e-tamano"
                                                 placeholder="Tamaño"
                                                 value={tamano}
-                                                onChange={(val) => setTamano(val)}
+                                                onChange={(val) => {
+                                                    setTamano(val);
+                                                    clearFieldError('tamano');
+                                                }}
                                                 options={[
                                                     { value: 'Pequeño', label: 'Pequeño' },
                                                     { value: 'Mediano', label: 'Mediano' },
@@ -804,13 +875,16 @@ export default function PublicarEncontradoPage() {
                                                     <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
                                                 </div>
                                             ) : (
-                                                <div className="grid-3col">
+                                                <div className={hasLevel3 ? 'grid-3col' : 'grid-2col'}>
                                                     <div className="form-group">
                                                         <CustomSelect
                                                             id="e-departamento"
                                                             placeholder={labelNivel1}
                                                             value={departamento}
-                                                            onChange={(val) => setDepartamento(val)}
+                                                            onChange={(val) => {
+                                                                setDepartamento(val);
+                                                                clearFieldError('departamento');
+                                                            }}
                                                             options={nivel1Options}
                                                             searchable={true}
                                                             className={fieldErrors.departamento ? 'input-error' : ''}
@@ -822,24 +896,32 @@ export default function PublicarEncontradoPage() {
                                                             id="e-provincia"
                                                             placeholder={labelNivel2}
                                                             value={provincia}
-                                                            onChange={(val) => setProvincia(val)}
+                                                            onChange={(val) => {
+                                                                setProvincia(val);
+                                                                clearFieldError('provincia');
+                                                            }}
                                                             options={nivel2Options}
                                                             searchable={true}
                                                             className={fieldErrors.departamento ? 'input-error' : ''}
                                                         />
                                                     </div>
 
-                                                    <div className="form-group">
-                                                        <CustomSelect
-                                                            id="e-distrito"
-                                                            placeholder={labelNivel3}
-                                                            value={distrito}
-                                                            onChange={(val) => setDistrito(val)}
-                                                            options={nivel3Options}
-                                                            searchable={true}
-                                                            className={fieldErrors.departamento ? 'input-error' : ''}
-                                                        />
-                                                    </div>
+                                                    {hasLevel3 && (
+                                                        <div className="form-group">
+                                                            <CustomSelect
+                                                                id="e-distrito"
+                                                                placeholder={labelNivel3}
+                                                                value={distrito}
+                                                                onChange={(val) => {
+                                                                    setDistrito(val);
+                                                                    clearFieldError('distrito');
+                                                                }}
+                                                                options={nivel3Options}
+                                                                searchable={true}
+                                                                className={fieldErrors.departamento ? 'input-error' : ''}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -856,8 +938,37 @@ export default function PublicarEncontradoPage() {
                                                 placeholder="Calle, avenida o punto de referencia"
                                                 autoComplete="off"
                                                 value={direccion}
-                                                onChange={(e) => setDireccion(e.target.value)}
+                                                onChange={(e) => {
+                                                    setDireccion(e.target.value);
+                                                    clearFieldError('direccion');
+                                                }}
                                             />
+                                        </div>
+                                    </div>
+
+                                    {/* TELÉFONO DE CONTACTO — propio de este aviso, no de la cuenta */}
+                                    <div className="groups grid-2col">
+                                        <div className="form-group grid-1col">
+                                            <label>¿Dónde te pueden contactar?</label>
+                                            <div className={`field-tel ${fieldErrors.telefono ? 'input-error' : ''}`}>
+                                                <span>{countryInfo?.dialCode}</span>
+                                                <input
+                                                    type="tel"
+                                                    name="telefono-aviso"
+                                                    className="form-input"
+                                                    autoComplete="tel"
+                                                    maxLength={15}
+                                                    placeholder="Número de teléfono"
+                                                    value={telefono}
+                                                    onChange={(e) => {
+                                                        const soloTelefono = e.target.value.replace(/[^\d\s\-()]/g, '');
+                                                        setTelefono(soloTelefono);
+                                                        clearFieldError('telefono');
+                                                    }}
+                                                    readOnly
+                                                    onFocus={(e) => e.target.removeAttribute('readonly')}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -940,12 +1051,10 @@ export default function PublicarEncontradoPage() {
                                                 <i className="fa-solid fa-check"></i>
                                             </span>
                                             <span className="terms-checkbox-text">
-                                                Acepto que he leído los{' '}
-                                                <Link href="/terminos-y-condiciones" target="_blank">
+                                                Acepto que he leído y declaro que la información publicada es verídica.{' '}
+                                                <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">
                                                     Términos y Condiciones
-                                                </Link>{' '}
-                                                del sitio y declaro que la información publicada es
-                                                verídica.
+                                                </Link>
                                             </span>
                                         </div>
                                     </div>
@@ -1026,7 +1135,7 @@ export default function PublicarEncontradoPage() {
                                         <div className="summary-date-col">
                                             <span className="summary-date-label">Vigencia</span>
                                             <strong className="summary-date-value">
-                                                <i className="ti ti-calendar-bolt"></i> 6 meses
+                                                <i className="ti ti-calendar-bolt"></i> 3 meses
                                             </strong>
                                         </div>
                                     </div>
@@ -1130,7 +1239,7 @@ export default function PublicarEncontradoPage() {
                                                 </span>
                                                 <div className="flyer-footer-number">
                                                     <i className="ti ti-brand-whatsapp"></i>
-                                                    <span id="flyer-txt-tel">{currentUser?.phone?.replace(/^\+\d+\s*/, '') || '---------'}</span>
+                                                    <span id="flyer-txt-tel">{telefono || '---------'}</span>
                                                 </div>
                                             </div>
                                         </div>

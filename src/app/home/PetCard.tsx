@@ -32,8 +32,9 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                             <i className="ti ti-external-link"></i> Ver enlace original
                         </span>
                     </div>
-
-                    <img src={pet.imgSrc} className="card-img" alt={pet.title} />
+                    <div className="card-img">
+                        <img src={pet.imgSrc} alt={pet.title} />
+                    </div>
 
                     {pet.title && (
                         <div className="card-body">
@@ -73,10 +74,11 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                             <i className="fa-solid fa-heart"></i> {pet.badge}
                         </span>
                     </div>
-
-                    <a href="#" onClick={(e) => e.preventDefault()}>
-                        <img src={pet.imgSrc} className="card-img" alt={pet.title} />
-                    </a>
+                    <div className="card-img">
+                        <a href="#" onClick={(e) => e.preventDefault()}>
+                            <img src={pet.imgSrc} alt={pet.title} />
+                        </a>
+                    </div>
 
                     <div className="card-body">
                         <div className="card-meta">
@@ -113,10 +115,11 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                             <i className="ti ti-clock-bolt"></i> {pet.badge}
                         </span>
                     </div>
-
-                    <a href="#" onClick={(e) => e.preventDefault()}>
-                        <img src={pet.imgSrc} className="card-img" alt={pet.title} />
-                    </a>
+                    <div className="card-img">
+                        <a href="#" onClick={(e) => e.preventDefault()}>
+                            <img src={pet.imgSrc} alt={pet.title} />
+                        </a>
+                    </div>
 
                     <div className="card-body">
                         <div className="card-meta">
@@ -127,12 +130,19 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
 
                         <div className="reward-container-premium">
                             <div>
-                                <span className="reward-label-premium">
-                                    {pet.rewardVisible ? 'Recompensa' : 'Se ofrece:'}
-                                </span>
-                                <span className="reward-amount-premium">
-                                    {pet.rewardVisible ? pet.reward : 'RECOMPENSA'}
-                                </span>
+                                {!pet.rewardVisible ? (
+                                    <>
+                                        <span className="reward-label-premium">Se ofrece:</span>
+                                        <span className="reward-amount-premium">RECOMPENSA</span>
+                                    </>
+                                ) : pet.reward ? (
+                                    <>
+                                        <span className="reward-label-premium">Recompensa:</span>
+                                        <span className="reward-amount-premium">{pet.reward}</span>
+                                    </>
+                                ) : (
+                                    <span className="reward-amount-premium">PERDIDO</span>
+                                )}
                             </div>
                             <button type="button" className="btn-yellow">
                                 ¡VER!
@@ -172,8 +182,9 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                         <button type="button" className="btn-primary">¡VER!</button>
                     )}
                 </div>
-
-                <img src={pet.imgSrc} className="card-img" alt={pet.title} />
+                <div className="card-img">
+                    <img src={pet.imgSrc} alt={pet.title} />
+                </div>
 
                 {pet.badgeStyle !== 'badge-sight' && (
                     <div className="card-body">

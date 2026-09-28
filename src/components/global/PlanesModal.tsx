@@ -357,7 +357,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
 
                         <div className="planes-modal-actions">
                             <div className="text-modal">
-                                <i className="ti ti-world-search"></i> Buscamos en todo Internet (sitios, redes y más)
+                                <i className="ti ti-world-search"></i> Buscamos en Internet (sitios, redes y más)
                             </div>
                             <button
                                 type="button"
@@ -387,7 +387,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Checkout Seguro (Mercado Pago)
+                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
                                 </h4>
 
                                 <div className="payment-methods-tabs">
@@ -466,7 +466,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                         </span>
                                         <span className="terms-checkbox-text">
                                             Acepto los{' '}
-                                            <Link href="/terminos-y-condiciones" target="_blank">
+                                            <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">
                                                 Términos y Condiciones
                                             </Link>{' '}
                                             del servicio.

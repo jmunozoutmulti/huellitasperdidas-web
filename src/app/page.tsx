@@ -10,10 +10,11 @@ import { fetchReports, fetchReport } from '@/lib/api';
 import { showToast } from '@/components/global/Toast';
 import { reportToPetData } from '@/lib/transformers';
 import { getCountries } from '@/lib/countries';
-import { getDetectedCountry } from '@/lib/auth';
+import { saveDetectedCountry } from '@/lib/auth';
 import { useApp } from '@/context/AppContext';
 import { useSearchParams, useRouter } from 'next/navigation';
-
+import CustomSelect from '@/components/ui/CustomSelect';
+import Masonry from 'react-masonry-css';
 interface SearchItem {
   title: string;
   subtitle: string;
@@ -28,46 +29,67 @@ function getPetCategory(badgeStyle: string): string {
   return 'otro';
 }
 
-
 function HomeContent() {
 
   const router = useRouter();
-  const { currentUser } = useApp();
+  const { currentUser, isAuthChecked, detectedCountry, isCountryDetectionDone } = useApp();
 
   const searchParams = useSearchParams();
 
-  // Con sesión: el país de la cuenta. Sin sesión: el detectado (hoy en duro
-  // vía detectCountry.ts, pendiente del servicio real de geolocalización).
-  const countryCode = currentUser?.country || getDetectedCountry() || 'PE';
+  const [manualCountry, setManualCountry] = useState<string | null>(null);
+  const countryCode = currentUser?.country || detectedCountry || manualCountry;
+
+  const isResolvingCountry = !isAuthChecked || (!currentUser?.country && !isCountryDetectionDone && !manualCountry);
 
   const [pets, setPets] = useState<PetData[]>([]);
   const [isLoadingPets, setIsLoadingPets] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [noResultsFor, setNoResultsFor] = useState<string | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    getCountries().then((list) => {
+      setCountryOptions(list.map((c) => ({ value: c.code, label: c.name })));
+    });
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
 
     async function loadPets() {
+      if (isResolvingCountry) return;
+
+      if (!countryCode) {
+        setPets([]);
+        setIsLoadingPets(false);
+        setIsFirstLoad(false);
+        return;
+      }
       setIsLoadingPets(true);
       setLoadError(null);
       try {
-        await getCountries(); // garantiza el caché antes de mapear (barato, ya cacheado luego de la 1ra vez)
+        await getCountries();
         const response = await fetchReports({
           page: 1,
-          limit: 100,
+          limit: 5,
           search: searchQuery || undefined,
           country_code: countryCode,
           status: 'active',
         });
         let transformed = response.items.map(reportToPetData);
+        let pagesForThisLoad = response.pages;
 
         if (transformed.length === 0 && searchQuery) {
-          // La búsqueda no encontró nada — mostramos el listado general
-          // en su lugar, en vez de dejar la pantalla vacía.
-          const fallback = await fetchReports({ page: 1, limit: 100, country_code: countryCode, status: 'active' });
+          const fallback = await fetchReports({ page: 1, limit: 5, country_code: countryCode, status: 'active' });
           transformed = fallback.items.map(reportToPetData);
+          pagesForThisLoad = fallback.pages;
           if (!isCancelled) {
             setNoResultsFor(searchQuery);
           }
@@ -77,6 +99,8 @@ function HomeContent() {
 
         if (!isCancelled) {
           setPets(transformed);
+          setPage(1);
+          setTotalPages(pagesForThisLoad);
         }
       } catch (err) {
         if (!isCancelled) {
@@ -85,6 +109,7 @@ function HomeContent() {
       } finally {
         if (!isCancelled) {
           setIsLoadingPets(false);
+          setIsFirstLoad(false);
         }
       }
     }
@@ -94,7 +119,7 @@ function HomeContent() {
     return () => {
       isCancelled = true;
     };
-  }, [searchQuery, countryCode]);
+  }, [searchQuery, countryCode, isResolvingCountry]);
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -139,12 +164,50 @@ function HomeContent() {
   // ESTADOS GENERALES Y DE FILTRADO
   // ==========================================
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [isCompactView, setIsCompactView] = useState(false);
 
   // ==========================================
   // MANEJADORES DE VISTA DETALLE
   // ==========================================
   const [selectedPet, setSelectedPet] = useState<PetData | null>(null);
   const [isDetailActive, setIsDetailActive] = useState(false);
+
+  const loadMorePets = async () => {
+    if (isLoadingMore || page >= totalPages || !countryCode) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const response = await fetchReports({
+        page: nextPage,
+        limit: 5,
+        search: searchQuery || undefined,
+        country_code: countryCode,
+        status: 'active',
+      });
+      setPets((prev) => [...prev, ...response.items.map(reportToPetData)]);
+      setPage(nextPage);
+      setTotalPages(response.pages);
+    } catch {
+      // silencioso — si falla "cargar más", el usuario se queda con lo que
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMorePets();
+      },
+      { rootMargin: '600px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, totalPages, countryCode, searchQuery, isLoadingMore]);
 
   const openDetail = (pet: PetData) => {
     if (pet.isExternal && pet.externalUrl) {
@@ -216,6 +279,14 @@ function HomeContent() {
 
     return [...relacionados, ...resto];
   }, [isDetailActive, selectedPet, pets]);
+
+  const visiblePets = displayedPets.filter((pet) => isCardVisible(pet.badgeStyle));
+
+  const breakpointColumns = {
+    default: 5,
+    1030: 4,
+    760: isCompactView ? 2 : 1,
+  };
 
   return (
     <main className="main-content">
@@ -310,6 +381,15 @@ function HomeContent() {
             <i className="fa-solid fa-heart"></i> Adopción
             {activeFilter === 'adoptar' && <i className="ti ti-x filter-clear-icon"></i>}
           </button>
+          <button
+            type="button"
+            className={`buttonmobilegrid ${isCompactView ? 'active' : ''}`}
+            onClick={() => setIsCompactView((prev) => !prev)}
+            aria-label="Vista rápida"
+          >
+            <i className="ti ti-grid-dots"></i>
+          </button>
+
         </div>
 
         {/* ==========================================
@@ -318,7 +398,7 @@ function HomeContent() {
         {isLoadingPets && (
           <div className="loading-state-centered">
             <div className="loading-spinner"></div>
-            <p>Buscando...</p>
+            <p>{isFirstLoad ? 'Cargando...' : 'Buscando...'}</p>
           </div>
         )}
 
@@ -328,19 +408,45 @@ function HomeContent() {
           </div>
         )}
 
-        {!isLoadingPets && !loadError && pets.length === 0 && !searchQuery && (
-          <div className="pub-empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <p>Todavía no hay avisos publicados en tu país.</p>
+        {!isLoadingPets && !loadError && !countryCode && (
+          <div className="section-not-country">
+            <p>No pudimos detectar tu país automáticamente. <br /> <b>Selecciónalo para ver los avisos.</b></p>
+            <div className='selectCountry'>
+              <CustomSelect
+                id="select-country-manual"
+                placeholder="Selecciona tu país"
+                value={manualCountry || ''}
+                onChange={(val) => {
+                  setManualCountry(val);
+                  saveDetectedCountry(val);
+                }}
+                options={countryOptions}
+              />
+            </div>
+          </div>
+        )}
+
+        {!isLoadingPets && !loadError && countryCode && pets.length === 0 && !searchQuery && (
+          <div className="section-not-country">
+            <p>Todavía no hay avisos <b>publicados en tu país.</b></p>
           </div>
         )}
 
         {!isLoadingPets && !loadError && (pets.length > 0 || searchQuery) && (
-          <div className="masonry-grid">
-            {displayedPets
-              .filter((pet) => isCardVisible(pet.badgeStyle))
-              .map((pet) => (
-                <PetCard key={pet.id} pet={pet} onOpenDetail={openDetail} />
-              ))}
+          <Masonry
+            breakpointCols={breakpointColumns}
+            className={`masonry-grid ${isCompactView ? 'compact-view' : ''}`}
+            columnClassName="masonry-column"
+          >
+            {visiblePets.map((pet) => (
+              <PetCard key={pet.id} pet={pet} onOpenDetail={openDetail} />
+            ))}
+          </Masonry>
+        )}
+
+        {!isLoadingPets && !loadError && page < totalPages && (
+          <div ref={loadMoreRef} className="loading-state-centered" style={{ minHeight: 80 }}>
+            {isLoadingMore && <div className="loading-spinner"></div>}
           </div>
         )}
       </section>
@@ -350,16 +456,16 @@ function HomeContent() {
         <Link href="/publicar" className="fab-publish-btn">
           <div className="fab-halo"></div>
           <div className="fab-halo fab-halo-2"></div>
-          <i className="fa-solid fa-heart-crack"></i>
+          <i className="ti ti-plus"></i>
         </Link>
       </div>
-    </main>
+    </main >
   );
 }
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div>Cargando...</div>}>
+    <Suspense fallback={null}>
       <HomeContent />
     </Suspense>
   );

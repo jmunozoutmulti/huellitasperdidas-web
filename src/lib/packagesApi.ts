@@ -68,7 +68,8 @@ function mapPackage(raw: any): PackageOption {
 const cache = new Map<string, PackageOption[]>();
 const pendingFetches = new Map<string, Promise<PackageOption[]>>();
 
-export async function getPackages(countryCode: string): Promise<PackageOption[]> {
+export async function getPackages(countryCode: string | null | undefined): Promise<PackageOption[]> {
+    if (!countryCode) return [];
     if (cache.has(countryCode)) return cache.get(countryCode)!;
     if (pendingFetches.has(countryCode)) return pendingFetches.get(countryCode)!;
 
@@ -90,7 +91,7 @@ export async function getPackages(countryCode: string): Promise<PackageOption[]>
     return promise;
 }
 
-export async function getPackageBySlug(countryCode: string, slug: string): Promise<PackageOption | null> {
+export async function getPackageBySlug(countryCode: string | null | undefined, slug: string): Promise<PackageOption | null> {
     const packages = await getPackages(countryCode);
     return packages.find((p) => p.slug === slug) ?? null;
 }

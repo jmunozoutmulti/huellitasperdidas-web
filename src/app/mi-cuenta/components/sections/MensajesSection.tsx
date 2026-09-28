@@ -1,12 +1,15 @@
 'use client';
 
-import { KeyboardEvent } from 'react';
+import { KeyboardEvent, ChangeEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { showToast } from '@/components/global/Toast';
 
 interface Mensaje {
     id: string;
     tipo: string;
     texto: string;
     hora: string;
+    imagen?: string | null;
 }
 
 interface Hilo {
@@ -30,7 +33,7 @@ interface MensajesSectionProps {
     onToggleHilo: (id: string) => void;
     onSetOpenMessageMenuId: (id: string | null) => void;
     onReplyInputChange: (hiloId: string, value: string) => void;
-    onSendReply: (hiloId: string) => void;
+    onSendReply: (hiloId: string, imagenFile?: File | null) => void;
     onReportarUsuario: (hiloId: string) => void;
     onBloquearUsuario: (nombre: string, hiloId: string) => void;
     onEliminarMensaje: (hiloId: string) => void;
@@ -47,6 +50,42 @@ export default function MensajesSection({
     onBloquearUsuario,
     onEliminarMensaje,
 }: MensajesSectionProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [activeHiloId, setActiveHiloId] = useState<string | null>(null);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+    const [pendingImages, setPendingImages] = useState<Record<string, File | null>>({});
+    const [pendingPreviews, setPendingPreviews] = useState<Record<string, string | null>>({});
+
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !activeHiloId) {
+            e.target.value = '';
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('La imagen supera los 5MB permitidos', 'warning');
+            e.target.value = '';
+            return;
+        }
+        setPendingImages((prev) => ({ ...prev, [activeHiloId]: file }));
+        setPendingPreviews((prev) => ({ ...prev, [activeHiloId]: URL.createObjectURL(file) }));
+        e.target.value = '';
+    };
+
+    const handleSend = (hiloId: string) => {
+        onSendReply(hiloId, pendingImages[hiloId] ?? undefined);
+        setPendingImages((prev) => ({ ...prev, [hiloId]: null }));
+        setPendingPreviews((prev) => {
+            if (prev[hiloId]) URL.revokeObjectURL(prev[hiloId]!);
+            return { ...prev, [hiloId]: null };
+        });
+    };
+
     return (
         <div className="cuenta-section active" id="section-mensajes">
             <div className="dashboard-recent-header">
@@ -55,6 +94,14 @@ export default function MensajesSection({
                     <i className="ti ti-info-circle"></i> Mensajes que otros usuarios dejaron en tus avisos
                 </p>
             </div>
+
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+            />
 
             <div className="mensajes-hilos-list">
                 {hilos.map((hilo) => (
@@ -148,7 +195,18 @@ export default function MensajesSection({
 
                                 {hilo.mensajes.map((msg) => (
                                     <div key={msg.id} className={`mensaje-burbuja ${msg.tipo}`}>
-                                        <p>{msg.texto}</p>
+                                        {msg.imagen && (
+                                            <div
+                                                className="mensaje-burbuja-imagen-wrap"
+                                                onClick={() => setLightboxImage(msg.imagen!)}
+                                            >
+                                                <img src={msg.imagen} alt="" className="mensaje-burbuja-imagen" />
+                                                <div className="mensaje-burbuja-imagen-overlay">
+                                                    <i className="ti ti-arrows-maximize"></i>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {msg.texto && <p>{msg.texto}</p>}
                                         <span className="mensaje-burbuja-time">{msg.hora}</span>
                                     </div>
                                 ))}
@@ -159,32 +217,70 @@ export default function MensajesSection({
                                         <p>Bloqueaste a este usuario. Ya no puede enviarte mensajes.</p>
                                     </div>
                                 ) : (
-                                    <div className="mensaje-reply-row">
-                                        <input
-                                            type="text"
-                                            className="mensaje-reply-field"
-                                            placeholder="Escribe una respuesta..."
-                                            value={hilo.replyInput}
-                                            onChange={(e) => onReplyInputChange(hilo.id, e.target.value)}
-                                            onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                                                if (e.key === 'Enter') onSendReply(hilo.id);
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            className={`mensaje-reply-send-btn ${hilo.replyInput.trim() ? 'is-active' : ''}`}
-                                            disabled={!hilo.replyInput.trim()}
-                                            onClick={() => onSendReply(hilo.id)}
-                                        >
-                                            <i className="ti ti-send"></i>
-                                        </button>
-                                    </div>
+                                    <>
+                                        {pendingPreviews[hilo.id] && (
+                                            <div className="mensaje-reply-image-preview">
+                                                <img src={pendingPreviews[hilo.id]!} alt="" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setPendingImages((prev) => ({ ...prev, [hilo.id]: null }));
+                                                        setPendingPreviews((prev) => {
+                                                            if (prev[hilo.id]) URL.revokeObjectURL(prev[hilo.id]!);
+                                                            return { ...prev, [hilo.id]: null };
+                                                        });
+                                                    }}
+                                                >
+                                                    <i className="ti ti-x"></i>
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="mensaje-reply-row">
+                                            <button
+                                                type="button"
+                                                className="mensaje-hilo-icon-btn"
+                                                onClick={() => {
+                                                    setActiveHiloId(hilo.id);
+                                                    fileInputRef.current?.click();
+                                                }}
+                                            >
+                                                <i className="ti ti-photo-plus"></i>
+                                            </button>
+                                            <input
+                                                type="text"
+                                                className="mensaje-reply-field"
+                                                placeholder="Escribe una respuesta..."
+                                                value={hilo.replyInput}
+                                                onChange={(e) => onReplyInputChange(hilo.id, e.target.value)}
+                                                onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
+                                                    if (e.key === 'Enter') handleSend(hilo.id);
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className={`mensaje-reply-send-btn ${hilo.replyInput.trim() || pendingImages[hilo.id] ? 'is-active' : ''}`}
+                                                disabled={!hilo.replyInput.trim() && !pendingImages[hilo.id]}
+                                                onClick={() => handleSend(hilo.id)}
+                                            >
+                                                <i className="ti ti-send"></i>
+                                            </button>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
+            {mounted && lightboxImage && createPortal(
+                <div className="mensaje-lightbox-overlay" onClick={() => setLightboxImage(null)}>
+                    <button type="button" className="mensaje-lightbox-close" onClick={() => setLightboxImage(null)}>
+                        <i className="ti ti-x"></i>
+                    </button>
+                    <img src={lightboxImage} alt="" onClick={(e) => e.stopPropagation()} />
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

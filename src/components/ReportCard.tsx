@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Report } from "@/lib/api";
+import { getLocaleForCountry } from "@/lib/countries";
 
 const TYPE_LABEL: Record<string, string> = {
   lost: "Perdido",
@@ -45,9 +46,9 @@ const SOURCE_COLOR: Record<string, string> = {
   user: "bg-emerald-50 text-emerald-600 border border-emerald-200",
 };
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, countryCode?: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-PE", {
+  return new Date(iso).toLocaleDateString(getLocaleForCountry(countryCode), {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -108,7 +109,7 @@ export default function ReportCard({ report }: { report: Report }) {
 
           <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
             <span>{report.district ?? report.region ?? "Lima"}</span>
-            <span>{formatDate(report.published_at ?? report.created_at)}</span>
+            <span>{formatDate(report.published_at ?? report.created_at, report.country)}</span>
           </div>
         </div>
       </div>

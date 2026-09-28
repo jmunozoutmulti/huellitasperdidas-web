@@ -5,6 +5,7 @@ import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr, type Country } from '@/lib/countries';
 import { AuthApiError } from '@/lib/authApi';
+import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
 
 interface ModalAgregarNumeroProps {
     isOpen: boolean;
@@ -15,14 +16,12 @@ interface ModalAgregarNumeroProps {
 
 export default function ModalAgregarNumero({ isOpen, onClose, mode = 'add', mandatory = false }: ModalAgregarNumeroProps) {
     const { currentUser, updateProfile } = useApp();
-    const countryCode = currentUser?.country || 'PE';
+    const countryCode = currentUser?.country ?? null;
 
     const [country, setCountry] = useState<Country | null>(null);
     const [isLoadingCountry, setIsLoadingCountry] = useState(true);
 
-    const [step, setStep] = useState<1 | 2>(1);
     const [numero, setNumero] = useState('');
-    const [codigo, setCodigo] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     // El código de país ya no se elige acá — se toma del país de la cuenta,
@@ -44,11 +43,9 @@ export default function ModalAgregarNumero({ isOpen, onClose, mode = 'add', mand
 
     useEffect(() => {
         if (isOpen) {
-            setStep(1);
-            setNumero('');
-            setCodigo('');
+            setNumero(currentUser?.phone?.replace(/^\+\d+\s*/, '') || '');
         }
-    }, [isOpen]);
+    }, [isOpen, currentUser?.phone]);
 
     if (!isOpen) return null;
 
@@ -70,148 +67,82 @@ export default function ModalAgregarNumero({ isOpen, onClose, mode = 'add', mand
                             <i className="ti ti-loader"></i>
                             <p>Cargando...</p>
                         </div>
-                    ) : !country?.dialCode || !country?.phoneDigits ? (
+                    ) : !country?.dialCode ? (
                         <div className="admin-info-box">
                             <i className="ti ti-info-circle"></i>
                             <p>Tu país todavía no está configurado para agregar un número de contacto. Vuelve más tarde.</p>
                         </div>
                     ) : (
-                        <>
-                            {step === 1 && (
-                                <div className="modal-step active" data-step="1">
-                                    <span className="modal-step-indicator">Paso 1 de 2</span>
-                                    <div className="form-group">
-                                        <label className="form-label">Número de contacto</label>
-                                        <div className="datos-input-modal">
-                                            <button
-                                                type="button"
-                                                className="country-select-trigger pointernone"
-                                                disabled
-                                                title="El código de país se toma de tu cuenta"
-                                            >
-                                                <span className="country-select-flag">{country.code}</span>
-                                                <span>{country.dialCode}</span>
-                                                <i className="ti ti-lock"></i>
-                                            </button>
-                                            <input
-                                                type="tel"
-                                                className="form-input"
-                                                maxLength={country.phoneDigits}
-                                                placeholder={'0'.repeat(country.phoneDigits)}
-                                                value={numero}
-                                                onChange={(e) => setNumero(e.target.value)}
-                                            />
-                                        </div>
+                        <div className="modal-step active">
+                            <div className="form-group">
+                                <label className="form-label">Número de contacto</label>
+                                <div className="datos-input-modal">
+                                    <div
+                                        className="country-select-trigger"
+                                    >
+                                        <span>{country.code}</span>
+                                        <span>{country.dialCode}</span>
                                     </div>
-                                    <div className="admin-info-box info-box-revision">
-                                        <i className="ti ti-info-circle"></i>
-                                        <p>Este número se mostrará en tus avisos, es importante que lo verifiques.</p>
-                                    </div>
+                                    <input
+                                        type="tel"
+                                        className="form-input"
+                                        maxLength={15}
+                                        placeholder="Tu número"
+                                        value={numero}
+                                        onChange={(e) => setNumero(e.target.value)}
+                                    />
                                 </div>
-                            )}
-
-                            {step === 2 && (
-                                <div className="modal-step active" data-step="2">
-                                    <span className="modal-step-indicator">Paso 2 de 2</span>
-                                    <div className="admin-info-box info-box-revision">
-                                        <i className="ti ti-message-circle"></i>
-                                        <p>
-                                            Te hemos enviado un código de acceso de un solo uso al{' '}
-                                            <b>{country.dialCode} {numero || '—'}</b>.
-                                            Este código caducará en 5 minutos.
-                                        </p>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Código de verificación</label>
-                                        <div className="code-input-group">
-                                            <input
-                                                type="text"
-                                                className="form-input"
-                                                maxLength={6}
-                                                placeholder="000000"
-                                                value={codigo}
-                                                onChange={(e) => setCodigo(e.target.value)}
-                                            />
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="btn-reenviar-codigo"
-                                            onClick={() => showToast('Código reenviado por SMS', 'info')}
-                                        >
-                                            Reenviar código
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                            </div>
+                            <div className="admin-info-box info-box-revision">
+                                <i className="ti ti-info-circle"></i>
+                                <p>Este número se usará para notificaciones y podrás usarlo como contacto en tus avisos. <b>Verifícalo antes de guardar.</b></p>
+                            </div>
+                        </div>
                     )}
                 </div>
 
-                {country?.dialCode && country?.phoneDigits && (
+                {country?.dialCode && (
                     <div className="app-modal-footer">
-                        {step === 1 ? (
-                            <div
-                                className="modal-footer-step active"
-                                style={{ width: '100%', justifyContent: 'flex-end', display: 'flex', gap: '0.5rem' }}
+                        <div
+                            className="modal-footer-step active"
+                            style={{ width: '100%', justifyContent: 'flex-end', display: 'flex', gap: '0.5rem' }}
+                        >
+                            {!mandatory && (
+                                <button type="button" className="btn-secondary" onClick={onClose}>
+                                    Cancelar
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="btn-publish"
+                                disabled={isSaving}
+                                onClick={async () => {
+                                    if (!isValidPhone(numero, country.code)) {
+                                        showToast('Ingresa un número de contacto válido', 'error');
+                                        return;
+                                    }
+                                    const numeroLimpio = normalizePhoneInput(numero, country.code);
+                                    setIsSaving(true);
+                                    try {
+                                        await updateProfile({ phone: `${country.dialCode} ${numeroLimpio}` });
+                                        onClose();
+                                        showToast(
+                                            mode === 'change'
+                                                ? 'Tu número de contacto fue actualizado correctamente'
+                                                : 'Tu número de contacto fue agregado correctamente',
+                                            'success'
+                                        );
+                                    } catch (err) {
+                                        const message = err instanceof AuthApiError ? err.message : 'No pudimos guardar tu número. Intenta de nuevo.';
+                                        showToast(message, 'error');
+                                    } finally {
+                                        setIsSaving(false);
+                                    }
+                                }}
                             >
-                                {!mandatory && (
-                                    <button type="button" className="btn-secondary" onClick={onClose}>
-                                        Cancelar
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    className="btn-publish"
-                                    onClick={() => {
-                                        if (!numero || numero.length < country.phoneDigits!) {
-                                            showToast('Ingresa un número de contacto válido', 'error');
-                                            return;
-                                        }
-                                        setStep(2);
-                                        showToast('Enviamos un código de verificación por SMS', 'info');
-                                    }}
-                                >
-                                    <i className="ti ti-send"></i> Enviar código
-                                </button>
-                            </div>
-                        ) : (
-                            <div
-                                className="modal-footer-step active"
-                                style={{ width: '100%', justifyContent: 'flex-end', display: 'flex', gap: '0.5rem' }}
-                            >
-                                <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
-                                    Atrás
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-publish"
-                                    disabled={isSaving}
-                                    onClick={async () => {
-                                        if (!codigo || codigo.length !== 6) {
-                                            showToast('Ingresa el código de 6 dígitos', 'error');
-                                            return;
-                                        }
-                                        setIsSaving(true);
-                                        try {
-                                            await updateProfile({ phone: `${country.dialCode} ${numero}` });
-                                            onClose();
-                                            showToast(
-                                                mode === 'change'
-                                                    ? 'Tu número de contacto fue actualizado correctamente'
-                                                    : 'Tu número de contacto fue agregado correctamente',
-                                                'success'
-                                            );
-                                        } catch (err) {
-                                            const message = err instanceof AuthApiError ? err.message : 'No pudimos guardar tu número. Intenta de nuevo.';
-                                            showToast(message, 'error');
-                                            setIsSaving(false);
-                                        }
-                                    }}
-                                >
-                                    <i className="ti ti-check"></i> {isSaving ? 'Guardando...' : 'Verificar y guardar'}
-                                </button>
-                            </div>
-                        )}
+                                <i className="ti ti-check"></i> {isSaving ? 'Guardando...' : 'Guardar número'}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import dynamic from 'next/dynamic';
 import '@/styles/avistamiento.css';
 import { useApp } from '@/context/AppContext';
 import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { useRouter } from 'next/navigation';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { showToast } from '@/components/global/Toast';
 import { reverseGeocode } from '@/lib/geocoding';
@@ -45,6 +46,8 @@ export default function AvistamientoPage() {
     const [lng, setLng] = useState('');
 
     const [showStatusOverlay, setShowStatusOverlay] = useState(false);
+    const idempotencyKeyRef = useRef<string | null>(null);
+    const router = useRouter();
 
     // Validación de campos obligatorios
     const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
@@ -176,10 +179,10 @@ export default function AvistamientoPage() {
     }
 
     function tipoAnimalToApi(valor: string): string {
-        if (valor === 'Perro') return 'dog';
-        if (valor === 'Gato') return 'cat';
-        if (valor === 'Ave') return 'bird';
-        return 'other';
+        if (valor === 'Perro') return 'perro';
+        if (valor === 'Gato') return 'gato';
+        if (valor === 'Ave') return 'ave';
+        return 'otro';
     }
 
     const hasAnyPhoto = mainImage !== null || uploadedThumbs.some((img) => img !== null);
@@ -218,14 +221,18 @@ export default function AvistamientoPage() {
         const parsedLng = lng ? parseFloat(lng) : null;
         const allPhotos = [mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[];
 
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = crypto.randomUUID();
+        }
+
         setIsSubmitting(true);
         try {
-            const report = await createReport({
+            const { report } = await createReport({
                 report_type: 'sighting',
                 pet_type: tipoAnimal ? tipoAnimalToApi(tipoAnimal) : null,
                 title: null, // avistamiento no captura nombre de mascota
                 description: sanitizeText(descripcion) || null,
-                country: currentUser.country || 'PE',
+                country: currentUser.country ?? null,
                 region: null,
                 province: null,
                 district: null,
@@ -244,7 +251,7 @@ export default function AvistamientoPage() {
                     color: null,
                     age: null,
                 },
-            });
+            }, idempotencyKeyRef.current);
 
             for (const foto of allPhotos) {
                 try {
@@ -257,7 +264,7 @@ export default function AvistamientoPage() {
 
             setShowStatusOverlay(true);
             setTimeout(() => {
-                window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
+                router.push('/mi-cuenta');
             }, 5000);
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos enviar tu alerta. Intenta de nuevo.';

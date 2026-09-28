@@ -54,26 +54,38 @@ export async function getTerritoryTree(countryCode: string): Promise<LocationNod
     return promise;
 }
 
-export async function getLevel1Options(countryCode: string): Promise<{ value: string; label: string }[]> {
+export async function getLevel1Options(countryCode: string | null | undefined): Promise<{ value: string; label: string }[]> {
+    if (!countryCode) return [];
     const tree = await getTerritoryTree(countryCode);
     return tree.map((n) => ({ value: n.name, label: n.name }));
 }
 
-export async function getLevel2Options(countryCode: string, level1: string): Promise<{ value: string; label: string }[]> {
-    if (!level1) return [];
+export async function getLevel2Options(countryCode: string | null | undefined, level1: string): Promise<{ value: string; label: string }[]> {
+    if (!countryCode || !level1) return [];
     const tree = await getTerritoryTree(countryCode);
     const node = tree.find((n) => n.name === level1);
     return (node?.children ?? []).map((n) => ({ value: n.name, label: n.name }));
 }
 
 export async function getLevel3Options(
-    countryCode: string,
+    countryCode: string | null | undefined,
     level1: string,
     level2: string
 ): Promise<{ value: string; label: string }[]> {
-    if (!level1 || !level2) return [];
+    if (!countryCode || !level1 || !level2) return [];
     const tree = await getTerritoryTree(countryCode);
     const l1 = tree.find((n) => n.name === level1);
     const l2 = l1?.children?.find((n) => n.name === level2);
     return (l2?.children ?? []).map((n) => ({ value: n.name, label: n.name }));
+}
+
+export async function countryHasLevel3(countryCode: string | null | undefined): Promise<boolean> {
+    if (!countryCode) return false;
+    const tree = await getTerritoryTree(countryCode);
+    for (const departamento of tree) {
+        for (const provincia of departamento.children ?? []) {
+            if ((provincia.children?.length ?? 0) > 0) return true;
+        }
+    }
+    return false;
 }

@@ -1,6 +1,6 @@
 import { PetData } from './pets';
 import { Report, FavoriteReportOut } from './api';
-import { getCountryByAbbrSync } from './countries';
+import { getCountryByAbbrSync, getLocaleForCountry } from './countries';
 
 function hashSeed(id: string): number {
     let hash = 0;
@@ -13,14 +13,14 @@ function hashSeed(id: string): number {
 
 function genderLabel(sex: string | null, isNeutered: boolean | null): string {
     if (!sex) return '';
-    const sexoLabel = sex === 'male' ? 'Macho' : sex === 'female' ? 'Hembra' : sex;
+    const sexoLabel = sex === 'macho' ? 'Macho' : sex === 'hembra' ? 'Hembra' : sex;
     return `${sexoLabel}${isNeutered ? ' (Esterilizado)' : ''}`;
 }
 
 function sizeLabel(size: string | null): string {
-    if (size === 'small') return 'Pequeño';
-    if (size === 'medium') return 'Mediano';
-    if (size === 'large') return 'Grande';
+    if (size === 'pequeño') return 'Pequeño';
+    if (size === 'mediano') return 'Mediano';
+    if (size === 'grande') return 'Grande';
     return '';
 }
 
@@ -59,10 +59,10 @@ function getBadgeInfo(reportType: string, isPremium: boolean): BadgeInfo {
     }
 }
 
-function formatDate(isoDate: string | null): string {
+function formatDate(isoDate: string | null, countryCode?: string | null): string {
     if (!isoDate) return '';
     const date = new Date(isoDate);
-    return date.toLocaleDateString('es-PE', {
+    return date.toLocaleDateString(getLocaleForCountry(countryCode), {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -71,9 +71,29 @@ function formatDate(isoDate: string | null): string {
     });
 }
 
+// event_date es una fecha de calendario pura ("2024-03-03"), sin hora ni
+// zona horaria — nunca pasarla por `new Date()` directo, porque JS la
+// interpreta como medianoche UTC y puede correrse un día en zonas horarias
+// negativas (Perú, México). Se parte el string a mano en su lugar.
+function formatEventDate(isoDate: string | null, countryCode?: string | null): string {
+    if (!isoDate) return '';
+    const [anio, mes, dia] = isoDate.split('-');
+    if (!anio || !mes || !dia) return '';
+    // Meses en JS son 0-indexados; usamos Date.UTC con hora fija a mediodía
+    // para el cálculo del día de la semana/mes en el locale correcto, sin
+    // riesgo de desfase (mediodía UTC nunca cruza a otro día en ningún
+    // huso horario real).
+    const date = new Date(Date.UTC(Number(anio), Number(mes) - 1, Number(dia), 12));
+    return date.toLocaleDateString(getLocaleForCountry(countryCode), {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
 function formatReward(report: Report): string {
     if (!report.meta.reward || Number(report.meta.reward) <= 0) return '';
-    const symbol = getCountryByAbbrSync(report.country || 'PE')?.currencySymbol;
+    const symbol = getCountryByAbbrSync(report.country)?.currencySymbol;
     // Si no sabemos el símbolo (país sin configurar, o caché aún no lista),
     // mostramos el monto sin inventar un símbolo — más honesto que adivinar.
     return symbol ? `${symbol} ${report.meta.reward}` : report.meta.reward;
@@ -123,17 +143,19 @@ export function reportToPetData(report: Report): PetData {
         province: report.province ?? '',
         region: report.region ?? '',
         features: report.meta.color ?? '',
-        date: formatDate(
-            report.event_date ??
-            (report.report_type === 'adoption'
-                ? (report.source_type === 'user' ? (report.published_at ?? report.created_at) : report.created_at)
-                : report.report_type === 'sighting'
-                    ? report.created_at
-                    : (report.published_at ?? report.created_at))
-        ),
+        date: report.event_date
+            ? formatEventDate(report.event_date, report.country)
+            : formatDate(
+                report.report_type === 'adoption'
+                    ? (report.source_type === 'user' ? (report.published_at ?? report.created_at) : report.created_at)
+                    : report.report_type === 'sighting'
+                        ? report.created_at
+                        : (report.published_at ?? report.created_at),
+                report.country
+            ),
         sourceType: report.source_type,
-        createdAtDisplay: formatDate(report.created_at),
-        publishedAtDisplay: report.published_at ? formatDate(report.published_at) : '',
+        createdAtDisplay: formatDate(report.created_at, report.country),
+        publishedAtDisplay: report.published_at ? formatDate(report.published_at, report.country) : '',
         lat: parseCoord(report.lat),
         lng: parseCoord(report.lng),
         contactPhone: report.contact_phone ?? '',
@@ -190,7 +212,7 @@ export function favoriteToCardData(fav: FavoriteReportOut): FavoriteCardData {
         badge: info.badge,
         badgeStyle: info.badgeStyle,
         district: fav.district ?? '',
-        date: formatDate(fav.published_at),
+        date: formatDate(fav.published_at), // FavoriteReportOut no trae 'country' — usa el fallback por defecto
         imgSrc: fav.cover_image_url ?? 'https://placehold.co/600x400?text=Sin+foto',
     };
 }

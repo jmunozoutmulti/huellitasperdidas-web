@@ -28,9 +28,10 @@ export const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: 'Inicio - Huellas Perdidas | Búsqueda de mascotas perdidas',
+  title: 'Huellas Perdidas | Búsqueda de Mascotas Perdidas',
   description:
     'Ayudamos a encontrar mascotas perdidas y facilitar el reencuentro con sus familias. Publica, busca y comparte casos de mascotas perdidas y encontradas.',
+  //icons: { icon: '/images/isotipo.png'},
 };
 
 export const viewport: Viewport = {

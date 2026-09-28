@@ -7,7 +7,6 @@ export interface Country {
     currency: string | null; // 'PEN' — null si el país no está configurado en el admin todavía
     currencySymbol: string | null; // 'S/.'
     dialCode: string | null; // '+51'
-    phoneDigits: number | null;
     locationLabels: [string, string, string] | null; // ['Departamento','Provincia','Distrito']
 }
 
@@ -19,13 +18,10 @@ function mapCountry(raw: any): Country {
         currency: raw.currency ?? null,
         currencySymbol: raw.currency_symbol ?? null,
         dialCode: raw.dial_code ?? null,
-        phoneDigits: raw.phone_digits ?? null,
         locationLabels: raw.location_labels ?? null,
     };
 }
 
-// Caché simple en memoria — se pide una sola vez por carga de la app,
-// cualquier componente que lo llame después reutiliza el mismo resultado.
 let cachedCountries: Country[] | null = null;
 let pendingFetch: Promise<Country[]> | null = null;
 
@@ -49,24 +45,26 @@ export async function getCountries(): Promise<Country[]> {
     return pendingFetch;
 }
 
-// Versión síncrona — NO hace ninguna llamada de red, solo lee lo que ya
-// está en caché. Úsala en lugares que se ejecutan muchas veces seguidas
-// (como dentro de un .map()), donde no tiene sentido esperar una promesa
-// por cada elemento. Requiere que getCountries() ya se haya llamado antes
-// al menos una vez (el caché ya esté "caliente").
-export function getCountryByAbbrSync(abbr: string): Country | null {
-    if (!cachedCountries) return null;
+export function getCountryByAbbrSync(abbr: string | null | undefined): Country | null {
+    if (!abbr || !cachedCountries) return null;
     return cachedCountries.find((c) => c.code === abbr) ?? null;
 }
 
-export const DEFAULT_COUNTRY_CODE = 'PE';
+const LOCALE_BY_COUNTRY: Record<string, string> = {
+    PE: 'es-PE',
+    MX: 'es-MX',
+    CO: 'es-CO',
+    CL: 'es-CL',
+    UY: 'es-UY',
+    EC: 'es-EC',
+};
 
-export async function getCountryByAbbr(abbr: string): Promise<Country | null> {
-    const countries = await getCountries();
-    return countries.find((c) => c.code === abbr) ?? null;
+export function getLocaleForCountry(countryCode: string | null | undefined): string {
+    return LOCALE_BY_COUNTRY[countryCode ?? ''] ?? 'es-PE';
 }
 
-export async function getDefaultCountry(): Promise<Country> {
+export async function getCountryByAbbr(abbr: string | null | undefined): Promise<Country | null> {
+    if (!abbr) return null;
     const countries = await getCountries();
-    return countries.find((c) => c.code === DEFAULT_COUNTRY_CODE) ?? countries[0];
+    return countries.find((c) => c.code === abbr) ?? null;
 }

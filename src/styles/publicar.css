@@ -44,7 +44,7 @@
 }
 
 
-.scanner-corners .corner {
+.photo-upload-grid .scanner-corners .corner {
     position: absolute;
     width: 0.75em;
     height: 0.75em;
@@ -53,32 +53,28 @@
     transition: all 0.3s ease;
 }
 
-.dropzone-biometric-modern:hover .scanner-corners .corner {
-    border-color: var(--brand-red);
-}
-
-.corner.tl {
+.photo-upload-grid .scanner-corners .corner.tl {
     top: 1em;
     left: 1em;
     border-right: none;
     border-bottom: none;
 }
 
-.corner.tr {
+.photo-upload-grid .scanner-corners .corner.tr {
     top: 1em;
     right: 1em;
     border-left: none;
     border-bottom: none;
 }
 
-.corner.bl {
+.photo-upload-grid .scanner-corners .corner.bl {
     bottom: 1em;
     left: 1em;
     border-right: none;
     border-top: none;
 }
 
-.corner.br {
+.photo-upload-grid .scanner-corners .corner.br {
     bottom: 1em;
     right: 1em;
     border-left: none;
@@ -488,7 +484,7 @@
 #flyer-titulo-alerta {
     text-transform: uppercase;
     letter-spacing: -1px;
-    font-size: 3em;
+    font-size: 3.5em;
     font-weight: 800;
     line-height: 1;
     margin: 0 0 5px 0;
@@ -859,11 +855,12 @@
     display: flex;
     align-items: center;
     gap: 0.25em;
+    white-space: nowrap;
 }
 
 
 .flyer-footer-number span {
-    letter-spacing: -1px;
+    letter-spacing: -1.3px;
     color: #fff;
     font-size: 2.7em;
     font-weight: 700;
@@ -929,7 +926,7 @@
 
 .row-plan {
     width: 100%;
-    padding: 2em 0;
+    padding: 2em 0 1em 0;
 }
 
 
@@ -1197,7 +1194,7 @@
     line-height: 1em;
     color: var(--text-secondary);
     font-weight: 300;
-    margin: 5px 0;
+    margin: 3px 0;
     list-style: none;
     position: relative;
     display: flex;
@@ -1690,7 +1687,6 @@
 
 
 .collapsible-details-section {
-    margin-top: 1em;
     border: 1px solid var(--border-color);
     border-radius: 0.5em;
     transition: background 0.3s;
@@ -1746,7 +1742,7 @@
 }
 
 .btn-toggle-details div small {
-    font-size: 0.85em;
+    font-size: 0.9em;
     color: var(--text-secondary);
     opacity: 0.7;
 }
@@ -1841,6 +1837,27 @@
     display: none;
 }
 
+.map-hint-icon-mobile {
+    display: none;
+}
+
+.terms-inline-note {
+    color: var(--text-secondary);
+    font-size: .875em;
+    font-weight: 300;
+    line-height: 1.3em;
+    margin-top: 1em;
+}
+
+.terms-inline-note a {
+    color: var(--text-main);
+    text-decoration: underline;
+}
+
+.terms-inline-note a:hover {
+    color: var(--text-red);
+}
+
 
 @media screen and (max-width: 1030px) {
 
@@ -1866,10 +1883,6 @@
         grid-area: right;
         position: relative;
         top: inherit;
-    }
-
-    .collapsible-details-section {
-        margin-top: 0;
     }
 
     .slogan-reach-item {
@@ -1902,6 +1915,12 @@
         display: none;
     }
 
+    #flyer-titulo-alerta {
+        letter-spacing: -1px;
+        font-size: 3em;
+        font-weight: 800;
+        line-height: 1;
+    }
 
 
 }
@@ -2033,27 +2052,27 @@
         font-size: 1.6em;
     }
 
-    .scanner-corners .corner {
+    .photo-upload-grid .scanner-corners .corner {
         width: 0.35em;
         height: 0.35em;
     }
 
-    .corner.tl {
+    .photo-upload-grid .scanner-corners .corner.tl {
         top: 0.5em;
         left: 0.5em;
     }
 
-    .corner.tr {
+    .photo-upload-grid .scanner-corners .corner.tr {
         top: 0.5em;
         right: 0.5em;
     }
 
-    .corner.bl {
+    .photo-upload-grid .scanner-corners .corner.bl {
         bottom: 0.5em;
         left: 0.5em;
     }
 
-    .corner.br {
+    .photo-upload-grid .scanner-corners .corner.br {
         bottom: 0.5em;
         right: 0.5em;
     }
@@ -2165,12 +2184,21 @@
     }
 
     .flyer-canvas {
-        display: none;
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        pointer-events: none;
+        width: 360px;
     }
 
     .flyer-canvas.mobile-visible {
-        display: flex;
+        width: 100%;
+        position: relative;
+        left: auto;
+        top: auto;
+        pointer-events: auto;
         animation: fadeIn 0.3s ease;
+
     }
 
     .editor-canvas-caption {
@@ -2249,7 +2277,13 @@
         display: none;
     }
 
+    .map-hint-icon-desktop {
+        display: none;
+    }
 
+    .map-hint-icon-mobile {
+        display: inline-flex;
+    }
 
 
 }

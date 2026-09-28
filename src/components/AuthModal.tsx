@@ -4,9 +4,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { showToast } from '@/components/global/Toast';
-import { AuthApiError, resendVerification, forgotPassword, resetPassword } from '@/lib/authApi';
+import { AuthApiError, resendVerification, forgotPassword, resetPassword, verifyEmail } from '@/lib/authApi';
 
-type AuthMode = 'login' | 'register' | 'recover' | 'forgot' | 'reset';
+type AuthMode = 'login' | 'register' | 'recover' | 'forgot' | 'reset' | 'verify';
 
 interface AuthModalProps {
     onClose: () => void;
@@ -34,6 +34,28 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
     // Olvidé mi contraseña (cuenta ya verificada)
     const [forgotEmail, setForgotEmail] = useState('');
     const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
+
+    // Verificar correo (viene del link del correo, con token)
+    const [verifyStatus, setVerifyStatus] = useState<'loading' | 'success' | 'error'>('loading');
+    const [verifyErrorMessage, setVerifyErrorMessage] = useState('');
+
+    useEffect(() => {
+        if (mode !== 'verify') return;
+        if (!resetToken) {
+            setVerifyStatus('error');
+            setVerifyErrorMessage('Este enlace no es válido o está incompleto.');
+            return;
+        }
+        verifyEmail(resetToken)
+            .then(() => setVerifyStatus('success'))
+            .catch((err) => {
+                setVerifyStatus('error');
+                setVerifyErrorMessage(
+                    err instanceof AuthApiError ? err.message : 'No pudimos verificar tu correo. El enlace puede haber vencido.'
+                );
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, resetToken]);
 
     // Restablecer contraseña (viene del link del correo, con token)
     const [newPassword, setNewPassword] = useState('');
@@ -160,7 +182,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                         <h3 className="auth-modal-title">Inicia sesión</h3>
                         <p className="auth-modal-desc">
                             Al continuar, aceptas nuestros{' '}
-                            <Link href="/terminos-y-condiciones" target="_blank">Términos</Link>{' '}
+                            <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">Términos</Link>{' '}
                             y nuestra{' '}
                             <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.
                         </p>
@@ -239,7 +261,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                         <h3 className="auth-modal-title">Crea tu cuenta</h3>
                         <p className="auth-modal-desc">
                             Al continuar, aceptas nuestros{' '}
-                            <Link href="/terminos-y-condiciones" target="_blank">Términos</Link>{' '}
+                            <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">Términos</Link>{' '}
                             y nuestra{' '}
                             <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.
                         </p>
@@ -378,7 +400,43 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                     </div>
                 )}
 
-                {/* ============ RESTABLECER CONTRASEÑA (llegó desde el link del correo) ============ */}
+
+                {/* ============ VERIFICAR CORREO (llegó desde el link del correo) ============ */}
+                {mode === 'verify' && (
+                    <div className="auth-step active" data-auth-step="verify">
+                        <div className="auth-modal-icon">
+                            <Image src="/images/logo.svg" alt="Huellas Perdidas" width={120} height={40} />
+                        </div>
+
+                        {verifyStatus === 'loading' && (
+                            <>
+                                <h3 className="auth-modal-title">Verificando tu correo...</h3>
+                                <p className="auth-modal-desc">Esto solo toma un momento.</p>
+                            </>
+                        )}
+
+                        {verifyStatus === 'success' && (
+                            <>
+                                <h3 className="auth-modal-title">¡Cuenta verificada!</h3>
+                                <p className="auth-modal-desc">Tu correo fue confirmado correctamente. Ya puedes iniciar sesión.</p>
+                                <button type="button" className="auth-btn auth-btn-primary" onClick={() => setMode('login')}>
+                                    Iniciar sesión
+                                </button>
+                            </>
+                        )}
+
+                        {verifyStatus === 'error' && (
+                            <>
+                                <h3 className="auth-modal-title">No pudimos verificar tu cuenta</h3>
+                                <p className="auth-modal-desc">{verifyErrorMessage}</p>
+                                <button type="button" className="auth-btn auth-btn-primary" onClick={() => setMode('recover')}>
+                                    Reenviar enlace de verificación
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 {mode === 'reset' && (
                     <div className="auth-step active" data-auth-step="reset">
                         <div className="auth-modal-icon">

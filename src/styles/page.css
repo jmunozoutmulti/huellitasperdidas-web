@@ -84,8 +84,8 @@
 }
 
 .search-box-wrapper:focus-within {
-    border-color: var(--brand-red);
-    box-shadow: 0 10px 30px rgba(255, 77, 77, 0.15);
+    border-color: var(--border-color-focus);
+    box-shadow: 0 10px 30px rgb(220 220 220 / 50%)
 }
 
 .search-box-wrapper i.search-icon {
@@ -136,13 +136,21 @@
 
 /*Grid Home*/
 .masonry-grid {
-    column-count: 5;
-    column-gap: 1em;
+    display: flex;
+    align-items: flex-start;
+    gap: 1em;
+}
+
+.masonry-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    flex: 1;
+    min-width: 0;
 }
 
 .masonry-item {
-    break-inside: avoid;
-    margin-bottom: 1em;
+    margin-bottom: 0;
 }
 
 .pet-card {
@@ -210,6 +218,12 @@
 }
 
 .card-img {
+    width: 100%;
+    height: auto;
+    min-height: 10em;
+}
+
+.card-img img {
     width: 100%;
     height: auto;
     max-height: inherit;
@@ -758,7 +772,6 @@
 
 .detail-swiper .swiper-slide {
     position: relative;
-    background: #000;
 }
 
 .detail-swiper .swiper-slide img {
@@ -1619,17 +1632,11 @@ a.pet-card.external-direct:hover {
 
 
 @media screen and (max-width: 1030px) {
-    .masonry-grid {
-        column-count: 4;
-        column-gap: 1em;
-    }
-
     .detail-specs-grid {
         grid-template-columns: repeat(3, 1fr);
     }
 
 }
-
 
 
 @media screen and (max-width: 760px) {
@@ -1655,19 +1662,19 @@ a.pet-card.external-direct:hover {
     }
 
     .filter-mobile {
-        display: flex;
-        gap: 0.2em;
-        justify-content: center;
-        flex-wrap: wrap;
         border: none;
+        justify-content: center;
+        gap: .2em;
+        margin: 0 0 1em;
         padding: 0;
-        margin: 0;
-        margin-bottom: 1em;
+        display: flex;
+        width: 105%;
+        margin-left: -2.5%;
     }
 
     .filter-mobile button {
         padding: 0.25em;
-        font-size: 1em;
+        font-size: 0.95em;
     }
 
     .main-search-btn {
@@ -1680,20 +1687,41 @@ a.pet-card.external-direct:hover {
     }
 
     .masonry-grid {
-        column-count: 1;
-        column-gap: 0.75em;
+        gap: 0.75em;
         font-size: 16.25px;
     }
+
+    .masonry-grid.compact-view {
+        font-size: 15.25px;
+    }
+
+    .buttonmobilegrid {
+        font-size: 1.4em !important;
+        padding: 0 !important;
+    }
+
+    .masonry-grid.compact-view .card-img img {
+        max-height: 75vw;
+    }
+
+    .masonry-grid.compact-view .card-desc,
+    .masonry-grid.compact-view .card-body,
+    .masonry-grid.compact-view .card-desc,
+    .masonry-grid.compact-view .card-footer span b {
+        display: none;
+    }
+
+
 
     .card-meta {
         font-size: 17px;
     }
 
     .masonry-item {
-        margin-bottom: 0.75em;
+        margin-bottom: 0;
     }
 
-    .card-img {
+    .card-img img {
         max-height: 75vw;
     }
 

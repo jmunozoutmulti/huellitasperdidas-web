@@ -16,6 +16,7 @@ export interface AuthApiUser {
     province: string | null;
     district: string | null;
     avatar: string | null;
+    has_password: boolean;
 }
 
 export interface LoginResponse {
@@ -32,7 +33,7 @@ export class AuthApiError extends Error {
     }
 }
 
-export async function registerUser(email: string, password: string, name: string): Promise<{ message: string }> {
+export async function registerUser(email: string, password: string, name: string, country?: string | null): Promise<{ message: string }> {
     const res = await fetch(`${API_BASE}/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,12 +41,10 @@ export async function registerUser(email: string, password: string, name: string
             email,
             password,
             name,
-            // El backend no soporta apellidos/teléfono opcionales en el registro
-            // desde el frontend todavía por decisión de producto — se completan
-            // después, desde Mi Cuenta. Confirmado que el endpoint acepta '' vacío.
             last_name_paterno: '',
             last_name_materno: '',
             phone: '',
+            country: country || undefined,
         }),
     });
     const data = await res.json().catch(() => ({}));
@@ -215,13 +214,12 @@ export async function deleteAvatar(): Promise<AuthApiUser> {
     }
 }
 
-// Login/registro con Google — el backend decide solo si es cuenta nueva o
-// existente según el correo/google_id. Responde igual que loginUser.
-export async function loginWithGoogleToken(idToken: string): Promise<LoginResponse> {
+// Login/registro con Google — el backend decide solo si es cuenta nueva o existente según el correo/google_id. Responde igual que loginUser.
+export async function loginWithGoogleToken(idToken: string, country?: string | null): Promise<LoginResponse> {
     const res = await fetch(`${API_BASE}/v1/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken }),
+        body: JSON.stringify({ id_token: idToken, country: country || undefined }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -230,8 +228,7 @@ export async function loginWithGoogleToken(idToken: string): Promise<LoginRespon
     return data;
 }
 
-// Siempre responde igual exista o no la cuenta — mismo criterio de
-// seguridad que resendVerification. No intentar distinguir casos aquí.
+// Siempre responde igual exista o no la cuenta — mismo criterio de seguridad que resendVerification. No intentar distinguir casos aquí.
 export async function forgotPassword(email: string): Promise<{ message: string }> {
     const res = await fetch(`${API_BASE}/v1/auth/forgot-password`, {
         method: 'POST',

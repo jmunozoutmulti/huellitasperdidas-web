@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
 import { upgradeReport, ReportsApiError } from '@/lib/reportsApi';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
-import { getCountryByAbbr } from '@/lib/countries';
+import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
+import type { PaymentInfo } from '@/lib/paymentsApi';
+import CheckoutPago from '@/components/checkout/CheckoutPago';
 
 interface ModalUpgradeProps {
     isOpen: boolean;
@@ -18,20 +20,21 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
     const [pub, setPub] = useState<ReportDetail | null>(null);
     const [packages, setPackages] = useState<PackageOption[]>([]);
     const [currencySymbol, setCurrencySymbol] = useState('');
+    const [currencyCode, setCurrencyCode] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
     const [step, setStep] = useState<1 | 2>(1);
     const [val, setVal] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<'card' | 'yape'>('card');
-    const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [pendingPayment, setPendingPayment] = useState<PaymentInfo | null>(null);
+    const idempotencyKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!isOpen || !id) return;
         setStep(1);
         setVal('');
-        setPaymentMethod('card');
-        setAcceptTerms(false);
+        setPendingPayment(null);
+        idempotencyKeyRef.current = null;
         setPub(null);
         setPackages([]);
         setIsLoading(true);
@@ -46,11 +49,31 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                 const paidPackages = pkgs.filter((p) => p.price > 0);
                 setPackages(paidPackages);
                 setCurrencySymbol(country?.currencySymbol ?? '');
+                setCurrencyCode(country?.code !== 'PE' ? country?.currency ?? '' : '');
                 setVal(paidPackages[0]?.slug ?? '');
             }
             setIsLoading(false);
+        }).catch((err) => {
+            console.error('Error cargando datos para upgrade:', err);
+            setIsLoading(false);
         });
     }, [isOpen, id]);
+
+    const handlePaymentConfirmed = useCallback(() => {
+        onClose();
+        onUpgraded();
+        showToast('¡Pago confirmado! Tu aviso quedará activo en cuanto nuestro equipo lo revise.', 'success');
+    }, [onClose, onUpgraded]);
+
+    const handlePaymentTimeout = useCallback(() => {
+        onClose();
+        onUpgraded();
+        showToast('Tu pago está siendo confirmado, puede tardar unos minutos. Revisa "Mis avisos" en un momento.', 'info');
+    }, [onClose, onUpgraded]);
+
+    const handlePaymentCancelled = useCallback(() => {
+        showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
+    }, []);
 
     if (!isOpen) return null;
 
@@ -95,12 +118,20 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
     const planActual = packages.find((p) => p.slug === val) ?? packages[0];
 
     const handlePagar = async () => {
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = crypto.randomUUID();
+        }
         setIsProcessing(true);
         try {
-            await upgradeReport(id, val);
-            onClose();
-            onUpgraded();
-            showToast('Tu aviso pasó a revisión con el nuevo plan.', 'success');
+            const { payment } = await upgradeReport(id, val, idempotencyKeyRef.current);
+            if (payment) {
+                setPendingPayment(payment);
+                setStep(2);
+            } else {
+                onClose();
+                onUpgraded();
+                showToast('Tu aviso pasó a revisión con el nuevo plan.', 'success');
+            }
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos cambiar el plan de tu aviso. Intenta de nuevo.';
             showToast(message, 'error');
@@ -124,6 +155,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                     </button>
                 </div>
 
+                {/* PASO 1: SELECCIÓN DE PLAN */}
                 {step === 1 && (
                     <div id="upgrade-modal-step-1">
                         <div className="upgrade-map-preview">
@@ -136,7 +168,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                             </div>
                             <p className="upgrade-map-caption">
                                 <i className="ti ti-users"></i>
-                                Tu aviso llegará a <b>+{planActual?.adsMetaAudience?.toLocaleString('es-PE') ?? '0'}</b> personas en la <b>zona de perdida</b>
+                                Tu aviso llegará a <b>+{planActual?.adsMetaAudience?.toLocaleString(getLocaleForCountry(pub?.country)) ?? '0'}</b> personas en la <b>zona de perdida</b>
                             </p>
                         </div>
 
@@ -165,7 +197,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                                     <p className="plan-scope" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
                                                 </div>
                                                 <div className="plan-card">
-                                                    <div className="plan-price"><i>{currencySymbol}</i> {pkg.price}</div>
+                                                    <div className="plan-price"><i>{currencySymbol}</i> {pkg.price} {currencyCode}</div>
                                                     <span>/ <i className="fa-regular fa-credit-card"></i> Pago único</span>
                                                 </div>
                                             </div>
@@ -186,6 +218,11 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                                 <div className="attributes-plan">
                                                     <ul>
                                                         <li><i className="ti ti-broadcast"></i><b>{pkg.days} días</b> de difusión</li>
+                                                        {pkg.centinela && (
+                                                            <li>
+                                                                <i className="ti ti-camera-search"></i> Incluye <b>Centinela IA</b> 24/7
+                                                            </li>
+                                                        )}
                                                         {pkg.includesRefund && (
                                                             <li>
                                                                 <div className="tooltip-wrap">
@@ -209,14 +246,26 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                             <div className="text-modal">
                                 <i className="ti ti-info-circle"></i> Tu aviso mantiene su fecha de publicación original
                             </div>
-                            <button type="button" className="btn-publish" onClick={() => setStep(2)}>
-                                Continuar <i className="ti ti-chevron-right"></i>
+                            <button
+                                type="button"
+                                className="btn-publish"
+                                disabled={isProcessing}
+                                onClick={handlePagar}
+                            >
+                                {isProcessing ? (
+                                    'Procesando...'
+                                ) : (
+                                    <>
+                                        <i className="ti ti-check"></i> Continuar
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
                 )}
 
-                {step === 2 && (
+                {/* PASO 2: PASARELA DE PAGO DIRECTA */}
+                {step === 2 && pendingPayment && (
                     <div id="upgrade-modal-step-2">
                         <div className="modal-summary">
                             <div className="planes-modal-summary-bar">
@@ -224,97 +273,24 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                     <span className="planes-summary-label">Plan seleccionado</span>
                                     <h5>{planActual?.name}</h5>
                                 </div>
-                                <div className="planes-summary-price">{currencySymbol} {planActual?.price}</div>
+                                <div className="planes-summary-price">{currencySymbol} {planActual?.price} {currencyCode}</div>
                             </div>
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Checkout Seguro (Mercado Pago)
+                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
                                 </h4>
 
-                                <div className="payment-methods-tabs">
-                                    <button
-                                        type="button"
-                                        className={`pay-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
-                                        onClick={() => setPaymentMethod('card')}
-                                    >
-                                        <i className="fa-solid fa-credit-card"></i> Tarjeta de Crédito/Débito
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`pay-tab-btn ${paymentMethod === 'yape' ? 'active' : ''}`}
-                                        onClick={() => setPaymentMethod('yape')}
-                                    >
-                                        <i className="fa-solid fa-mobile-screen-button"></i> Yape
-                                    </button>
-                                </div>
-
-                                <div className="payment-methods-content">
-                                    <div className={`pay-method-panel ${paymentMethod === 'card' ? 'active' : ''}`}>
-                                        <div className="groups-payment form-group">
-                                            <label className="form-label">Número de tarjeta</label>
-                                            <input type="text" className="form-input" placeholder="0000 0000 0000 0000" />
-                                        </div>
-                                        <div className="groups-payment grid-2col">
-                                            <div className="form-group">
-                                                <label className="form-label">Expiración</label>
-                                                <input type="text" className="form-input" placeholder="MM/AA" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label className="form-label">CVV</label>
-                                                <input type="password" className="form-input" placeholder="000" />
-                                            </div>
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Nombre en tarjeta</label>
-                                            <input type="text" className="form-input" />
-                                        </div>
-                                    </div>
-
-                                    <div className={`pay-method-panel ${paymentMethod === 'yape' ? 'active' : ''}`}>
-                                        <div className="yape-mock-wrapper">
-                                            <p>Escanea desde la app Yape o ingresa tu código de aprobación:</p>
-                                            <div className="yape-qr-box">
-                                                <i className="fa-solid fa-qrcode"></i>
-                                                <span>QR HUELLITAS PERÚ</span>
-                                            </div>
-                                            <div className="form-group">
-                                                <label className="form-label">Código de aprobación Yape (6 dígitos)</label>
-                                                <input type="text" className="form-input" placeholder="000000" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="terms-acceptance-box">
-                                    <label className="terms-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            className="terms-checkbox-input"
-                                            checked={acceptTerms}
-                                            onChange={(e) => setAcceptTerms(e.target.checked)}
-                                        />
-                                        <span className="terms-checkbox-custom"><i className="fa-solid fa-check"></i></span>
-                                        <span className="terms-checkbox-text">
-                                            Acepto los <a href="/terminos-y-condiciones" target="_blank">Términos y Condiciones</a> del servicio.
-                                        </span>
-                                    </label>
-                                </div>
+                                <CheckoutPago
+                                    payment={pendingPayment}
+                                    reportId={id}
+                                    country={pub?.country}
+                                    onConfirmed={handlePaymentConfirmed}
+                                    onTimeout={handlePaymentTimeout}
+                                    onCancelled={handlePaymentCancelled}
+                                />
+                                <span className='text-chat'>¿Problemas con tu pago? <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target='blank'>Escríbenos aquí</a> y te ayudamos.</span>
                             </div>
-                        </div>
-
-                        <div className="planes-modal-actions">
-                            <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
-                                <i className="ti ti-chevron-left"></i> Volver
-                            </button>
-                            <button
-                                type="button"
-                                className="btn-publish"
-                                disabled={!acceptTerms || isProcessing}
-                                onClick={handlePagar}
-                            >
-                                {isProcessing ? 'Procesando...' : 'Pagar y Activar'}
-                            </button>
                         </div>
                     </div>
                 )}

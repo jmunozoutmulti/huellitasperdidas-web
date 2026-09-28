@@ -9,7 +9,8 @@ export interface AuthUser {
     province?: string;
     district?: string;
     avatar?: string; // foto de perfil en base64 (mock, sin subir a servidor real)
-    country?: string; // 'PE', 'MX', etc. — código de countries.ts
+    country?: string | null;// 'PE', 'MX', etc. — código de countries.ts
+    hasPassword?: boolean; // false = cuenta creada solo con Google, nunca tuvo contraseña
 }
 
 const TOKEN_KEY = 'accessToken';
@@ -34,7 +35,10 @@ export function clearAccessToken() {
 // captura sin login (vía el servicio de detección, aún pendiente de elegir).
 // Vive separado del usuario a propósito: tiene que existir incluso para
 // visitantes sin sesión, para poder filtrar Explorar por país.
-export function saveDetectedCountry(country: string) {
+export function saveDetectedCountry(country: string | null) {
+    // Si no se detectó nada, no guardamos — así el próximo visit reintenta
+    // la detección en vez de quedarse con "nada" para siempre.
+    if (!country) return;
     localStorage.setItem(DETECTED_COUNTRY_KEY, country);
 }
 

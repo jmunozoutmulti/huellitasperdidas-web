@@ -357,14 +357,13 @@
 /* RESUMEN DEL PLAN */
 .modal-summary {
     display: grid;
-    grid-template-columns: 0.35fr 1fr;
+    grid-template-columns: 0.5fr 1fr;
     gap: 1em;
     align-items: flex-start;
 }
 
 .planes-modal-summary-bar {
     display: flex;
-    align-items: center;
     gap: 1em;
     background: var(--bg-alt);
     border: 1px solid var(--border-color);
@@ -391,6 +390,7 @@
 .planes-summary-body h5 {
     font-size: 1.1em;
     font-weight: 900;
+    letter-spacing: -0.5px;
     color: var(--text-main);
     line-height: 1.1;
     margin: 5px 0;
@@ -399,6 +399,7 @@
 .planes-summary-price {
     font-size: 1em;
     font-weight: 900;
+    letter-spacing: -0.75px;
     color: var(--text-main);
 }
 

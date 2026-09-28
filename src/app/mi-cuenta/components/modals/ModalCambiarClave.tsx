@@ -11,7 +11,8 @@ interface ModalCambiarClaveProps {
 }
 
 export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClaveProps) {
-    const { updateProfile } = useApp();
+    const { updateProfile, currentUser } = useApp();
+    const isCreating = currentUser?.hasPassword === false;
 
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -34,7 +35,7 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
     if (!isOpen) return null;
 
     const canSubmit =
-        currentPassword.length > 0 &&
+        (isCreating || currentPassword.length > 0) &&
         newPassword.length >= 8 &&
         newPassword === confirmPassword;
 
@@ -46,14 +47,18 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
 
         setIsSaving(true);
         try {
-            await updateProfile({
-                current_password: currentPassword,
-                password: newPassword,
-            });
+            await updateProfile(
+                isCreating
+                    ? { password: newPassword }
+                    : { current_password: currentPassword, password: newPassword }
+            );
             onClose();
-            showToast('Tu contraseña se actualizó correctamente', 'success');
+            showToast(
+                isCreating ? 'Tu contraseña fue creada correctamente' : 'Tu contraseña se actualizó correctamente',
+                'success'
+            );
         } catch (err) {
-            const message = err instanceof AuthApiError ? err.message : 'No pudimos cambiar tu contraseña. Intenta de nuevo.';
+            const message = err instanceof AuthApiError ? err.message : 'No pudimos guardar tu contraseña. Intenta de nuevo.';
             showToast(message, 'error');
             setIsSaving(false);
         }
@@ -64,32 +69,44 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
             <div className="app-modal-backdrop" onClick={onClose}></div>
             <div className="app-modal-card">
                 <div className="app-modal-header">
-                    <h3>Cambiar contraseña</h3>
+                    <h3>{isCreating ? 'Crear contraseña' : 'Cambiar contraseña'}</h3>
                     <button type="button" className="app-modal-close" onClick={onClose}>
                         <i className="ti ti-x"></i>
                     </button>
                 </div>
                 <div className="app-modal-body">
-                    <div className="form-group auth-password-group">
-                        <label className="form-label">Contraseña actual</label>
-                        <input
-                            type={showCurrent ? 'text' : 'password'}
-                            className="form-input auth-input"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                        />
-                        <button
-                            type="button"
-                            className="auth-password-toggle"
-                            onClick={() => setShowCurrent((v) => !v)}
-                            aria-label={showCurrent ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                        >
-                            <i className={showCurrent ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
-                        </button>
-                    </div>
+                    {isCreating && (
+                        <div className="admin-info-box">
+                            <i className="ti ti-info-circle"></i>
+                            <p>
+                                Tu cuenta se creó con Google y todavía no tiene contraseña propia.
+                                Crea una para poder entrar también con tu correo y contraseña.
+                            </p>
+                        </div>
+                    )}
+
+                    {!isCreating && (
+                        <div className="form-group auth-password-group">
+                            <label className="form-label">Contraseña actual</label>
+                            <input
+                                type={showCurrent ? 'text' : 'password'}
+                                className="form-input auth-input"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                className="auth-password-toggle"
+                                onClick={() => setShowCurrent((v) => !v)}
+                                aria-label={showCurrent ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                            >
+                                <i className={showCurrent ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                            </button>
+                        </div>
+                    )}
 
                     <div className="form-group auth-password-group">
-                        <label className="form-label">Nueva contraseña</label>
+                        <label className="form-label">{isCreating ? 'Contraseña nueva' : 'Nueva contraseña'}</label>
                         <input
                             type={showNew ? 'text' : 'password'}
                             className="form-input auth-input"
@@ -108,7 +125,7 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Confirmar nueva contraseña</label>
+                        <label className="form-label">Confirmar {isCreating ? 'contraseña' : 'nueva contraseña'}</label>
                         <input
                             type={showNew ? 'text' : 'password'}
                             className="form-input"
@@ -127,7 +144,8 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
                         disabled={!canSubmit || isSaving}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-device-floppy"></i> {isSaving ? 'Guardando...' : 'Guardar nueva contraseña'}
+                        <i className="ti ti-device-floppy"></i>{' '}
+                        {isSaving ? 'Guardando...' : isCreating ? 'Crear contraseña' : 'Guardar nueva contraseña'}
                     </button>
                 </div>
             </div>

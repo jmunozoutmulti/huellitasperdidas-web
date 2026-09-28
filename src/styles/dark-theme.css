@@ -92,18 +92,25 @@
     }
 
     .planes-modal-summary-bar,
-    .payment-gateway-box,
     .admin-info-box {
         background: none;
         border: 1px solid var(--border-color);
     }
 
+    .payment-gateway-box {
+        background: #fff;
+    }
+
+    .payment-gateway-box h4 {
+        color: #000;
+    }
+
     .planes-modal-plan-item {
-        background: none !important;
+        color: #000;
     }
 
     .pay-tab-btn {
-        background: none !important;
+        color: #000;
     }
 
     .planes-modal-plan-days {
@@ -120,7 +127,16 @@
     }
 
     .pay-method-panel input {
-        background: var(--bg-input);
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .pay-tab-btn.active {
+        color: var(--brand-red) !important;
+    }
+
+    .mp-checkout-bricks__payment-form {
+        padding: 0 !important;
     }
 
     .user-dropdown,
@@ -246,4 +262,21 @@
     .sighting-thumb {
         border: 1px dashed #7f7f7f66;
     }
+
+    .layer-blocked {
+        background: #0000006e;
+    }
+
+    .terms-checkbox-text,
+    .terms-checkbox-text a,
+    .text-chat,
+    .text-chat a {
+        color: #000;
+    }
+
+    .terms-checkbox-text a:hover,
+    .text-chat a:hover {
+        color: #e70808;
+    }
+
 }

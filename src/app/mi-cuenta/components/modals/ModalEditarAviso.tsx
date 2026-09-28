@@ -5,11 +5,14 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr } from '@/lib/countries';
+import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
 import { fetchReport, type ReportDetail } from '@/lib/api';
 import { updateReport, uploadReportImage, deleteReportImage, ReportsApiError } from '@/lib/reportsApi';
 import { validateText } from '@/lib/textValidation';
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
+import DraggablePhoto from '@/components/global/DraggablePhoto';
+import { generateFlyerImage } from '@/lib/flyerExport';
 
 interface ModalEditarAvisoProps {
     isOpen: boolean;
@@ -42,6 +45,51 @@ const editarModalConfig = {
     },
 };
 
+// Textos fijos del flyer por tipo de aviso — mismos diseños que los
+// formularios de publicar (page_perdidos.tsx, page_sdoptar.tsx, page_encontraod.tsx).
+const flyerConfig = {
+    lost: {
+        stateClass: 'state-perdida',
+        titulo: '¡BUSCAMOS!',
+        subtitulo: 'Ayúdame a volver a casa',
+        cta: 'Si me ves, por favor llama o escribe al',
+        showNombre: true,
+    },
+    adoption: {
+        stateClass: 'state-adoptar',
+        titulo: '¡ADÓPTAME!',
+        subtitulo: 'En busca de un hogar',
+        cta: 'Si quieres adoptarme, escribe al',
+        showNombre: true,
+    },
+    found: {
+        stateClass: 'state-encontrado',
+        titulo: '¿LO RECONOCES?',
+        subtitulo: 'Busco a mi familia',
+        cta: 'Si es tu mascota, llama o escribe al',
+        showNombre: false,
+    },
+};
+
+// html2canvas puede capturar antes de que las fotos remotas (URLs existentes)
+// terminen de cargar en el <img>, dejando huecos en blanco en el flyer.
+// Esto espera a que todas las imágenes del contenedor carguen (o fallen) antes de capturar.
+function waitForImagesToLoad(containerId: string): Promise<void> {
+    const container = document.getElementById(containerId);
+    if (!container) return Promise.resolve();
+    const pending = Array.from(container.querySelectorAll('img')).filter((img) => !img.complete);
+    if (pending.length === 0) return Promise.resolve();
+    return Promise.all(
+        pending.map(
+            (img) =>
+                new Promise<void>((resolve) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => resolve();
+                })
+        )
+    ).then(() => undefined);
+}
+
 const mesesCompletos: Record<string, string> = {
     '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
     '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
@@ -56,44 +104,43 @@ function parseEventDate(eventDate: string | null): { dia: string; mes: string; a
 
 // Traducción código real (API) → etiqueta en español (UI)
 function sexFromApi(sex: string | null): '' | 'Macho' | 'Hembra' {
-    if (sex === 'male') return 'Macho';
-    if (sex === 'female') return 'Hembra';
+    if (sex === 'macho') return 'Macho';
+    if (sex === 'hembra') return 'Hembra';
     return '';
 }
 function petTypeFromApi(petType: string | null): string {
-    if (petType === 'dog') return 'Perro';
-    if (petType === 'cat') return 'Gato';
-    if (petType === 'bird') return 'Ave';
+    if (petType === 'perro') return 'Perro';
+    if (petType === 'gato') return 'Gato';
+    if (petType === 'ave') return 'Ave';
     return '';
 }
 function sizeFromApi(size: string | null): string {
-    if (size === 'small') return 'Pequeño';
-    if (size === 'medium') return 'Mediano';
-    if (size === 'large') return 'Grande';
+    if (size === 'pequeño') return 'Pequeño';
+    if (size === 'mediano') return 'Mediano';
+    if (size === 'grande') return 'Grande';
     return '';
 }
 
 // Traducción etiqueta en español (UI) → código real (API)
+// Traducción etiqueta en español (UI) → código real (API)
 function sexToApi(sex: string): string | null {
-    if (sex === 'Macho') return 'male';
-    if (sex === 'Hembra') return 'female';
+    if (sex === 'Macho') return 'macho';
+    if (sex === 'Hembra') return 'hembra';
     return null;
 }
 function petTypeToApi(petType: string): string {
-    if (petType === 'Perro') return 'dog';
-    if (petType === 'Gato') return 'cat';
-    if (petType === 'Ave') return 'bird';
+    if (petType === 'Perro') return 'perro';
+    if (petType === 'Gato') return 'gato';
+    if (petType === 'Ave') return 'ave';
     return 'other';
 }
 function sizeToApi(size: string): string | null {
-    if (size === 'Pequeño') return 'small';
-    if (size === 'Mediano') return 'medium';
-    if (size === 'Grande') return 'large';
+    if (size === 'Pequeño') return 'pequeño';
+    if (size === 'Mediano') return 'mediano';
+    if (size === 'Grande') return 'grande';
     return null;
 }
 
-// Cada slot de foto es una existente (con id real, para poder borrarla) o
-// una nueva (base64, recién elegida, todavía sin subir).
 type PhotoSlot = { type: 'existing'; id: string; url: string } | { type: 'new'; dataUrl: string } | null;
 
 export default function ModalEditarAviso({
@@ -106,13 +153,17 @@ export default function ModalEditarAviso({
     onSaved,
 }: ModalEditarAvisoProps) {
     const { currentUser } = useApp();
-    const country = currentUser?.country || 'PE';
+    const country = currentUser?.country ?? null;
     const [currencySymbol, setCurrencySymbol] = useState('');
+    const [dialCode, setDialCode] = useState('');
 
     useEffect(() => {
         let isCancelled = false;
         getCountryByAbbr(country).then((c) => {
-            if (!isCancelled) setCurrencySymbol(c?.currencySymbol ?? '');
+            if (!isCancelled) {
+                setCurrencySymbol(c?.currencySymbol ?? '');
+                setDialCode(c?.dialCode ?? '');
+            }
         });
         return () => {
             isCancelled = true;
@@ -149,6 +200,9 @@ export default function ModalEditarAviso({
     const [editExtras, setEditExtras] = useState('');
     const [editOcultarExtras, setEditOcultarExtras] = useState(false);
     const [editEdad, setEditEdad] = useState('');
+    const [editTelefono, setEditTelefono] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+    const [originalFlyerImageId, setOriginalFlyerImageId] = useState<string | null>(null);
 
     const dateGroupRef = useRef<HTMLDivElement>(null);
 
@@ -162,6 +216,7 @@ export default function ModalEditarAviso({
             .then((pub: ReportDetail) => {
                 const { dia, mes, anio } = parseEventDate(pub.event_date);
                 const normalPhotos = pub.images.filter((img) => !img.is_flyer);
+                setOriginalFlyerImageId(pub.images.find((img) => img.is_flyer)?.id ?? null);
 
                 const slots: PhotoSlot[] = [0, 1, 2, 3].map((i) => {
                     const img = normalPhotos[i];
@@ -186,6 +241,7 @@ export default function ModalEditarAviso({
                 setEditExtras(pub.meta.adoption_extras || '');
                 setEditOcultarExtras(!pub.meta.adoption_extras_visible);
                 setEditEdad(pub.meta.age || '');
+                setEditTelefono(pub.contact_phone?.replace(/^\+\d+\s*/, '') || '');
                 setRejectionReason(pub.rejection_reason);
 
                 setReadOnlyDistrict(pub.district || '');
@@ -252,41 +308,132 @@ export default function ModalEditarAviso({
         });
     };
 
+    // Misma lógica narrativa que cada formulario de publicar, adaptada a los
+    // 3 tipos en un solo lugar (usando readOnlyAddressHint en vez de un
+    // campo de dirección editable, porque acá la ubicación es de solo lectura).
+    const getFlyerDescription = () => {
+        const rasgos: string[] = [];
+        if (editSexo) rasgos.push(editSexo.toLowerCase());
+        if (editRaza) rasgos.push(editRaza);
+        if (editCastrado) rasgos.push(editSexo === 'Hembra' ? 'esterilizada' : 'esterilizado');
+        if (editColor) rasgos.push(editColor);
+        if (tipo === 'adoption' && editEdad) rasgos.push(editEdad);
+        if (editObservaciones) rasgos.push(editObservaciones);
+
+        const fechaCorta = editFechaDia && editFechaMes ? `${editFechaDia}/${editFechaMes}` : null;
+
+        let frase1 = rasgos.join(', ');
+        if (tipo !== 'adoption' && fechaCorta) {
+            const verbo = tipo === 'lost' ? 'se perdió' : 'lo encontré';
+            frase1 = frase1 ? `${frase1}, ${verbo} el ${fechaCorta}.` : `${verbo.charAt(0).toUpperCase()}${verbo.slice(1)} el ${fechaCorta}.`;
+        } else if (frase1) {
+            frase1 += '.';
+        }
+
+        let frase2 = '';
+        if (readOnlyAddressHint) {
+            frase2 = tipo === 'adoption' ? `Entrega en: ${readOnlyAddressHint}.` : `En: ${readOnlyAddressHint}.`;
+        }
+
+        const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
+        if (!textoCompleto) {
+            return 'Completa los campos para autogenerar este flyer dinámicamente.';
+        }
+        return textoCompleto.charAt(0).toUpperCase() + textoCompleto.slice(1);
+    };
+
     const handleGuardar = async () => {
+        const errors: Record<string, boolean> = {};
+        let specificError = '';
+
         if (tipo !== 'found') {
-            const check = validateText(editNombre, 3, 'El nombre');
-            if (!check.valid) {
-                showToast(check.error!, 'error');
-                return;
+            if (!editNombre.trim()) {
+                errors.nombre = true;
+            } else {
+                const check = validateText(editNombre, 3, 'El nombre');
+                if (!check.valid) {
+                    errors.nombre = true;
+                    specificError = specificError || check.error!;
+                }
             }
         }
-        if (editRaza.trim()) {
+
+        // Fecha solo existe como campo en lost/found — adoption no la captura.
+        if (tipo !== 'adoption' && (!editFechaDia || !editFechaMes || !editFechaAnio)) {
+            errors.fecha = true;
+        }
+
+        if (!editSexo) errors.sexo = true;
+        if (!editTipoMascota) errors.tipoMascota = true;
+        if (!editTamano) errors.tamano = true;
+
+        if (!editRaza.trim()) {
+            errors.raza = true;
+        } else {
             const check = validateText(editRaza, 3, 'La raza');
             if (!check.valid) {
-                showToast(check.error!, 'error');
-                return;
+                errors.raza = true;
+                specificError = specificError || check.error!;
             }
         }
-        if (editColor.trim()) {
+
+        if (!editColor.trim()) {
+            errors.color = true;
+        } else {
             const check = validateText(editColor, 3, 'El color');
             if (!check.valid) {
-                showToast(check.error!, 'error');
-                return;
+                errors.color = true;
+                specificError = specificError || check.error!;
             }
         }
+
+        const validEditPhotos = editFotos.filter(Boolean);
+        if (validEditPhotos.length === 0) errors.fotos = true;
+
+        // Observaciones/descripción es opcional — solo se valida si el usuario escribió algo
         if (editObservaciones.trim()) {
-            const check = validateText(editObservaciones, 15, tipo === 'lost' ? 'Las observaciones' : 'La descripción');
+            const check = validateText(editObservaciones, 10, tipo === 'lost' ? 'Las observaciones' : 'La descripción');
             if (!check.valid) {
-                showToast(check.error!, 'error');
-                return;
+                errors.observaciones = true;
+                specificError = specificError || check.error!;
             }
         }
-        if (tipo === 'adoption' && editExtras.trim()) {
-            const check = validateText(editExtras, 3, 'Lo que incluye');
-            if (!check.valid) {
-                showToast(check.error!, 'error');
-                return;
+
+        if (tipo === 'adoption') {
+            if (editExtras.trim()) {
+                const check = validateText(editExtras, 3, 'Lo que incluye');
+                if (!check.valid) {
+                    errors.extras = true;
+                    specificError = specificError || check.error!;
+                }
             }
+            if (editOcultarExtras && !editExtras.trim()) {
+                errors.extras = true;
+                specificError = specificError || 'Ingresa qué incluye la adopción antes de ocultarlo';
+            }
+        }
+
+        if (tipo === 'lost' && editOcultarMonto && !(Number(editRecompensa) > 0)) {
+            errors.recompensa = true;
+            specificError = specificError || 'Ingresa el monto de la recompensa antes de ocultarlo';
+        }
+
+        if (!isValidPhone(editTelefono, country)) {
+            errors.telefono = true;
+            specificError = specificError || 'Ingresa un número de contacto válido';
+        }
+
+        setFieldErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            if (errors.fotos) {
+                showToast('Agrega al menos 1 foto de la mascota', 'error');
+            } else if (specificError) {
+                showToast(specificError, 'error');
+            } else {
+                showToast('Completa todos los campos obligatorios', 'error');
+            }
+            return;
         }
 
         setIsSaving(true);
@@ -300,6 +447,7 @@ export default function ModalEditarAviso({
                 event_date: eventDate,
                 pet_type: petTypeToApi(editTipoMascota),
                 description: editObservaciones || null,
+                contact_phone: `${dialCode} ${normalizePhoneInput(editTelefono, country)}`.trim() || null,
                 meta: {
                     sex: sexToApi(editSexo),
                     is_neutered: editCastrado,
@@ -320,7 +468,7 @@ export default function ModalEditarAviso({
                 try {
                     await deleteReportImage(id, imgId);
                 } catch (err) {
-                    console.error('No se pudo borrar una foto', err);
+                    console.warn('No se pudo borrar una foto:', err instanceof Error ? err.message : err);
                 }
             }
             for (const slot of editFotos) {
@@ -328,9 +476,28 @@ export default function ModalEditarAviso({
                     try {
                         await uploadReportImage(id, slot.dataUrl, false);
                     } catch (err) {
-                        console.error('No se pudo subir una foto nueva', err);
+                        console.warn('No se pudo subir una foto nueva:', err instanceof Error ? err.message : err);
                     }
                 }
+            }
+
+            // El flyer se regenera siempre que se guarda una edición, para que
+            // nunca quede desincronizado con los datos/fotos ya actualizados.
+            try {
+                await waitForImagesToLoad('edit-flyer-preview');
+                const flyerImage = await generateFlyerImage('edit-flyer-preview');
+                if (flyerImage) {
+                    await uploadReportImage(id, flyerImage, true);
+                    if (originalFlyerImageId) {
+                        try {
+                            await deleteReportImage(id, originalFlyerImageId);
+                        } catch (err) {
+                            console.warn('No se pudo borrar el flyer anterior:', err instanceof Error ? err.message : err);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('No se pudo regenerar el flyer:', err instanceof Error ? err.message : err);
             }
 
             onClose();
@@ -347,7 +514,11 @@ export default function ModalEditarAviso({
     if (!isOpen) return null;
 
     const c = editarModalConfig[tipo];
+    const fc = flyerConfig[tipo];
     const ubicacionCompleta = [readOnlyDistrict, readOnlyProvince, readOnlyRegion].filter(Boolean).join(', ');
+    const flyerPhotoSrcs = editFotos
+        .map((slot) => (slot?.type === 'existing' ? slot.url : slot?.type === 'new' ? slot.dataUrl : null))
+        .filter((src): src is string => !!src);
 
     return (
         <div className="app-modal open" id="modal-editar-aviso">
@@ -411,7 +582,7 @@ export default function ModalEditarAviso({
                                 {/* FOTOS */}
                                 <div className="groups form-group">
                                     <label>Fotos de la mascota (Máx. 4)</label>
-                                    <div className="photo-upload-grid">
+                                    <div className={`photo-upload-grid ${fieldErrors.fotos ? 'input-error' : ''}`}>
                                         {[0, 1, 2, 3].map((idx) => {
                                             const slot = editFotos[idx];
                                             const previewUrl = slot?.type === 'existing' ? slot.url : slot?.type === 'new' ? slot.dataUrl : null;
@@ -479,7 +650,7 @@ export default function ModalEditarAviso({
                                             <input
                                                 type="text"
                                                 placeholder="Nombre de la mascota"
-                                                className="form-input"
+                                                className={`form-input ${fieldErrors.nombre ? 'input-error' : ''}`}
                                                 value={editNombre}
                                                 onChange={(e) => setEditNombre(e.target.value)}
                                             />
@@ -491,7 +662,7 @@ export default function ModalEditarAviso({
                                     {tipo !== 'adoption' && (
                                         <div className="form-group icon-field date-picker-group" ref={dateGroupRef}>
                                             <div
-                                                className="date-input-trigger"
+                                                className={`date-input-trigger ${fieldErrors.fecha ? 'input-error' : ''}`}
                                                 onClick={() => {
                                                     setEditDatePopoverOpen((prev) => !prev);
                                                 }}
@@ -549,7 +720,7 @@ export default function ModalEditarAviso({
 
                                     {/* GÉNERO */}
                                     <div className="form-group">
-                                        <div className="gender-pill-group">
+                                        <div className={`gender-pill-group ${fieldErrors.sexo ? 'input-error' : ''}`}>
                                             <button
                                                 type="button"
                                                 className={`gender-pill-btn ${editSexo === 'Macho' ? 'active' : ''}`}
@@ -591,6 +762,7 @@ export default function ModalEditarAviso({
                                             placeholder="Tipo de mascota"
                                             value={editTipoMascota}
                                             onChange={(val) => setEditTipoMascota(val)}
+                                            className={fieldErrors.tipoMascota ? 'input-error' : ''}
                                             options={[
                                                 { value: 'Perro', label: 'Perro' },
                                                 { value: 'Gato', label: 'Gato' },
@@ -600,7 +772,7 @@ export default function ModalEditarAviso({
                                     </div>
 
                                     {/* TAMAÑO */}
-                                    <div className="form-group">
+                                    <div className={`form-group ${fieldErrors.tamano ? 'input-error' : ''}`}>
                                         <CustomSelect
                                             id="edit-p-tamano"
                                             placeholder="Tamaño"
@@ -618,7 +790,7 @@ export default function ModalEditarAviso({
                                     <div className="form-group">
                                         <label>{editTipoMascota === 'Ave' ? 'Especie' : 'Raza'}</label>
                                         <AutocompleteInput
-                                            className="form-input"
+                                            className={`form-input ${fieldErrors.raza ? 'input-error' : ''}`}
                                             placeholder={
                                                 editTipoMascota === 'Ave'
                                                     ? 'Ej: Loro'
@@ -642,12 +814,37 @@ export default function ModalEditarAviso({
                                     <div className="form-group">
                                         <label>{editTipoMascota === 'Ave' ? 'Color del plumaje' : 'Color del pelaje'}</label>
                                         <AutocompleteInput
-                                            className="form-input"
+                                            className={`form-input ${fieldErrors.color ? 'input-error' : ''}`}
                                             placeholder="Ej: Blanco con manchas"
                                             value={editColor}
                                             onChange={setEditColor}
                                             suggestions={editTipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
                                         />
+                                    </div>
+                                </div>
+
+                                {/* TELÉFONO DE CONTACTO — propio de este aviso, no de la cuenta */}
+                                <div className="groups grid-2col">
+                                    <div className="form-group grid-1col">
+                                        <label>¿Dónde te pueden contactar?</label>
+                                        <div className={`field-tel ${fieldErrors.telefono ? 'input-error' : ''}`}>
+                                            <span>{dialCode}</span>
+                                            <input
+                                                type="tel"
+                                                name="telefono-aviso"
+                                                className="form-input"
+                                                autoComplete="tel"
+                                                maxLength={15}
+                                                placeholder="Número de teléfono"
+                                                value={editTelefono}
+                                                onChange={(e) => {
+                                                    const soloTelefono = e.target.value.replace(/[^\d\s\-()]/g, '');
+                                                    setEditTelefono(soloTelefono);
+                                                }}
+                                                readOnly
+                                                onFocus={(e) => e.target.removeAttribute('readonly')}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -670,7 +867,7 @@ export default function ModalEditarAviso({
                                             <label>Recompensa{currencySymbol ? ` (${currencySymbol})` : ''}</label>
                                             <input
                                                 type="text"
-                                                className="form-input"
+                                                className={`form-input ${fieldErrors.recompensa ? 'input-error' : ''}`}
                                                 value={editRecompensa}
                                                 onChange={(e) => setEditRecompensa(e.target.value)}
                                             />
@@ -694,10 +891,10 @@ export default function ModalEditarAviso({
                                     {/* INCLUYE — solo adopción */}
                                     {tipo === 'adoption' && (
                                         <div className="form-group">
-                                            <label>Incluye (opcional)</label>
+                                            <label>Incluye</label>
                                             <input
                                                 type="text"
-                                                className="form-input"
+                                                className={`form-input ${fieldErrors.extras ? 'input-error' : ''}`}
                                                 placeholder="Ej: cama, plato, collar..."
                                                 value={editExtras}
                                                 onChange={(e) => setEditExtras(e.target.value)}
@@ -740,6 +937,80 @@ export default function ModalEditarAviso({
                                 </div>
                             </div>
                         </>
+                    )}
+
+                    {!isLoading && (
+                        <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1, width: '25em' }} aria-hidden="true">
+                            <div className="editor-stage">
+                                <div className="flyer-box">
+                                    <div className={`flyer-canvas container-flyer-design ${fc.stateClass}`} id="edit-flyer-preview">
+                                        <div className="flyer-alert-header">
+                                            <h3 id="flyer-titulo-alerta">{fc.titulo}</h3>
+                                            <p id="flyer-subtitulo-alerta">{fc.subtitulo}</p>
+                                        </div>
+
+                                        <div className="flyer-photo-stage">
+                                            <div
+                                                className={`flyer-dynamic-grid ${flyerPhotoSrcs.length === 0 ? 'layout-empty' : `layout-${flyerPhotoSrcs.length}`
+                                                    }`}
+                                            >
+                                                {flyerPhotoSrcs.length === 0 ? (
+                                                    <div className="flyer-img-placeholder">
+                                                        <i className="ti ti-camera-plus"></i>
+                                                    </div>
+                                                ) : (
+                                                    flyerPhotoSrcs.map((src, idx) => (
+                                                        <div key={idx} className="flyer-grid-item">
+                                                            <DraggablePhoto src={src} offsetY={0} onOffsetChange={() => { }} />
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                            {readOnlyDistrict && (
+                                                <p className="flyer-txt-distrito">
+                                                    <i className="fa-solid fa-location-dot"></i> {readOnlyDistrict}
+                                                </p>
+                                            )}
+                                            {fc.showNombre && (
+                                                <div className="flyer-name-badge">
+                                                    <span className="flyer-name-badge-label">Me llamo</span>
+                                                    <span id="flyer-txt-nombre">{editNombre || 'Nombre'}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flyer-body">
+                                            <div className="flyer-body-info">
+                                                <p className="flyer-canvas-text">{getFlyerDescription()}</p>
+                                            </div>
+
+                                            {tipo === 'lost' && ((editRecompensa && Number(editRecompensa) > 0) || editOcultarMonto) && (
+                                                <div className="flyer-canvas-reward">
+                                                    {!editOcultarMonto && <span id="flyer-reward-label">¡RECOMPENSA!</span>}
+                                                    <span id="flyer-txt-recompensa">
+                                                        {editOcultarMonto ? '¡Se ofrece recompensa!' : `${currencySymbol} ${editRecompensa}!`}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {tipo === 'adoption' && editExtras && (
+                                                <div className="flyer-canvas-reward">
+                                                    <span id="flyer-txt-incluye">{editOcultarExtras ? 'Accesorios y más' : editExtras}</span>
+                                                </div>
+                                            )}
+
+                                            <div className="flyer-footer-contact">
+                                                <span className="flyer-footer-call-to-action">{fc.cta}</span>
+                                                <div className="flyer-footer-number">
+                                                    <i className="ti ti-brand-whatsapp"></i>
+                                                    <span>{editTelefono || '---------'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
                 <div className="app-modal-footer">

@@ -70,36 +70,38 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                         <div className="dropdown-section-header">
                             <span>Recientes</span>
                         </div>
-                        {recentSearches.length === 0 ? (
-                            <div className="dropdown-empty-message">No hay búsquedas recientes</div>
-                        ) : (
-                            recentSearches.slice(0, 10).map((search, idx) => (
-                                <div
-                                    key={idx}
-                                    className="search-result-item"
-                                    data-type="recent"
-                                    data-value={search}
-                                    onClick={() => executeSearch(search)}
-                                >
-                                    <div className="search-item-left">
-                                        <div className="search-item-icon">
-                                            <i className="ti ti-clock"></i>
-                                        </div>
-                                        <div className="search-item-info">
-                                            <span className="search-item-title">{search}</span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="search-item-remove-btn"
-                                        data-index={idx}
-                                        onClick={(e) => removeRecentSearch(e, idx)}
+                        <div className="dropdown-scroll">
+                            {recentSearches.length === 0 ? (
+                                <div className="dropdown-empty-message">No hay búsquedas recientes</div>
+                            ) : (
+                                recentSearches.slice(0, 10).map((search, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="search-result-item"
+                                        data-type="recent"
+                                        data-value={search}
+                                        onClick={() => executeSearch(search)}
                                     >
-                                        <i className="ti ti-x"></i>
-                                    </button>
-                                </div>
-                            ))
-                        )}
+                                        <div className="search-item-left">
+                                            <div className="search-item-icon">
+                                                <i className="ti ti-clock"></i>
+                                            </div>
+                                            <div className="search-item-info">
+                                                <span className="search-item-title">{search}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="search-item-remove-btn"
+                                            data-index={idx}
+                                            onClick={(e) => removeRecentSearch(e, idx)}
+                                        >
+                                            <i className="ti ti-x"></i>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </>
                 ) : (
                     <>

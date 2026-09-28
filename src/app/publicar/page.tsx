@@ -14,18 +14,21 @@ import dynamic from 'next/dynamic';
 import { geocodeAddress } from '@/lib/geocoding';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import type { PaymentInfo } from '@/lib/paymentsApi';
+import CheckoutPago from '@/components/checkout/CheckoutPago';
+import { useRouter } from 'next/navigation';
 import { generateFlyerImage } from '@/lib/flyerExport';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import ModalAgregarNumero from '@/components/global/ModalAgregarNumero';
-import { getCountryByAbbr, type Country } from '@/lib/countries';
-import { getLevel1Options, getLevel2Options, getLevel3Options } from '@/lib/locations';
+import { getCountryByAbbr, getLocaleForCountry, type Country } from '@/lib/countries';
+import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
+import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
 
 const MapPicker = dynamic(() => import('@/components/global/MapPicker'), { ssr: false });
 
 export default function PublicarPerdidaPage() {
 
     useRequireAuth();
-
+    const router = useRouter();
     const { currentUser, isDarkMode, isAuthChecked, isLoggedIn } = useApp();
 
     const [lat, setLat] = useState<number | null>(null);
@@ -49,6 +52,9 @@ export default function PublicarPerdidaPage() {
 
     // Overlay de status final
     const [showStatusOverlay, setShowStatusOverlay] = useState(false);
+    const [pendingPayment, setPendingPayment] = useState<PaymentInfo | null>(null);
+    const [createdReportId, setCreatedReportId] = useState<string | null>(null);
+    const idempotencyKeyRef = useRef<string | null>(null);
 
     // ==========================================
     // ESTADOS DEL FORMULARIO Y FLYER EN VIVO
@@ -152,6 +158,7 @@ export default function PublicarPerdidaPage() {
                     next[index] = result;
                     return next;
                 });
+                clearFieldError('fotos');
             };
             reader.readAsDataURL(file);
         }
@@ -175,7 +182,15 @@ export default function PublicarPerdidaPage() {
     // ==========================================
     // DATOS PARA EL RESUMEN (PASO 3)
     // ==========================================
-    const country = currentUser?.country || 'PE';
+    const country = currentUser?.country ?? null;
+
+    const [telefono, setTelefono] = useState('');
+
+    useEffect(() => {
+        if (currentUser?.phone) {
+            setTelefono((prev) => prev || currentUser.phone!.replace(/^\+\d+\s*/, ''));
+        }
+    }, [currentUser?.phone]);
 
     const [countryInfo, setCountryInfo] = useState<Country | null>(null);
     const [packages, setPackages] = useState<PackageOption[]>([]);
@@ -197,6 +212,7 @@ export default function PublicarPerdidaPage() {
     }, [country]);
 
     const currencySymbol = countryInfo?.currencySymbol ?? '';
+    const currencyCode = country !== 'PE' ? countryInfo?.currency ?? '' : '';
     const currentPlanObj = packages.find((p) => p.slug === selectedPlan) ?? null;
     const isCountryReady = !isLoadingWizardData && !!countryInfo?.locationLabels && packages.length > 0;
 
@@ -236,20 +252,33 @@ export default function PublicarPerdidaPage() {
         };
     }, [country, departamento, provincia]);
 
+    const [hasLevel3, setHasLevel3] = useState(true);
+    useEffect(() => {
+        let isCancelled = false;
+        countryHasLevel3(country).then((result) => {
+            if (!isCancelled) setHasLevel3(result);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
     const getFechaRange = () => {
-        const hoy = new Date();
+        const inicio = new Date();
         const fin = new Date();
         const dias = currentPlanObj?.days ?? 0;
-        fin.setDate(hoy.getDate() + dias);
+        fin.setDate(inicio.getDate() + dias);
         const opciones: Intl.DateTimeFormatOptions = {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
         };
+        const esGratis = selectedPlan === 'gratis';
 
         return {
-            inicio: dias > 0 ? fin.toLocaleDateString('es-PE', opciones) : 'Sujeto a aprobación',
-            fin: dias > 0 ? fin.toLocaleDateString('es-PE', opciones) : '6 meses',
+            inicio: esGratis ? 'Sujeto a aprobación' : inicio.toLocaleDateString(getLocaleForCountry(country), opciones),
+            fin: esGratis ? null : fin.toLocaleDateString(getLocaleForCountry(country), opciones),
+            diasTexto: esGratis ? '3 meses' : `${dias} días`,
         };
     };
 
@@ -272,27 +301,36 @@ export default function PublicarPerdidaPage() {
     // MANEJADORES DE NAVEGACIÓN Y SUBMIT
     // ==========================================
     function tamanoToApi(valor: string): string | null {
-        if (valor === 'Pequeño') return 'small';
-        if (valor === 'Mediano') return 'medium';
-        if (valor === 'Grande') return 'large';
+        if (valor === 'Pequeño') return 'pequeño';
+        if (valor === 'Mediano') return 'mediano';
+        if (valor === 'Grande') return 'grande';
         return null;
     }
     function sexoToApi(valor: string): string | null {
-        if (valor === 'Macho') return 'male';
-        if (valor === 'Hembra') return 'female';
+        if (valor === 'Macho') return 'macho';
+        if (valor === 'Hembra') return 'hembra';
         return null;
     }
     function tipoMascotaToApi(valor: string): string {
-        if (valor === 'Perro') return 'dog';
-        if (valor === 'Gato') return 'cat';
-        if (valor === 'Ave') return 'bird';
-        return 'other';
+        if (valor === 'Perro') return 'perro';
+        if (valor === 'Gato') return 'gato';
+        if (valor === 'Ave') return 'ave';
+        return 'otro';
     }
 
     function sanitizeText(value: string): string {
         return value.replace(/<[^>]*>?/gm, '').trim();
     }
     const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+
+    function clearFieldError(field: string) {
+        setFieldErrors((prev) => {
+            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    }
 
     function validateStep1(): boolean {
         const errors: Record<string, boolean> = {};
@@ -333,11 +371,30 @@ export default function PublicarPerdidaPage() {
             }
         }
 
-        if (!sanitizeText(direccion)) errors.direccion = true;
+        if (!sanitizeText(direccion)) {
+            errors.direccion = true;
+        } else {
+            const check = validateText(direccion, 10, 'La dirección');
+            if (!check.valid) {
+                errors.direccion = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
         if (!departamento) errors.departamento = true;
         if (!provincia) errors.provincia = true;
-        if (!distrito) errors.distrito = true;
+        if (hasLevel3 && !distrito) errors.distrito = true;
         if (validPhotos.length === 0) errors.fotos = true;
+
+        if (!isValidPhone(telefono, country)) {
+            errors.telefono = true;
+            specificError = specificError || 'Ingresa un número de contacto válido';
+        }
+
+        if (ocultarMonto && !(Number(recompensa) > 0)) {
+            errors.recompensa = true;
+            specificError = specificError || 'Ingresa el monto de la recompensa antes de ocultarlo';
+        }
 
         // Observaciones es opcional — solo se valida si el usuario escribió algo
         if (sanitizeText(observaciones)) {
@@ -377,6 +434,11 @@ export default function PublicarPerdidaPage() {
             setIsGeneratingFlyer(false);
         }
 
+        if (currentStep === 2 && selectedPlan !== 'gratis') {
+            executeFormSubmission();
+            return;
+        }
+
         if (currentStep < 3) {
             setCurrentStep((prev) => prev + 1);
         } else {
@@ -395,9 +457,13 @@ export default function PublicarPerdidaPage() {
     const executeFormSubmission = async () => {
         if (!currentUser) return;
 
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = crypto.randomUUID();
+        }
+
         setIsSubmitting(true);
         try {
-            const report = await createReport({
+            const { report, payment } = await createReport({
                 report_type: 'lost',
                 package_slug: selectedPlan,
                 pet_type: tipoMascota ? tipoMascotaToApi(tipoMascota) : null,
@@ -412,7 +478,7 @@ export default function PublicarPerdidaPage() {
                 lng: lng,
                 event_date: fechaDia && fechaMes && fechaAnio ? `${fechaAnio}-${fechaMes}-${fechaDia}` : null,
                 contact_name: currentUser.name || null,
-                contact_phone: currentUser.phone || null,
+                contact_phone: `${countryInfo?.dialCode ?? ''} ${normalizePhoneInput(telefono, country)}`.trim() || null,
                 contact_email: currentUser.email || null,
                 meta: {
                     sex: sexoToApi(sexo),
@@ -424,7 +490,7 @@ export default function PublicarPerdidaPage() {
                     reward_visible: !ocultarMonto,
                     age: edad || null,
                 },
-            });
+            }, idempotencyKeyRef.current);
 
             // Si una foto falla, el aviso ya quedó creado — el usuario podrá
             // completarlas después editando su aviso. No revertimos nada.
@@ -444,16 +510,38 @@ export default function PublicarPerdidaPage() {
                 }
             }
 
-            setShowStatusOverlay(true);
-            setTimeout(() => {
-                window.location.href = 'https://www.huellasperdidas.com/informacion/alertas-de-estafa';
-            }, 5000);
+            if (payment) {
+                setCreatedReportId(report.id);
+                setPendingPayment(payment);
+                setCurrentStep(3);
+            } else {
+                setShowStatusOverlay(true);
+                setTimeout(() => {
+                    router.push('/mi-cuenta');
+                }, 5000);
+            }
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
             showToast(message, 'error');
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handlePaymentConfirmed = () => {
+        showToast('¡Pago confirmado! Tu aviso quedará activo en cuanto nuestro equipo lo revise.', 'success');
+        router.push('/mi-cuenta');
+    };
+
+    const handlePaymentTimeout = () => {
+        showToast('Tu pago está siendo confirmado, puede tardar unos minutos. Revisa "Mis avisos" en un momento.', 'info');
+        router.push('/mi-cuenta');
+    };
+
+    const handlePaymentCancelled = () => {
+        showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
+        // pendingPayment se queda igual — el widget de pago sigue montado
+        // para reintentar, el aviso ya existe, no hay que recrearlo.
     };
 
     // Helper para generar las descripciones acumuladas del flyer
@@ -488,7 +576,8 @@ export default function PublicarPerdidaPage() {
     };
 
     useEffect(() => {
-        if (!distrito || !provincia || !departamento) return;
+        if (!provincia || !departamento) return;
+        if (hasLevel3 && !distrito) return;
 
         let isCancelled = false;
 
@@ -510,16 +599,13 @@ export default function PublicarPerdidaPage() {
             isCancelled = true;
             clearTimeout(timer);
         };
-    }, [distrito, direccion, provincia, departamento]);
+    }, [distrito, direccion, provincia, departamento, hasLevel3]);
+
+    const selectedPkg = packages.find((p) => p.slug === selectedPlan);
+    const planIncludesCentinela = selectedPkg?.centinela === true;
 
     return (
         <main className="main-content">
-
-            <ModalAgregarNumero
-                isOpen={isAuthChecked && isLoggedIn && !currentUser?.phone}
-                onClose={() => { }}
-                mandatory
-            />
 
             <section id="view-publish" className="animate-fade-in">
                 <div className="grid-publish">
@@ -634,7 +720,8 @@ export default function PublicarPerdidaPage() {
                         </div>
 
                         <div
-                            className={`centinela-addon-bar ${selectedPlan === 'gratis' ? 'centinela-dimmed' : ''
+                            className={`centinela-addon-bar ${!planIncludesCentinela ? 'centinela-dimmed' : ''
+
                                 }`}
                             id="centinela-addon-bar"
                         >
@@ -722,7 +809,7 @@ export default function PublicarPerdidaPage() {
                                         )}
                                     </div>
 
-                                    <div className="groups grid-2col box-data-flyer">
+                                    <div className="groups grid-2col">
                                         {/* NOMBRE */}
                                         <div className="form-group">
                                             <input
@@ -731,7 +818,10 @@ export default function PublicarPerdidaPage() {
                                                 id="p-nombre"
                                                 className={`form-input ${fieldErrors.nombre ? 'input-error' : ''}`}
                                                 value={nombre}
-                                                onChange={(e) => setNombre(e.target.value)}
+                                                onChange={(e) => {
+                                                    setNombre(e.target.value);
+                                                    clearFieldError('nombre');
+                                                }}
                                             />
                                         </div>
 
@@ -772,7 +862,10 @@ export default function PublicarPerdidaPage() {
                                                         id="p-fecha-dia"
                                                         placeholder="Día"
                                                         value={fechaDia}
-                                                        onChange={(val) => setFechaDia(val)}
+                                                        onChange={(val) => {
+                                                            setFechaDia(val);
+                                                            clearFieldError('fecha');
+                                                        }}
                                                         options={Array.from({ length: 31 }, (_, i) => {
                                                             const val = String(i + 1).padStart(2, '0');
                                                             return { value: val, label: String(i + 1) };
@@ -784,7 +877,10 @@ export default function PublicarPerdidaPage() {
                                                         id="p-fecha-mes"
                                                         placeholder="Mes"
                                                         value={fechaMes}
-                                                        onChange={(val) => setFechaMes(val)}
+                                                        onChange={(val) => {
+                                                            setFechaMes(val);
+                                                            clearFieldError('fecha');
+                                                        }}
                                                         options={[
                                                             { value: '01', label: 'Ene' },
                                                             { value: '02', label: 'Feb' },
@@ -806,7 +902,10 @@ export default function PublicarPerdidaPage() {
                                                         id="p-fecha-anio"
                                                         placeholder="Año"
                                                         value={fechaAnio}
-                                                        onChange={(val) => setFechaAnio(val)}
+                                                        onChange={(val) => {
+                                                            setFechaAnio(val);
+                                                            clearFieldError('fecha');
+                                                        }}
                                                         options={[
                                                             { value: '2026', label: '2026' },
                                                             { value: '2025', label: '2025' },
@@ -825,7 +924,10 @@ export default function PublicarPerdidaPage() {
                                                     type="button"
                                                     className={`gender-pill-btn ${sexo === 'Macho' ? 'active' : ''}`}
                                                     data-value="Macho"
-                                                    onClick={() => setSexo('Macho')}
+                                                    onClick={() => {
+                                                        setSexo('Macho');
+                                                        clearFieldError('sexo');
+                                                    }}
                                                 >
                                                     <i className="ti ti-gender-male"></i> Macho
                                                 </button>
@@ -833,7 +935,10 @@ export default function PublicarPerdidaPage() {
                                                     type="button"
                                                     className={`gender-pill-btn ${sexo === 'Hembra' ? 'active' : ''}`}
                                                     data-value="Hembra"
-                                                    onClick={() => setSexo('Hembra')}
+                                                    onClick={() => {
+                                                        setSexo('Hembra');
+                                                        clearFieldError('sexo');
+                                                    }}
                                                 >
                                                     <i className="ti ti-venus"></i> Hembra
                                                 </button>
@@ -872,7 +977,10 @@ export default function PublicarPerdidaPage() {
                                                 id="p-tipo"
                                                 placeholder="Tipo de mascota"
                                                 value={tipoMascota}
-                                                onChange={(val) => setTipoMascota(val)}
+                                                onChange={(val) => {
+                                                    setTipoMascota(val);
+                                                    clearFieldError('tipoMascota');
+                                                }}
                                                 options={[
                                                     { value: 'Perro', label: 'Perro' },
                                                     { value: 'Gato', label: 'Gato' },
@@ -887,7 +995,10 @@ export default function PublicarPerdidaPage() {
                                                 id="p-tamano"
                                                 placeholder="Tamaño"
                                                 value={tamano}
-                                                onChange={(val) => setTamano(val)}
+                                                onChange={(val) => {
+                                                    setTamano(val);
+                                                    clearFieldError('tamano');
+                                                }}
                                                 options={[
                                                     { value: 'Pequeño', label: 'Pequeño' },
                                                     { value: 'Mediano', label: 'Mediano' },
@@ -910,7 +1021,10 @@ export default function PublicarPerdidaPage() {
                                                             : 'Ej: Labrador'
                                                 }
                                                 value={raza}
-                                                onChange={setRaza}
+                                                onChange={(val) => {
+                                                    setRaza(val);
+                                                    clearFieldError('raza');
+                                                }}
                                                 suggestions={
                                                     tipoMascota === 'Ave'
                                                         ? ESPECIES_AVE
@@ -929,7 +1043,10 @@ export default function PublicarPerdidaPage() {
                                                 className={`form-input ${fieldErrors.color ? 'input-error' : ''}`}
                                                 placeholder="Ej: Blanco"
                                                 value={color}
-                                                onChange={setColor}
+                                                onChange={(val) => {
+                                                    setColor(val);
+                                                    clearFieldError('color');
+                                                }}
                                                 suggestions={tipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
                                             />
                                         </div>
@@ -943,13 +1060,16 @@ export default function PublicarPerdidaPage() {
                                                     <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
                                                 </div>
                                             ) : (
-                                                <div className="grid-3col">
+                                                <div className={hasLevel3 ? 'grid-3col' : 'grid-2col'}>
                                                     <div className="form-group">
                                                         <CustomSelect
                                                             id="p-departamento"
                                                             placeholder={labelNivel1}
                                                             value={departamento}
-                                                            onChange={(val) => setDepartamento(val)}
+                                                            onChange={(val) => {
+                                                                setDepartamento(val);
+                                                                clearFieldError('departamento');
+                                                            }}
                                                             options={nivel1Options}
                                                             searchable={true}
                                                             className={fieldErrors.departamento ? 'input-error' : ''}
@@ -961,24 +1081,32 @@ export default function PublicarPerdidaPage() {
                                                             id="p-provincia"
                                                             placeholder={labelNivel2}
                                                             value={provincia}
-                                                            onChange={(val) => setProvincia(val)}
+                                                            onChange={(val) => {
+                                                                setProvincia(val);
+                                                                clearFieldError('provincia');
+                                                            }}
                                                             options={nivel2Options}
                                                             searchable={true}
-                                                            className={fieldErrors.departamento ? 'input-error' : ''}
+                                                            className={fieldErrors.provincia ? 'input-error' : ''}
                                                         />
                                                     </div>
 
-                                                    <div className="form-group">
-                                                        <CustomSelect
-                                                            id="p-distrito"
-                                                            placeholder={labelNivel3}
-                                                            value={distrito}
-                                                            onChange={(val) => setDistrito(val)}
-                                                            options={nivel3Options}
-                                                            searchable={true}
-                                                            className={fieldErrors.departamento ? 'input-error' : ''}
-                                                        />
-                                                    </div>
+                                                    {hasLevel3 && (
+                                                        <div className="form-group">
+                                                            <CustomSelect
+                                                                id="p-distrito"
+                                                                placeholder={labelNivel3}
+                                                                value={distrito}
+                                                                onChange={(val) => {
+                                                                    setDistrito(val);
+                                                                    clearFieldError('distrito');
+                                                                }}
+                                                                options={nivel3Options}
+                                                                searchable={true}
+                                                                className={fieldErrors.distrito ? 'input-error' : ''}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -986,7 +1114,7 @@ export default function PublicarPerdidaPage() {
                                         {/* DIRECCIÓN */}
                                         <div
                                             className={`form-group grid-1col ${direccion ? 'has-value' : ''}`}
-                                            style={{ marginTop: '-0.35em' }}>
+                                            style={{ marginTop: '-0.25em' }}>
                                             <input
                                                 type="text"
                                                 id="p-direccion"
@@ -995,11 +1123,37 @@ export default function PublicarPerdidaPage() {
                                                 placeholder="Calle, avenida o punto de referencia"
                                                 autoComplete="off"
                                                 value={direccion}
-                                                onChange={(e) => setDireccion(e.target.value)}
+                                                onChange={(e) => {
+                                                    setDireccion(e.target.value);
+                                                    clearFieldError('direccion');
+                                                }}
                                             />
                                         </div>
-                                    </div>
 
+                                        {/* TELÉFONO DE CONTACTO — propio de este aviso, no de la cuenta */}
+                                        <div className="form-group grid-1col">
+                                            <label>¿Dónde te pueden contactar?</label>
+                                            <div className={`field-tel ${fieldErrors.telefono ? 'input-error' : ''}`}>
+                                                <span>{countryInfo?.dialCode}</span>
+                                                <input
+                                                    type="tel"
+                                                    name="telefono-aviso"
+                                                    className="form-input"
+                                                    autoComplete="tel"
+                                                    maxLength={15}
+                                                    placeholder="Número de teléfono"
+                                                    value={telefono}
+                                                    onChange={(e) => {
+                                                        const soloTelefono = e.target.value.replace(/[^\d\s\-()]/g, '');
+                                                        setTelefono(soloTelefono);
+                                                        clearFieldError('telefono');
+                                                    }}
+                                                    readOnly
+                                                    onFocus={(e) => e.target.removeAttribute('readonly')}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
 
                                     {/* SECCIÓN COLAPSABLE */}
@@ -1043,12 +1197,13 @@ export default function PublicarPerdidaPage() {
                                                         type="number"
                                                         placeholder={`Recompensa (${currencySymbol})`}
                                                         id="p-recompensa"
-                                                        className="form-input"
+                                                        className={`form-input ${fieldErrors.recompensa ? 'input-error' : ''}`}
                                                         value={recompensa}
                                                         onChange={(e) => {
                                                             const value = e.target.value;
                                                             if (value.length <= 4) {
                                                                 setRecompensa(value);
+                                                                clearFieldError('recompensa');
                                                             }
                                                         }}
                                                         maxLength={4}
@@ -1145,7 +1300,7 @@ export default function PublicarPerdidaPage() {
                                                             </div>
                                                             <div className="plan-card">
                                                                 <div className="plan-price">
-                                                                    <i>{currencySymbol}</i> {pkg.price}
+                                                                    <i>{currencySymbol}</i> {pkg.price} {currencyCode}
                                                                 </div>
                                                                 {!isFree && (
                                                                     <span>
@@ -1180,6 +1335,12 @@ export default function PublicarPerdidaPage() {
                                                                         <li>
                                                                             <i className="ti ti-broadcast"></i>
                                                                             <b>{pkg.days} días</b> de difusión
+                                                                        </li>
+                                                                    )}
+
+                                                                    {pkg.centinela && (
+                                                                        <li>
+                                                                            <i className="ti ti-camera-search"></i> Incluye <b>Centinela IA</b> 24/7
                                                                         </li>
                                                                     )}
                                                                     {pkg.includesRefund && (
@@ -1220,125 +1381,21 @@ export default function PublicarPerdidaPage() {
                                 >
                                     <div className="payment-gateway-box">
                                         <h4>
-                                            <i className="fa-solid fa-shield-halved"></i> Checkout
-                                            Seguro (Mercado Pago)
+                                            <i className="fa-solid fa-shield-halved"></i> Pago seguro
                                         </h4>
 
-                                        <div className="payment-methods-tabs">
-                                            <button
-                                                type="button"
-                                                className={`pay-tab-btn ${paymentMethod === 'card' ? 'active' : ''
-                                                    }`}
-                                                data-method="card"
-                                                onClick={() => setPaymentMethod('card')}
-                                            >
-                                                <i className="fa-solid fa-credit-card"></i> Tarjeta de
-                                                Crédito/Débito
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`pay-tab-btn ${paymentMethod === 'yape' ? 'active' : ''
-                                                    }`}
-                                                data-method="yape"
-                                                onClick={() => setPaymentMethod('yape')}
-                                            >
-                                                <i className="fa-solid fa-mobile-screen-button"></i> Yape
-                                            </button>
-                                        </div>
-
-                                        <div className="payment-methods-content">
-                                            {/* MÉTODO TARJETA */}
-                                            <div
-                                                id="pay-method-card"
-                                                className={`pay-method-panel ${paymentMethod === 'card' ? 'active' : ''
-                                                    }`}
-                                            >
-                                                <div className="groups-payment form-group">
-                                                    <label className="form-label">Número de tarjeta</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-input"
-                                                        placeholder="0000 0000 0000 0000"
-                                                    />
-                                                </div>
-                                                <div className="groups-payment grid-2col">
-                                                    <div className="form-group">
-                                                        <label className="form-label">Expiración</label>
-                                                        <input
-                                                            type="text"
-                                                            className="form-input"
-                                                            placeholder="MM/AA"
-                                                        />
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label className="form-label">CVV</label>
-                                                        <input
-                                                            type="password"
-                                                            className="form-input"
-                                                            placeholder="000"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="form-group">
-                                                    <label className="form-label">
-                                                        Nombre impreso en tarjeta
-                                                    </label>
-                                                    <input type="text" className="form-input" />
-                                                </div>
-                                            </div>
-
-                                            {/* MÉTODO YAPE */}
-                                            <div
-                                                id="pay-method-yape"
-                                                className={`pay-method-panel ${paymentMethod === 'yape' ? 'active' : ''
-                                                    }`}
-                                            >
-                                                <div className="yape-mock-wrapper">
-                                                    <p>
-                                                        Escanea desde la app Yape o ingresa tu código de
-                                                        aprobación:
-                                                    </p>
-                                                    <div className="yape-qr-box">
-                                                        <i className="fa-solid fa-qrcode"></i>
-                                                        <span>QR HUELLITAS PERÚ</span>
-                                                    </div>
-                                                    <div className="form-group">
-                                                        <label className="form-label">
-                                                            Código de aprobación Yape (6 dígitos)
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            className="form-input"
-                                                            placeholder="000000"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="terms-acceptance-box">
-                                            <label className="terms-checkbox-label">
-                                                <input
-                                                    type="checkbox"
-                                                    id="accept-terms"
-                                                    className="terms-checkbox-input"
-                                                    checked={acceptTerms}
-                                                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                                                />
-                                                <span className="terms-checkbox-custom">
-                                                    <i className="fa-solid fa-check"></i>
-                                                </span>
-                                                <span className="terms-checkbox-text">
-                                                    Acepto que he leído los{' '}
-                                                    <Link href="/terminos-y-condiciones" target="_blank">
-                                                        Términos y Condiciones
-                                                    </Link>{' '}
-                                                    del sitio y declaro que la información publicada es
-                                                    verídica.
-                                                </span>
-                                            </label>
-                                        </div>
+                                        {pendingPayment && (
+                                            <CheckoutPago
+                                                payment={pendingPayment}
+                                                reportId={createdReportId!}
+                                                country={country}
+                                                onConfirmed={handlePaymentConfirmed}
+                                                onTimeout={handlePaymentTimeout}
+                                                onCancelled={handlePaymentCancelled}
+                                            />
+                                        )}
                                     </div>
+                                    <span className='text-chat'>¿Problemas con tu pago? <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target='blank'>Escríbenos aquí</a> y te ayudamos.</span>
                                 </div>
 
                                 {/* CHECKOUT GRATIS */}
@@ -1350,7 +1407,7 @@ export default function PublicarPerdidaPage() {
                                 >
                                     <div className="free-notice-box">
                                         <h3>¡Todo listo!</h3>
-                                        <p>Tu aviso se publicará en el portal de huellitas.</p>
+                                        <p>Tu aviso se publicará en el portal.</p>
                                     </div>
 
                                     <div className="upgrade-notice-banner">
@@ -1375,17 +1432,25 @@ export default function PublicarPerdidaPage() {
                                                 <i className="fa-solid fa-check"></i>
                                             </span>
                                             <span className="terms-checkbox-text">
-                                                Acepto que he leído los{' '}
-                                                <Link href="/terminos-y-condiciones" target="_blank">
+                                                Acepto que he leído y declaro que la información publicada es verídica.{' '}
+                                                <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">
                                                     Términos y Condiciones
-                                                </Link>{' '}
-                                                del sitio y declaro que la información publicada es
-                                                verídica.
+                                                </Link>
                                             </span>
                                         </label>
                                     </div>
                                 </div>
                             </div>
+
+                            {currentStep === 2 && selectedPlan !== 'gratis' && (
+                                <p className="terms-inline-note">
+                                    Al continuar aceptas los{' '}
+                                    <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">
+                                        Términos y Condiciones
+                                    </Link>{' '}
+                                    y confirmas que la información es verídica.
+                                </p>
+                            )}
 
                             {/* BOTONES ACCIÓN WIZARD */}
                             <div className="wizard-actions">
@@ -1393,37 +1458,45 @@ export default function PublicarPerdidaPage() {
                                     type="button"
                                     id="btn-wizard-prev"
                                     className="btn-secondary"
-                                    style={{ display: currentStep > 1 ? 'inline-flex' : 'none' }}
+                                    style={{ display: currentStep > 1 && !pendingPayment ? 'inline-flex' : 'none' }}
                                     onClick={handlePrevStep}
                                 >
                                     <i className="ti ti-chevron-left"></i> Anterior
                                 </button>
 
-                                <button
-                                    type="button"
-                                    id="btn-wizard-next"
-                                    className="btn-publish"
-                                    disabled={(currentStep === 3 && !acceptTerms) || isGeneratingFlyer || isSubmitting}
-                                    onClick={handleNextStep}
-                                >
-                                    {isSubmitting ? (
-                                        'Publicando...'
-                                    ) : isGeneratingFlyer ? (
-                                        'Generando flyer...'
-                                    ) : currentStep < 3 ? (
-                                        <>
-                                            Siguiente <i className="ti ti-chevron-right"></i>
-                                        </>
-                                    ) : selectedPlan === 'gratis' ? (
-                                        <>
-                                            <i className="ti ti-check"></i> Publicar Gratis
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="ti ti-check"></i> Pagar y Publicar
-                                        </>
-                                    )}
-                                </button>
+                                {!pendingPayment && (
+                                    <button
+                                        type="button"
+                                        id="btn-wizard-next"
+                                        className="btn-publish"
+                                        disabled={(currentStep === 3 && !acceptTerms) || isGeneratingFlyer || isSubmitting}
+                                        onClick={handleNextStep}
+                                    >
+                                        {isSubmitting ? (
+                                            'Cargando...'
+                                        ) : isGeneratingFlyer ? (
+                                            'Generando flyer...'
+                                        ) : currentStep < 3 ? (
+                                            currentStep === 2 && selectedPlan !== 'gratis' ? (
+                                                <>
+                                                    <i className="ti ti-check"></i> Continuar
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Siguiente <i className="ti ti-chevron-right"></i>
+                                                </>
+                                            )
+                                        ) : selectedPlan === 'gratis' ? (
+                                            <>
+                                                <i className="ti ti-check"></i> Publicar Gratis
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="ti ti-check"></i> Continuar
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>
@@ -1487,7 +1560,8 @@ export default function PublicarPerdidaPage() {
                                                 <i className="fa-solid fa-street-view"></i>
                                             </div>
                                             <p className="map-no-plan-msg">
-                                                <i className="ti ti-hand-finger-left"></i>
+                                                <i className="ti ti-hand-finger-left map-hint-icon-desktop"></i>
+                                                <i className="ti ti-hand-finger-down map-hint-icon-mobile"></i>
                                                 {selectedPlan === 'gratis'
                                                     ? 'Selecciona un plan para ver el alcance de la zona de pérdida.'
                                                     : isGeocoding
@@ -1559,17 +1633,19 @@ export default function PublicarPerdidaPage() {
                                                 {getFechaRange().inicio}
                                             </strong>
                                         </div>
-                                        <div className="summary-date-col">
-                                            <span className="summary-date-label">Fin</span>
-                                            <strong className="summary-date-value" id="sum-fecha-fin">
-                                                {getFechaRange().fin}
-                                            </strong>
-                                        </div>
+                                        {getFechaRange().fin && (
+                                            <div className="summary-date-col">
+                                                <span className="summary-date-label">Fin</span>
+                                                <strong className="summary-date-value" id="sum-fecha-fin">
+                                                    {getFechaRange().fin}
+                                                </strong>
+                                            </div>
+                                        )}
                                         <div className="summary-date-col">
                                             <span className="summary-date-label">Días de circulación</span>
                                             <strong className="summary-date-value">
                                                 <i className="ti ti-calendar-bolt"></i>{' '}
-                                                {selectedPlan === 'gratis' ? '6 meses' : currentPlanObj?.days ?? '-'}
+                                                {getFechaRange().diasTexto}
                                             </strong>
                                         </div>
                                     </div>
@@ -1597,7 +1673,7 @@ export default function PublicarPerdidaPage() {
                                                 className="summary-date-value summary-total-val"
                                                 id="sum-total"
                                             >
-                                                {currencySymbol} {currentPlanObj?.price ?? 0}
+                                                {currencySymbol} {currentPlanObj?.price ?? 0} {currencyCode}
                                             </strong>
                                         </div>
                                     </div>
@@ -1739,7 +1815,7 @@ export default function PublicarPerdidaPage() {
                                                 </span>
                                                 <div className="flyer-footer-number">
                                                     <i className="ti ti-brand-whatsapp"></i>
-                                                    <span id="flyer-txt-tel">{currentUser?.phone?.replace(/^\+\d+\s*/, '') || '---------'}</span>
+                                                    <span id="flyer-txt-tel">{telefono || '---------'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1769,9 +1845,7 @@ export default function PublicarPerdidaPage() {
                         </span>
                         <h3 id="overlay-title">Su publicación se envió a aprobación...</h3>
                         <p id="overlay-msg">
-                            {selectedPlan === 'gratis'
-                                ? 'Tu reporte está siendo procesado en la cola estándar de Huellas de manera gratuita.'
-                                : 'Al ser una solicitud de pago con prioridad alta, su publicación será activada dentro de los próximos 30 minutos.'}
+                            Tu reporte está siendo procesado en la cola estándar de Huellas de manera gratuita.
                         </p>
                     </div>
 

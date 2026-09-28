@@ -1,4 +1,16 @@
 import { authFetch, authFetchJson, ApiError } from './authFetch';
+import type { ReportDetail } from './api';
+import type { PaymentInfo } from './paymentsApi';
+
+export interface ReportWithPayment {
+    report: ReportDetail;
+    payment: PaymentInfo;
+}
+
+export interface CreateReportResponse {
+    report: ReportDetail;
+    payment: PaymentInfo | null;
+}
 
 export interface CreateReportPayload {
     report_type: string;
@@ -42,14 +54,13 @@ export class ReportsApiError extends Error {
     }
 }
 
-// Crea el aviso SIN fotos — el backend calcula precio/moneda/vencimiento
-// solo con el package_slug, nunca confiar en el frontend para eso.
-export async function createReport(payload: CreateReportPayload): Promise<any> {
+export async function createReport(payload: CreateReportPayload, idempotencyKey?: string): Promise<CreateReportResponse> {
     try {
-        return await authFetchJson('/v1/reports', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-        });
+        return await authFetchJson(
+            '/v1/reports',
+            { method: 'POST', body: JSON.stringify(payload) },
+            { idempotencyKey }
+        );
     } catch (err) {
         if (err instanceof ApiError) throw new ReportsApiError(err.status, err.message);
         throw err;
@@ -123,55 +134,71 @@ export async function stopReport(reportId: string): Promise<any> {
     }
 }
 
-// Solo funciona si el aviso ya venció. El backend calcula precio/moneda/
-// nueva fecha de vencimiento. El aviso vuelve a pending_approval.
-export async function reactivateReport(reportId: string, packageSlug: string): Promise<any> {
+export async function reactivateReport(reportId: string, packageSlug: string, idempotencyKey?: string): Promise<ReportWithPayment> {
     try {
-        return await authFetchJson(`/v1/reports/${reportId}/reactivate`, {
-            method: 'POST',
-            body: JSON.stringify({ package_slug: packageSlug }),
-        });
+        return await authFetchJson(
+            `/v1/reports/${reportId}/reactivate`,
+            { method: 'POST', body: JSON.stringify({ package_slug: packageSlug }) },
+            { idempotencyKey }
+        );
     } catch (err) {
         if (err instanceof ApiError) throw new ReportsApiError(err.status, err.message);
         throw err;
     }
 }
 
-// Requiere un plan activo en el aviso. El aviso vuelve a pending_approval.
-export async function purchaseExtraReach(reportId: string, radiusKm: number): Promise<any> {
+
+export async function purchaseExtraReach(reportId: string, radiusKm: number, idempotencyKey?: string): Promise<ReportWithPayment> {
     try {
-        return await authFetchJson(`/v1/reports/${reportId}/extra-reach`, {
-            method: 'POST',
-            body: JSON.stringify({ radius_km: radiusKm }),
-        });
+        return await authFetchJson(
+            `/v1/reports/${reportId}/extra-reach`,
+            { method: 'POST', body: JSON.stringify({ radius_km: radiusKm }) },
+            { idempotencyKey }
+        );
     } catch (err) {
         if (err instanceof ApiError) throw new ReportsApiError(err.status, err.message);
         throw err;
     }
 }
 
-// Sube un aviso Gratis a un plan de pago. El backend calcula amount_paid/
-// currency/expires_at solo — nunca los mandamos nosotros. Funciona sin
-// importar el estado actual del aviso (activo, finalizado, en revisión).
-export async function upgradeReport(reportId: string, packageSlug: string): Promise<any> {
+export async function upgradeReport(reportId: string, packageSlug: string, idempotencyKey?: string): Promise<ReportWithPayment> {
     try {
-        return await authFetchJson(`/v1/reports/${reportId}/upgrade`, {
-            method: 'POST',
-            body: JSON.stringify({ package_slug: packageSlug }),
-        });
+        return await authFetchJson(
+            `/v1/reports/${reportId}/upgrade`,
+            { method: 'POST', body: JSON.stringify({ package_slug: packageSlug }) },
+            { idempotencyKey }
+        );
     } catch (err) {
         if (err instanceof ApiError) throw new ReportsApiError(err.status, err.message);
         throw err;
     }
 }
 
-// Suma días a expires_at (no lo reemplaza). El aviso vuelve a pending_approval.
-export async function extendReportTime(reportId: string, extraDays: number): Promise<any> {
+// Reintenta un pago fallido — genera un payment_id/preference_id nuevo
+// para el mismo aviso/plan/monto. Un payment_id que ya falló no se puede
+// "resucitar": Mercado Pago cachea la respuesta contra el mismo id.
+export async function retryPayment(reportId: string, idempotencyKey?: string): Promise<ReportWithPayment> {
     try {
-        return await authFetchJson(`/v1/reports/${reportId}/extend`, {
-            method: 'POST',
-            body: JSON.stringify({ extra_days: extraDays }),
-        });
+        return await authFetchJson(
+            `/v1/reports/${reportId}/retry-payment`,
+            { method: 'POST' },
+            { idempotencyKey }
+        );
+    } catch (err) {
+        if (err instanceof ApiError) throw new ReportsApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+// Suma días a expires_at (no lo reemplaza). La extensión NO se aplica
+// todavía — recién cuando el webhook confirme el pago.
+export async function extendReportTime(reportId: string, extraDays: number, idempotencyKey?: string): Promise<ReportWithPayment> {
+    try {
+        return await authFetchJson(
+            `/v1/reports/${reportId}/extend`,
+            { method: 'POST', body: JSON.stringify({ extra_days: extraDays }) },
+            { idempotencyKey }
+        );
     } catch (err) {
         if (err instanceof ApiError) throw new ReportsApiError(err.status, err.message);
         throw err;
