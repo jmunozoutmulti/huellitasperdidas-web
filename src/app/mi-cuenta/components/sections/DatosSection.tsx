@@ -157,7 +157,7 @@ export default function DatosSection({
                 <div className="datos-avatar-upload-row">
                     <div className="datos-avatar-preview" id="datos-avatar-preview">
                         {!avatarSrc ? (
-                            <span className="datos-avatar-fallback">O</span>
+                            <span className="datos-avatar-fallback">{dNombre?.[0]?.toUpperCase() || 'U'}</span>
                         ) : (
                             <img className="datos-avatar-img" id="datos-avatar-img" src={avatarSrc} alt="Avatar" />
                         )}
