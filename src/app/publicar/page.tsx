@@ -498,23 +498,21 @@ export default function PublicarPerdidaPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            // Si una foto falla, el aviso ya quedó creado — el usuario podrá
-            // completarlas después editando su aviso. No revertimos nada.
-            for (const foto of validPhotos) {
-                try {
-                    await uploadReportImage(report.id, foto, false);
-                } catch (err) {
-                    console.error('No se pudo subir una foto', err);
-                }
-            }
 
-            if (flyerImageBase64) {
-                try {
-                    await uploadReportImage(report.id, flyerImageBase64, true);
-                } catch (err) {
-                    console.error('No se pudo subir el flyer', err);
-                }
-            }
+            await Promise.allSettled([
+                ...validPhotos.map((foto) =>
+                    uploadReportImage(report.id, foto, false).catch((err) => {
+                        console.error('No se pudo subir una foto', err);
+                    })
+                ),
+                ...(flyerImageBase64
+                    ? [
+                        uploadReportImage(report.id, flyerImageBase64, true).catch((err) => {
+                            console.error('No se pudo subir el flyer', err);
+                        }),
+                    ]
+                    : []),
+            ]);
 
             if (payment) {
                 setCreatedReportId(report.id);
