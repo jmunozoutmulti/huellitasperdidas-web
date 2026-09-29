@@ -579,13 +579,19 @@ export default function PublicarPerdidaPage() {
         return textoCompleto.charAt(0).toUpperCase() + textoCompleto.slice(1);
     };
 
+    const lastGeocodedQueryRef = useRef<string | null>(null);
+
     useEffect(() => {
         if (!provincia || !departamento) return;
         if (hasLevel3 && !distrito) return;
 
+        const query = [direccion, distrito, provincia, departamento, country].join('|');
+        if (query === lastGeocodedQueryRef.current) return;
+
         let isCancelled = false;
 
         async function geocode() {
+            lastGeocodedQueryRef.current = query;
             setIsGeocoding(true);
             const result = await geocodeAddress(direccion, distrito, provincia, departamento, country);
             if (!isCancelled && result) {
@@ -603,7 +609,7 @@ export default function PublicarPerdidaPage() {
             isCancelled = true;
             clearTimeout(timer);
         };
-    }, [distrito, direccion, provincia, departamento, hasLevel3]);
+    }, [distrito, direccion, provincia, departamento, hasLevel3, country]);
 
     const selectedPkg = packages.find((p) => p.slug === selectedPlan);
     const planIncludesCentinela = selectedPkg?.centinela === true;

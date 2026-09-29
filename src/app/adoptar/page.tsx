@@ -128,15 +128,23 @@ export default function PublicarAdoptarPage() {
     // EFECTOS DE POPOVERS Y EVENTOS
     // ==========================================
 
-    // Geocodificación: ubica primero la zona (departamento → provincia → distrito),
-    // y afina con la dirección si el usuario ya la escribió.
+    // Recuerda la última combinación que ya se geocodificó, para no volver a
+    // pegarle a la API con exactamente la misma dirección — antes esto
+    // pasaba cuando algún campo del dependency array cambiaba (ej. hasLevel3
+    // resolviéndose tarde) sin que la dirección real fuera distinta.
+    const lastGeocodedQueryRef = useRef<string | null>(null);
+
     useEffect(() => {
         if (!provincia || !departamento) return;
         if (hasLevel3 && !distrito) return;
 
+        const query = [direccion, distrito, provincia, departamento, country].join('|');
+        if (query === lastGeocodedQueryRef.current) return;
+
         let isCancelled = false;
 
         async function geocode() {
+            lastGeocodedQueryRef.current = query;
             setIsGeocoding(true);
             const result = await geocodeAddress(direccion, distrito, provincia, departamento, country);
             if (!isCancelled && result) {
@@ -154,7 +162,7 @@ export default function PublicarAdoptarPage() {
             isCancelled = true;
             clearTimeout(timer);
         };
-    }, [distrito, direccion, provincia, departamento, hasLevel3]);
+    }, [distrito, direccion, provincia, departamento, hasLevel3, country]);
 
     // ==========================================
     // CARGA Y REMOCIÓN DE IMÁGENES
@@ -483,23 +491,20 @@ export default function PublicarAdoptarPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            // Si una foto falla, el aviso ya quedó creado — el usuario podrá
-            // completarlas después editando su aviso. No revertimos nada.
-            for (const foto of validPhotos) {
-                try {
-                    await uploadReportImage(report.id, foto, false);
-                } catch (err) {
-                    console.error('No se pudo subir una foto', err);
-                }
-            }
-
-            if (flyerImageBase64) {
-                try {
-                    await uploadReportImage(report.id, flyerImageBase64, true);
-                } catch (err) {
-                    console.error('No se pudo subir el flyer', err);
-                }
-            }
+            await Promise.allSettled([
+                ...validPhotos.map((foto) =>
+                    uploadReportImage(report.id, foto, false).catch((err) => {
+                        console.error('No se pudo subir una foto', err);
+                    })
+                ),
+                ...(flyerImageBase64
+                    ? [
+                        uploadReportImage(report.id, flyerImageBase64, true).catch((err) => {
+                            console.error('No se pudo subir el flyer', err);
+                        }),
+                    ]
+                    : []),
+            ]);
 
             if (payment) {
                 setCreatedReportId(report.id);

@@ -467,24 +467,24 @@ export default function ModalEditarAviso({
                 },
             });
 
-            // Fotos: primero borrar las quitadas, luego subir las nuevas.
-            // Si alguna falla, seguimos con el resto — no revertimos nada.
-            for (const imgId of removedImageIds) {
-                try {
-                    await deleteReportImage(id, imgId);
-                } catch (err) {
-                    console.warn('No se pudo borrar una foto:', err instanceof Error ? err.message : err);
-                }
-            }
-            for (const slot of editFotos) {
-                if (slot?.type === 'new') {
-                    try {
-                        await uploadReportImage(id, slot.dataUrl, false);
-                    } catch (err) {
-                        console.warn('No se pudo subir una foto nueva:', err instanceof Error ? err.message : err);
-                    }
-                }
-            }
+
+            await Promise.allSettled(
+                removedImageIds.map((imgId) =>
+                    deleteReportImage(id, imgId).catch((err) => {
+                        console.warn('No se pudo borrar una foto:', err instanceof Error ? err.message : err);
+                    })
+                )
+            );
+
+            await Promise.allSettled(
+                editFotos
+                    .filter((slot) => slot?.type === 'new')
+                    .map((slot) =>
+                        uploadReportImage(id, slot!.dataUrl, false).catch((err) => {
+                            console.warn('No se pudo subir una foto nueva:', err instanceof Error ? err.message : err);
+                        })
+                    )
+            );
 
             // El flyer se regenera siempre que se guarda una edición, para que
             // nunca quede desincronizado con los datos/fotos ya actualizados.

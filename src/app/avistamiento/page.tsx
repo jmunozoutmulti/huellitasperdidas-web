@@ -257,14 +257,13 @@ export default function AvistamientoPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            for (const foto of allPhotos) {
-                try {
-                    await uploadReportImage(report.id, foto, false);
-                } catch (err) {
-                    console.error('No se pudo subir una foto', err);
-                }
-            }
-            // avistamiento no genera flyer — no hay nada que subir con is_flyer
+            await Promise.allSettled(
+                allPhotos.map((foto) =>
+                    uploadReportImage(report.id, foto, false).catch((err) => {
+                        console.error('No se pudo subir una foto', err);
+                    })
+                )
+            );
 
             setShowStatusOverlay(true);
             setTimeout(() => {

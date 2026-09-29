@@ -418,21 +418,20 @@ export default function PublicarEncontradoPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            for (const foto of validPhotos) {
-                try {
-                    await uploadReportImage(report.id, foto, false);
-                } catch (err) {
-                    console.error('No se pudo subir una foto', err);
-                }
-            }
-
-            if (flyerImageBase64) {
-                try {
-                    await uploadReportImage(report.id, flyerImageBase64, true);
-                } catch (err) {
-                    console.error('No se pudo subir el flyer', err);
-                }
-            }
+            await Promise.allSettled([
+                ...validPhotos.map((foto) =>
+                    uploadReportImage(report.id, foto, false).catch((err) => {
+                        console.error('No se pudo subir una foto', err);
+                    })
+                ),
+                ...(flyerImageBase64
+                    ? [
+                        uploadReportImage(report.id, flyerImageBase64, true).catch((err) => {
+                            console.error('No se pudo subir el flyer', err);
+                        }),
+                    ]
+                    : []),
+            ]);
 
             setShowStatusOverlay(true);
             setTimeout(() => {
