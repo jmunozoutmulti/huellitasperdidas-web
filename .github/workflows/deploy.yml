@@ -25,6 +25,10 @@ jobs:
       - name: Build static export
         env:
           NEXT_PUBLIC_API_URL: https://api.huellasperdidas.com
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.PROD_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}
+          NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY: ${{ secrets.PROD_MERCADOPAGO_PUBLIC_KEY }}
+          NEXT_PUBLIC_PAYPAL_CLIENT_ID: ${{ secrets.PROD_PAYPAL_CLIENT_ID }}
         run: npm run build
 
       - name: Deploy via FTP
