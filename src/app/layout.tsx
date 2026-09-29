@@ -45,9 +45,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" data-theme="light" suppressHydrationWarning>
-      <head>
-        <meta charSet="utf-8" />
-      </head>
       <body className={`${google.className} ${outfit.variable}`} suppressHydrationWarning>
         <AppProvider>
           <div className="container">

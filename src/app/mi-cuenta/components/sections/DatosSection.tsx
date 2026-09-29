@@ -279,6 +279,20 @@ export default function DatosSection({
                     </div>
                 </div>
 
+                <div className="datos-form-actions">
+                    <button
+                        type="button"
+                        className="btn-save-datos"
+                        id="btn-guardar-datos"
+                        disabled={!isDatosChanged}
+                        onClick={onSaveDatos}
+                    >
+                        <i className="ti ti-device-floppy"></i> Guardar cambios
+                    </button>
+                </div>
+
+                <div className="datos-section-divider"></div>
+
                 <div className="form-group">
                     <label className="form-label">Teléfono de contacto</label>
                     <div className="datos-locked-field">
@@ -301,7 +315,7 @@ export default function DatosSection({
                             data-field="telefono"
                             onClick={onOpenCambiarNumero}
                         >
-                            <i className="ti ti-lock"></i> Cambiar
+                            <i className="ti ti-lock"></i> {dTelefono ? 'Cambiar' : 'Agregar'}
                         </button>
                     </div>
                 </div>
@@ -338,18 +352,6 @@ export default function DatosSection({
                             <i className="ti ti-lock"></i> {currentUser?.hasPassword === false ? 'Crear' : 'Cambiar'}
                         </button>
                     </div>
-                </div>
-
-                <div className="datos-form-actions">
-                    <button
-                        type="button"
-                        className="btn-save-datos"
-                        id="btn-guardar-datos"
-                        disabled={!isDatosChanged}
-                        onClick={onSaveDatos}
-                    >
-                        <i className="ti ti-device-floppy"></i> Guardar cambios
-                    </button>
                 </div>
             </div>
         </div >

@@ -306,26 +306,38 @@ export default function MiCuentaPage() {
         avatar: null as string | null,
     });
 
-    // Carga los datos reales del usuario al entrar (o cuando cambie de sesión)
+    // Carga los datos reales del usuario al entrar
+    // Usamos una ref para saber si ya inicializamos los datos de este usuario
+    const isInitializedForUser = useRef<string | null>(null);
+
     useEffect(() => {
         if (currentUser) {
-            const loaded = {
-                nombre: currentUser.name || '',
-                apellidoPaterno: currentUser.last_name_paterno || '',
-                apellidoMaterno: currentUser.last_name_materno || '',
-                departamento: currentUser.region || '',
-                provincia: currentUser.province || '',
-                distrito: currentUser.district || '',
-                avatar: currentUser.avatar || null,
-            };
-            setDNombre(loaded.nombre);
-            setDApellidoPaterno(loaded.apellidoPaterno);
-            setDApellidoMaterno(loaded.apellidoMaterno);
-            setDDepartamento(loaded.departamento);
-            setDProvincia(loaded.provincia);
-            setDDistrito(loaded.distrito);
-            setAvatarSrc(loaded.avatar);
-            initialDatos.current = loaded;
+            if (isInitializedForUser.current !== currentUser.id) {
+                const loaded = {
+                    nombre: currentUser.name || '',
+                    apellidoPaterno: currentUser.last_name_paterno || '',
+                    apellidoMaterno: currentUser.last_name_materno || '',
+                    departamento: currentUser.region || '',
+                    provincia: currentUser.province || '',
+                    distrito: currentUser.district || '',
+                    avatar: currentUser.avatar || null,
+                };
+                setDNombre(loaded.nombre);
+                setDApellidoPaterno(loaded.apellidoPaterno);
+                setDApellidoMaterno(loaded.apellidoMaterno);
+                setDDepartamento(loaded.departamento);
+                setDProvincia(loaded.provincia);
+                setDDistrito(loaded.distrito);
+                setAvatarSrc(loaded.avatar);
+                initialDatos.current = loaded;
+
+                isInitializedForUser.current = currentUser.id;
+            } else {
+                if (currentUser.avatar !== initialDatos.current.avatar && currentUser.avatar) {
+                    setAvatarSrc(currentUser.avatar);
+                    initialDatos.current.avatar = currentUser.avatar;
+                }
+            }
         }
     }, [currentUser]);
 

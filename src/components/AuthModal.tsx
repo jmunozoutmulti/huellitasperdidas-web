@@ -505,7 +505,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                                 </div>
 
                                 {confirmNewPassword && newPassword !== confirmNewPassword && (
-                                    <p style={{ color: 'var(--brand-red)', fontSize: '0.85em', marginTop: '-0.5em', marginBottom: '0.5em' }}>
+                                    <p style={{ color: 'var(--brand-red)', fontSize: '0.85em', marginTop: '0.5em' }}>
                                         Las contraseñas no coinciden.
                                     </p>
                                 )}
