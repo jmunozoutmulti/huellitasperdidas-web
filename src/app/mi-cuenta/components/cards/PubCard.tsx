@@ -5,6 +5,32 @@ import { showToast } from '@/components/global/Toast';
 import type { Report } from '@/lib/api';
 import type { PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
+import {
+    IconClock,
+    IconCircleCheck,
+    IconX,
+    IconHourglassLow,
+    IconChartLine,
+    IconBan,
+    IconTrash,
+    IconPencil,
+    IconUsers,
+    IconShare,
+    IconInfoCircle,
+    IconAlertCircle,
+    IconUsersGroup,
+    IconBroadcast,
+    IconBrandMeta,
+    IconDownload,
+    IconExternalLink,
+    IconCreditCardPay,
+    IconRefresh,
+    IconPin,
+    IconHistory,
+    IconDotsVertical,
+    IconChevronDown,
+    IconHeart,
+} from '@tabler/icons-react';
 
 type Tab = 'activas' | 'revision' | 'pago_pendiente' | 'rechazadas' | 'finalizadas';
 type ReportType = 'lost' | 'found' | 'adoption' | 'sighting';
@@ -29,14 +55,14 @@ interface PubCardProps {
     onOpenRetryPago: () => void;
 }
 
-// --- Íconos/textos del badge de estado según status real ---
-const STATUS_BADGE: Record<string, { icon: string; text: string }> = {
-    pending_approval: { icon: 'ti-clock', text: 'En revisión' },
-    active: { icon: 'ti-circle-check', text: 'Aviso publicado' },
-    rejected: { icon: 'ti-x', text: 'Rechazado' },
-    inactive: { icon: 'ti-hourglass-low', text: 'Finalizado' },
-    spam: { icon: 'ti-hourglass-low', text: 'Finalizado' },
-    resolved: { icon: 'ti-hourglass-low', text: 'Finalizado' },
+// 1. Mapeo de estado (reemplazar la constante STATUS_BADGE):
+const STATUS_BADGE: Record<string, { icon: React.ElementType; text: string }> = {
+    pending_approval: { icon: IconClock, text: 'En revisión' },
+    active: { icon: IconCircleCheck, text: 'Aviso publicado' },
+    rejected: { icon: IconX, text: 'Rechazado' },
+    inactive: { icon: IconHourglassLow, text: 'Finalizado' },
+    spam: { icon: IconHourglassLow, text: 'Finalizado' },
+    resolved: { icon: IconHourglassLow, text: 'Finalizado' },
 };
 
 function reportTypeLabel(reportType: string): string {
@@ -167,20 +193,20 @@ export default function PubCard({
                 return (
                     <>
                         <button type="button" className="btn-ver-estadisticas" onClick={onOpenEstadisticas}>
-                            <i className="ti ti-chart-line"></i> Estadísticas
+                            <IconChartLine /> Estadísticas
                         </button>
                         <button type="button" className="btn-detener-anuncio" onClick={onOpenDetener}>
-                            <i className="ti ti-ban"></i> Detener anuncio
+                            <IconBan /> Detener anuncio
                         </button>
                         <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
-                            <i className="ti ti-trash"></i> Eliminar anuncio
+                            <IconTrash /> Eliminar anuncio
                         </button>
                     </>
                 );
             }
             return (
                 <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
-                    <i className="ti ti-trash"></i> Eliminar anuncio
+                    <IconTrash /> Eliminar anuncio
                 </button>
             );
         }
@@ -188,7 +214,7 @@ export default function PubCard({
         if (tab === 'revision') {
             return (
                 <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
-                    <i className="ti ti-trash"></i> Eliminar anuncio
+                    <IconTrash /> Eliminar anuncio
                 </button>
             );
         }
@@ -202,11 +228,11 @@ export default function PubCard({
                             className="btn-editar-aviso"
                             onClick={() => onOpenEditarAviso(reportType as 'lost' | 'adoption' | 'found', displayName)}
                         >
-                            <i className="ti ti-pencil"></i> Editar anuncio
+                            <IconPencil /> Editar anuncio
                         </button>
                     )}
                     <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
-                        <i className="ti ti-trash"></i> Eliminar anuncio
+                        <IconTrash /> Eliminar anuncio
                     </button>
                 </>
             );
@@ -216,7 +242,7 @@ export default function PubCard({
         return (
             <>
                 <button type="button" className="btn-eliminar-anuncio" onClick={onOpenEliminarAviso}>
-                    <i className="ti ti-trash"></i> Eliminar anuncio
+                    <IconTrash /> Eliminar anuncio
                 </button>
             </>
         );
@@ -227,8 +253,8 @@ export default function PubCard({
         if (tab === 'activas' || tab === 'finalizadas') {
             return (
                 <div className="pub-accordion-metrics-compact">
-                    <span><i className="ti ti-users"></i> {pub.views_count}</span>
-                    <span><i className="ti ti-share"></i> {pub.shares_count}</span>
+                    <span><IconUsers /> {pub.views_count}</span>
+                    <span><IconShare /> {pub.shares_count}</span>
                 </div>
             );
         }
@@ -242,13 +268,13 @@ export default function PubCard({
                 <>
                     {pub.reactivated_at && (
                         <div className="admin-info-box">
-                            <i className="ti ti-info-circle"></i>
+                            <IconInfoCircle />
                             <p>Este aviso fue reactivado el <b>{formatFecha(pub.reactivated_at, pub.country)}</b>.</p>
                         </div>
                     )}
                     {pub.extra_reach_purchased_at && (
                         <div className="admin-info-box">
-                            <i className="ti ti-info-circle"></i>
+                            <IconInfoCircle />
                             <p>
                                 Alcance ampliado a <b>{pub.extra_reach || 'un radio mayor'}</b> el{' '}
                                 <b>{formatFecha(pub.extra_reach_purchased_at, pub.country)}</b>.
@@ -275,7 +301,7 @@ export default function PubCard({
             const mensaje = REASON_MESSAGES[pub.pending_reason ?? 'created'] ?? REASON_MESSAGES.created;
             return (
                 <div className="admin-info-box info-box-revision">
-                    <i className="ti ti-clock"></i>
+                    <IconClock />
                     <p>{mensaje}</p>
                 </div>
             );
@@ -283,7 +309,7 @@ export default function PubCard({
         if (tab === 'rechazadas') {
             return (
                 <div className="admin-reason-box">
-                    <i className="ti ti-alert-circle"></i>
+                    <IconAlertCircle />
                     <div>
                         <b>Motivo del rechazo</b>
                         <p>{pub.rejection_reason || 'No se especificó un motivo.'}</p>
@@ -295,7 +321,7 @@ export default function PubCard({
             if (pub.stopped_by_user) {
                 return (
                     <div className="admin-info-box">
-                        <i className="ti ti-info-circle"></i>
+                        <IconInfoCircle />
                         <p>
                             Este anuncio finalizó por decisión del usuario
                             {pub.stopped_at && <> el <b>{formatFecha(pub.stopped_at, pub.country)}</b></>}
@@ -319,7 +345,7 @@ export default function PubCard({
             }
             return (
                 <div className="admin-info-box">
-                    <i className="ti ti-info-circle"></i>
+                    <IconInfoCircle />
                     <p>
                         {mensaje}
                         {pub.expires_at && <> <br></br> Venció el <b>{formatFecha(pub.expires_at, pub.country)}</b></>}
@@ -341,7 +367,7 @@ export default function PubCard({
                         className="btn-llegar-mas-personas btn-upsell btn-upsell-primary"
                         onClick={onOpenAlcance}
                     >
-                        <i className="ti ti-users-group"></i> Llegar a más personas
+                        <IconUsersGroup /> Llegar a más personas
                     </button>
                 </div>
             );
@@ -354,7 +380,7 @@ export default function PubCard({
                     data-tipo={reportType}
                     onClick={onOpenUpgrade}
                 >
-                    <i className="ti ti-broadcast"></i> Difundir ahora
+                    <IconBroadcast /> Difundir ahora
                 </button>
             </div>
         );
@@ -373,7 +399,7 @@ export default function PubCard({
                             className="tooltip"
                             data-tooltip="Ver difusión"
                         >
-                            <i className="ti ti-brand-meta"></i>
+                            <IconBrandMeta />
                         </a>
                         {reportType !== 'sighting' && (
                             <>
@@ -383,19 +409,19 @@ export default function PubCard({
                                     data-tooltip="Editar"
                                     onClick={() => onOpenEditarAviso(reportType as 'lost' | 'adoption' | 'found', displayName)}
                                 >
-                                    <i className="ti ti-pencil"></i>
+                                    <IconPencil />
                                 </button>
                                 <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(flyerUrl)}>
-                                    <i className="ti ti-download"></i>
+                                    <IconDownload />
                                 </button>
                                 <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
-                                    <i className="ti ti-external-link"></i>
+                                    <IconExternalLink />
                                 </a>
                             </>
                         )}
                         {reportType === 'sighting' && (
                             <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
-                                <i className="ti ti-external-link"></i>
+                                <IconExternalLink />
                             </a>
                         )}
                     </div>
@@ -405,10 +431,10 @@ export default function PubCard({
                 return (
                     <div className="pub-editor-actions">
                         <button type="button" className="btn-eliminar-anuncio tooltip" data-tooltip="Eliminar" onClick={onOpenEliminarAviso}>
-                            <i className="ti ti-trash"></i>
+                            <IconTrash />
                         </button>
                         <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
-                            <i className="ti ti-external-link"></i>
+                            <IconExternalLink />
                         </a>
                     </div>
                 );
@@ -421,13 +447,13 @@ export default function PubCard({
                         data-tooltip="Editar"
                         onClick={() => onOpenEditarAviso(reportType as 'lost' | 'adoption' | 'found', displayName)}
                     >
-                        <i className="ti ti-pencil"></i>
+                        <IconPencil />
                     </button>
                     <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(flyerUrl)}>
-                        <i className="ti ti-download"></i>
+                        <IconDownload />
                     </button>
                     <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
-                        <i className="ti ti-external-link"></i>
+                        <IconExternalLink />
                     </a>
                 </div>
             );
@@ -438,7 +464,7 @@ export default function PubCard({
                 return (
                     <div className="pub-editor-actions">
                         <button type="button" className="btn-eliminar-anuncio danger tooltip" data-tooltip="Eliminar" onClick={onOpenEliminarAviso}>
-                            <i className="ti ti-trash"></i>
+                            <IconTrash />
                         </button>
                     </div>
                 );
@@ -451,10 +477,10 @@ export default function PubCard({
                         data-tooltip="Editar"
                         onClick={() => onOpenEditarAviso(reportType as 'lost' | 'adoption' | 'found', displayName)}
                     >
-                        <i className="ti ti-pencil"></i>
+                        <IconPencil />
                     </button>
                     <button type="button" className="btn-eliminar-anuncio danger tooltip" data-tooltip="Eliminar" onClick={onOpenEliminarAviso}>
-                        <i className="ti ti-trash"></i>
+                        <IconTrash />
                     </button>
                 </div>
             );
@@ -469,7 +495,7 @@ export default function PubCard({
         return (
             <div className="pub-editor-actions">
                 <button type="button" className="btn-reactivar-pago" onClick={onOpenRetryPago}>
-                    <i className="ti ti-credit-card-pay"></i> Terminar de pagar
+                    <IconCreditCardPay /> Terminar de pagar
                 </button>
             </div>
         );
@@ -486,7 +512,7 @@ export default function PubCard({
             return (
                 <div className="pub-editor-actions">
                     <button type="button" className="btn-reactivar-pago" onClick={onOpenReactivar}>
-                        <i className="ti ti-refresh"></i> Reactivar anuncio
+                        <IconRefresh /> Reactivar anuncio
                     </button>
                 </div>
             );
@@ -496,7 +522,7 @@ export default function PubCard({
         return (
             <div className="pub-editor-actions">
                 <button type="button" className="btn-republicar-gratis" onClick={onOpenRepublicarGratis}>
-                    <i className="ti ti-refresh"></i> Volver a publicar
+                    <IconRefresh /> Volver a publicar
                 </button>
             </div>
         );
@@ -509,13 +535,13 @@ export default function PubCard({
             <div className="stats-detail-grid">
                 <div className="stat-detail-card">
                     <div className="stat-detail-body">
-                        <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-users"></i> {pub.views_count}</span></div>
+                        <div className="stat-detail-top"><span className="stat-detail-value"><IconUsers /> {pub.views_count}</span></div>
                         <span className="stat-detail-label">{tab === 'activas' ? 'Vistas' : 'Vistas totales'}</span>
                     </div>
                 </div>
                 <div className="stat-detail-card">
                     <div className="stat-detail-body">
-                        <div className="stat-detail-top"><span className="stat-detail-value"><i className="ti ti-share"></i> {pub.shares_count}</span></div>
+                        <div className="stat-detail-top"><span className="stat-detail-value"><IconShare /> {pub.shares_count}</span></div>
                         <span className="stat-detail-label">Compartidos</span>
                     </div>
                 </div>
@@ -540,7 +566,7 @@ export default function PubCard({
                         )}
                     </div>
                     <div className="pub-accordion-meta">
-                        {pub.district && <span><i className="ti ti-pin"></i> {[pub.district, pub.province].filter(Boolean).join(', ')}</span>}
+                        {pub.district && <span><IconPin /> {[pub.district, pub.province].filter(Boolean).join(', ')}</span>}
                         {tab === 'activas' && paid && pub.expires_at && (
                             <span
                                 className="pub-accordion-time-left"
@@ -550,7 +576,7 @@ export default function PubCard({
                                     onOpenTiempo();
                                 }}
                             >
-                                <i className="ti ti-history"></i> <u>Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}</u>
+                                <IconHistory /> <u>Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}</u>
                             </span>
                         )}
                         <span><b>Publicado:</b> {formatFecha(pub.created_at, pub.country)}</span>
@@ -559,11 +585,11 @@ export default function PubCard({
                 {renderMetricsCompact()}
                 <div className="pub-btn-group" onClick={(e) => e.stopPropagation()}>
                     <button type="button" className="action-btn-ghost pub-more-trigger" onClick={onToggleMenu}>
-                        <i className="ti ti-dots-vertical"></i>
+                        <IconDotsVertical />
                     </button>
                     <div className={`pub-more-menu ${isMenuOpen ? 'open' : ''}`}>{renderMenu()}</div>
                 </div>
-                <button type="button" className="pub-accordion-chevron"><i className="ti ti-chevron-down"></i></button>
+                <button type="button" className="pub-accordion-chevron"><IconChevronDown /></button>
             </div>
 
             <div className="pub-accordion-body">
@@ -571,12 +597,12 @@ export default function PubCard({
                     <div className="pub-editor-stage">
                         <div className="pub-editor-flyer-box">
                             <span className={`badge-plan-status ${suffix ? `status-${suffix}` : ''}`}>
-                                <i className={`ti ${statusBadge.icon}`}></i> {statusBadge.text}
+                                <statusBadge.icon /> {statusBadge.text}
                             </span>
                             <div className={`flyer-account state-${reportType}`}>
                                 <div className="flyer-account-alert-header">
                                     <h3>
-                                        {reportType === 'adoption' && <i className="ti ti-heart"></i>}
+                                        {reportType === 'adoption' && <IconHeart />}
                                         {reportType === 'lost' && '¡BUSCAMOS!'}
                                         {reportType === 'adoption' && ' ADOPCIÓN'}
                                         {reportType === 'found' && 'ENCONTRADO'}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { IconChevronDown, IconSearch } from '@tabler/icons-react';
 
 export interface SelectOption {
     value: string;
@@ -81,14 +82,14 @@ export default function CustomSelect({
                 onClick={() => !disabled && setIsOpen(!isOpen)}
             >
                 <span>{selectedOption ? selectedOption.label : placeholder}</span>
-                <i className="ti ti-chevron-down"></i>
+                <IconChevronDown />
             </div>
 
             {isOpen && (
                 <div className="custom-select-dropdown">
                     {searchable && (
                         <div className="custom-select-search" onClick={(e) => e.stopPropagation()}>
-                            <i className="ti ti-search"></i>
+                            <IconSearch />
                             <input
                                 ref={searchInputRef}
                                 type="text"

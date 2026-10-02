@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
@@ -8,6 +7,13 @@ import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr } from '@/lib/countries';
 import type { PaymentInfo } from '@/lib/paymentsApi';
 import CheckoutPago from '@/components/checkout/CheckoutPago';
+import {
+    IconRefresh,
+    IconX,
+    IconInfoCircle,
+    IconLoader,
+    IconShieldCheck
+} from '@tabler/icons-react';
 
 interface ModalReactivarProps {
     isOpen: boolean;
@@ -92,16 +98,16 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                 <div className="planes-modal-header">
                     <div>
                         <span className="planes-modal-eyebrow">
-                            <i className="ti ti-refresh"></i> Reactivar anuncio
+                            <IconRefresh /> Reactivar anuncio
                         </span>
                     </div>
                     <button type="button" className="planes-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
 
                 <div className="admin-info-box">
-                    <i className="ti ti-info-circle"></i>
+                    <IconInfoCircle />
                     <p>
                         Tu aviso se reactivará con los <b>mismos datos, fotos y plan</b> con los que fue publicado originalmente.
                     </p>
@@ -109,7 +115,7 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
 
                 {isLoading || !pub || !pkg ? (
                     <div className="admin-info-box">
-                        <i className="ti ti-loader"></i>
+                        <IconLoader />
                         <p>Cargando opciones de pago...</p>
                     </div>
                 ) : (
@@ -128,7 +134,7 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                             {pendingPayment && (
                                 <div className="payment-gateway-box">
                                     <h4>
-                                        <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                        <IconShieldCheck /> Pago seguro
                                     </h4>
                                     <CheckoutPago
                                         payment={pendingPayment}

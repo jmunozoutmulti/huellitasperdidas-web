@@ -6,6 +6,7 @@ import { fetchReport, type ReportDetail } from '@/lib/api';
 import { stopReport, ReportsApiError } from '@/lib/reportsApi';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr } from '@/lib/countries';
+import { IconBan, IconLoader, IconInfoCircle, IconCreditCard } from '@tabler/icons-react';
 
 interface ModalDetenerProps {
     isOpen: boolean;
@@ -69,7 +70,7 @@ export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDe
             <div className="app-modal-card">
                 <div className="app-modal-body">
                     <div className="app-modal-confirm-icon warning">
-                        <i className="ti ti-ban"></i>
+                        <IconBan />
                     </div>
                     <div className="app-modal-confirm-text">
                         <h4>¿Detener este anuncio?</h4>
@@ -78,12 +79,11 @@ export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDe
 
                     {!pub ? (
                         <div className="admin-info-box">
-                            <i className="ti ti-loader"></i>
                             <p>Cargando datos del aviso...</p>
                         </div>
                     ) : hasRefund ? (
                         <div className="admin-info-box" id="detener-reembolso-box">
-                            <i className="fa-regular fa-credit-card"></i>
+                            <IconCreditCard />
                             <p>
                                 <b>Tu plan incluye un reembolso.</b> <br />
                                 Te mostraremos el monto aproximado que recibirás al confirmar esta
@@ -92,7 +92,7 @@ export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDe
                         </div>
                     ) : (
                         <div className="admin-info-box" id="detener-sin-reembolso-box">
-                            <i className="ti ti-info-circle"></i>
+                            <IconInfoCircle />
                             <p>Esta acción no se puede deshacer.</p>
                         </div>
                     )}
@@ -108,7 +108,7 @@ export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDe
                         disabled={!pub || isProcessing}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-ban"></i> {isProcessing ? 'Deteniendo...' : 'Sí, detener anuncio'}
+                        <IconBan /> {isProcessing ? 'Deteniendo...' : 'Sí, detener anuncio'}
                     </button>
                 </div>
             </div>

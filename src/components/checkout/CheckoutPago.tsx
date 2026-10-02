@@ -1,11 +1,15 @@
 'use client';
-
 import React, { useEffect, useRef, useState } from 'react';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, type PaymentInfo } from '@/lib/paymentsApi';
 import { retryPayment, ReportsApiError } from '@/lib/reportsApi';
 import { showToast } from '@/components/global/Toast';
+import { IconLoader } from '@tabler/icons-react';
+import {
+    IconCreditCard,
+    IconDeviceMobile
+} from '@tabler/icons-react';
 
 interface CheckoutPagoProps {
     payment: PaymentInfo;
@@ -150,7 +154,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     if (isPolling) {
         return (
             <div className="admin-info-box info-box-revision">
-                <i className="ti ti-loader"></i>
+                <IconLoader />
                 <p>Confirmando tu pago...</p>
             </div>
         );
@@ -160,7 +164,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
         if (!isMpReady) {
             return (
                 <div className="admin-info-box info-box-revision">
-                    <i className="ti ti-loader"></i>
+                    <IconLoader />
                     <p>Cargando pago seguro...</p>
                 </div>
             );
@@ -173,14 +177,14 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                         className={`pay-tab-btn ${activeMethod === 'card' ? 'active' : ''}`}
                         onClick={() => setActiveMethod('card')}
                     >
-                        <i className="fa-solid fa-credit-card"></i> Tarjeta de Crédito/Débito
+                        <IconCreditCard /> Tarjeta de Crédito/Débito
                     </button>
                     <button
                         type="button"
                         className={`pay-tab-btn ${activeMethod === 'yape' ? 'active' : ''}`}
                         onClick={() => setActiveMethod('yape')}
                     >
-                        <i className="fa-solid fa-mobile-screen-button"></i> Yape
+                        <IconDeviceMobile /> Yape
                     </button>
                 </div>
 

@@ -75,8 +75,9 @@
     border-radius: 3em;
 }
 
-.planes-modal-eyebrow i {
-    font-size: 1.3em;
+.planes-modal-eyebrow svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 .planes-modal-close {
@@ -95,8 +96,9 @@
     transition: all 0.2s ease;
 }
 
-.planes-modal-close i {
-    font-size: 1.3em;
+.planes-modal-close svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 .planes-modal-close:hover {
@@ -247,12 +249,10 @@
     gap: 3px;
 }
 
-.planes-modal-plan-price p i {
-    font-weight: 300;
-    font-size: 0.95em;
+.planes-modal-plan-price p svg {
+    width: 1.1em;
+    height: 1.1em;
 }
-
-
 
 .planes-modal-plan-days {
     font-size: 0.95em;
@@ -331,8 +331,11 @@
     position: relative;
 }
 
-.text-modal i {
-    font-size: 1.3em;
+.text-modal svg {
+    width: 1.3em;
+    height: 1.3em;
+    min-width: 1.3em;
+    min-height: 1.3em;
 }
 
 .btn-planes-back {

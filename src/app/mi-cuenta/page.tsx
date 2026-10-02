@@ -17,7 +17,18 @@ import { AuthApiError } from '@/lib/authApi';
 import { resizeAvatarImage } from '@/lib/resizeImage';
 import { deleteReport } from '@/lib/reportsApi';
 import { getLocaleForCountry } from '@/lib/countries';
-
+import {
+    IconClockHour4,
+    IconMenu3,
+    IconChevronDown,
+    IconStack2,
+    IconBookmark,
+    IconMessageCircle,
+    IconUser,
+    IconSettings,
+    IconHelpCircle,
+    IconLogout,
+} from '@tabler/icons-react';
 import dynamic from 'next/dynamic';
 const ModalAgregarNumero = dynamic(() => import('@/components/global/ModalAgregarNumero'), { ssr: false });
 const ModalBajaCuenta = dynamic(() => import('./components/modals/ModalBajaCuenta'), { ssr: false });
@@ -553,7 +564,7 @@ export default function MiCuentaPage() {
                         type="info"
                         message={
                             <>
-                                <i className="ti ti-clock-hour-4"></i> Tienes <b>{pendingCount}</b> aviso{pendingCount === 1 ? '' : 's'} en revisión por nuestro equipo.
+                                <IconClockHour4 /> Tienes <b>{pendingCount}</b> aviso{pendingCount === 1 ? '' : 's'} en revisión por nuestro equipo.
                             </>
                         }
                         onClose={() => setShowInfoBanner(false)}
@@ -582,9 +593,9 @@ export default function MiCuentaPage() {
                                 onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
                             >
                                 <span className="cuenta-nav-mobile-current">
-                                    <i className="ti ti-menu-3"></i> Menú
+                                    <IconMenu3 /> Menú
                                 </span>
-                                <i className="ti ti-chevron-down toggle-chevron"></i>
+                                <IconChevronDown className="toggle-chevron" />
                             </button>
 
                             <nav className={`cuenta-nav ${isMobileNavOpen ? 'mobile-open' : ''}`}>
@@ -598,7 +609,7 @@ export default function MiCuentaPage() {
                                     }}
                                 >
                                     <span className="cuenta-nav-icon-box">
-                                        <i className="ti ti-stack-2"></i>
+                                        <IconStack2 />
                                     </span>
                                     <span>Mis avisos</span>
                                 </button>
@@ -613,7 +624,7 @@ export default function MiCuentaPage() {
                                     }}
                                 >
                                     <span className="cuenta-nav-icon-box">
-                                        <i className="ti ti-bookmark"></i>
+                                        <IconBookmark />
                                     </span>
                                     <span>Favoritos</span>
                                 </button>
@@ -628,7 +639,7 @@ export default function MiCuentaPage() {
                                     }}
                                 >
                                     <span className="cuenta-nav-icon-box">
-                                        <i className="ti ti-message-circle"></i>
+                                        <IconMessageCircle />
                                     </span>
                                     <span>Mis mensajes</span>
                                     {unreadMessagesCount > 0 && (
@@ -646,7 +657,7 @@ export default function MiCuentaPage() {
                                     }}
                                 >
                                     <span className="cuenta-nav-icon-box">
-                                        <i className="ti ti-user"></i>
+                                        <IconUser />
                                     </span>
                                     <span>Mis datos</span>
                                 </button>
@@ -661,7 +672,7 @@ export default function MiCuentaPage() {
                                     }}
                                 >
                                     <span className="cuenta-nav-icon-box">
-                                        <i className="ti ti-settings"></i>
+                                        <IconSettings />
                                     </span>
                                     <span>Ajustes</span>
                                 </button>
@@ -670,7 +681,7 @@ export default function MiCuentaPage() {
                             <nav className="cuenta-nav-secondary">
                                 <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target="_blank">
                                     <span>
-                                        <i className="ti ti-help-circle"></i> Ayuda y soporte
+                                        <IconHelpCircle /> Ayuda y soporte
                                     </span>
                                 </a>
                                 <a
@@ -681,7 +692,7 @@ export default function MiCuentaPage() {
                                     }}
                                 >
                                     <span>
-                                        <i className="ti ti-logout"></i> Cerrar sesión
+                                        <IconLogout /> Cerrar sesión
                                     </span>
                                 </a>
                             </nav>

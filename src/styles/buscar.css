@@ -86,6 +86,14 @@
     background: var(--bg-alt);
     border-radius: 3em;
     padding: 0.35em 0.75em;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.pill-btn svg {
+    width: 1em;
+    height: 1em;
 }
 
 .pill-btn:hover {
@@ -247,8 +255,10 @@
     background: var(--brand-red);
 }
 
-.buttonRemoveBioImagePreview i {
-    font-size: 1.1em;
+.buttonRemoveBioImagePreview svg {
+    width: 1.1em;
+    height: 1.1em;
+    stroke-width: 2px;
 }
 
 .resultScannerImage {
@@ -268,8 +278,9 @@
 }
 
 .bio-icon-tech {
-    font-size: 2em;
-    color: var(--text-main);
+    width: 2em;
+    height: 2em;
+    stroke: var(--text-main);
     z-index: 2;
     transition: color 0.3s ease;
 }
@@ -364,8 +375,9 @@
     color: var(--text-white);
 }
 
-.dropzone-biometric-modern .bio-upload-badge i {
-    font-size: 1.175em;
+.dropzone-biometric-modern .bio-upload-badge svg {
+    width: 1.175em;
+    height: 1.175em;
 }
 
 .preview-img-container {
@@ -437,8 +449,9 @@
     letter-spacing: 0;
 }
 
-.source-check-item-modern i {
-    font-size: 1.2em;
+.source-check-item-modern svg {
+    width: 1.2em;
+    height: 1.2em;
 }
 
 .ia-box .custom-select-trigger {
@@ -479,13 +492,16 @@
     gap: 0.5em;
 }
 
-.btn-toggle-advanced-filters span i {
-    font-size: 1.3em;
+.btn-toggle-advanced-filters span svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 .toggle-chevron {
     transition: transform 0.3s ease;
     font-size: 0.85em;
+    width: 1.4em;
+    height: 1.4em;
 }
 
 .btn-toggle-advanced-filters.open .toggle-chevron {
@@ -570,8 +586,9 @@
     transition: all 0.2s ease;
 }
 
-.pill-multi-btn i {
-    font-size: 0.85em;
+.pill-multi-btn svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 .pill-multi-btn:hover {
@@ -646,7 +663,7 @@
     font-size: 0.85em;
     display: inline-flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.35em;
 }
 
 .badge-custom-tag.tag-raza {
@@ -676,6 +693,11 @@
     color: var(--text-red);
 }
 
+.badge-custom-tag svg {
+    width: 1.5em;
+    height: 1.5em;
+    margin: 0;
+}
 
 
 
@@ -753,6 +775,10 @@
     align-items: center;
 }
 
+#antivirus-status-title svg {
+    width: 1.3em;
+    height: 1.3em;
+}
 
 #centinela-config-flow {
     padding: 0.75em 0;
@@ -1043,8 +1069,8 @@
 }
 
 .no-results-icon {
-    width: 3.5em;
-    height: 3.5em;
+    width: 3em;
+    height: 3em;
     border-radius: 50%;
     background: var(--bg-alt);
     display: flex;
@@ -1055,8 +1081,9 @@
     opacity: 0.75;
 }
 
-.no-results-icon i {
-    font-size: 1.6em;
+.no-results-icon svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 .no-results-title {
@@ -1194,9 +1221,10 @@
     gap: 3px;
 }
 
-.card-meta-horizontal span i {
-    font-size: 1.1em;
-    color: var(--text-secondary);
+.card-meta-horizontal span svg {
+    width: 1.1em;
+    height: 1.1em;
+    stroke: var(--text-secondary);
 }
 
 .card-badges-horizontal {
@@ -1228,7 +1256,17 @@
     font-size: 0.9em;
     font-weight: 500;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }
+
+.card-footer-horizontal span svg {
+    width: 1.1em;
+    height: 1.1em;
+    stroke: var(--text-secondary);
+}
+
 
 .btn-yellow-mini {
     background-color: var(--yellow-brand);
@@ -1333,7 +1371,7 @@
     color: var(--brand-red);
 }
 
-.tooltip:after {
+.card-title-horizontal .tooltip:after {
     font-size: .95em;
 }
 
@@ -1433,6 +1471,14 @@
     line-height: 1;
     padding: 0.6em 1em;
     color: var(--text-white);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.badge-horizontal svg {
+    width: 1.175em;
+    height: 1.175em;
 }
 
 
@@ -1467,8 +1513,9 @@
     gap: 0.3em;
 }
 
-.empty-criteria-message i {
-    font-size: 1.1em;
+.empty-criteria-message svg {
+    width: 1.1em;
+    height: 1.1em;
 }
 
 .badge-active-attribute {
@@ -1477,14 +1524,30 @@
     border: 1px solid var(--blue-brand-hover);
     padding: 0.4em 0.85em;
     border-radius: 2em;
-    font-size: 0.925em;
+    font-size: 0.9em;
     display: inline-flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.35em;
 }
 
-.badge-active-attribute i:hover {
-    color: #0ea5e9;
+.badge-active-attribute svg {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+.badge-active-attribute svg:last-child {
+    width: 1.5em;
+    height: 1.5em;
+    stroke-width: 2px;
+}
+
+.badge-active-attribute svg {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+.badge-active-attribute svg:hover {
+    stroke: #0ea5e9;
 }
 
 .badge-active-attribute.badge-pill-pet {
@@ -1493,12 +1556,12 @@
     border: 1px solid #bbf7d0;
 }
 
-.badge-active-attribute.badge-pill-pet i {
-    color: #22c55e;
+.badge-active-attribute.badge-pill-pet svg {
+    stroke: #22c55e;
 }
 
-.badge-active-attribute.badge-pill-pet i:hover {
-    color: #1a9547;
+.badge-active-attribute.badge-pill-pet svg:hover {
+    stroke: #1a9547;
 }
 
 
@@ -1508,8 +1571,12 @@
     border: 1px solid #e9d5ff;
 }
 
-.badge-active-attribute.badge-photo-attached i {
-    color: #a855f7;
+.badge-active-attribute.badge-photo-attached svg {
+    stroke: #6b21a8;
+}
+
+.badge-active-attribute.badge-photo-attached svg:last-child:hover {
+    stroke: #a557e6;
 }
 
 @keyframes zoomInTag {
@@ -1533,6 +1600,8 @@
     align-items: center;
     justify-content: center;
     color: var(--blue-brand);
+    width: 1.3em;
+    height: 1.3em;
 }
 
 
@@ -1555,13 +1624,22 @@
     gap: 0.25em;
 }
 
-.badge-active-attribute-avanced i {
-    color: var(--text-secondary);
+.badge-active-attribute-avanced svg {
+    width: 1.3em;
+    height: 1.3em;
+    stroke: var(--text-secondary);
 }
 
 .badge-active-attribute-avanced .remove-tag-btn:hover {
-    color: var(--text-red);
+    stroke: var(--text-red);
 }
+
+.badge-active-attribute-avanced svg:last-child {
+    stroke-width: 2px;
+    width: 1.5em;
+    height: 1.5em;
+}
+
 
 
 .search-ia {
@@ -1615,14 +1693,18 @@
     padding: 0.25em 1em;
     font-size: .9em;
     font-weight: 300;
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }
 
 .first-visit-banner a b {
     font-weight: 700;
 }
 
-.first-visit-banner a i {
-    font-size: 0.9em;
+.first-visit-banner a svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 .dropdown-scroll {

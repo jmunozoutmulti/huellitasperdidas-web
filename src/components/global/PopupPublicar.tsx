@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { IconX } from '@tabler/icons-react';
 
 const INTERVALO_APARICION = 15000;
 
@@ -47,7 +48,7 @@ export default function PopupPublicar() {
                 onClick={handleClose}
                 aria-label="Cerrar aviso"
             >
-                <i className="ti ti-x"></i>
+                <IconX />
             </button>
 
             <div className="popup-publicar-body">

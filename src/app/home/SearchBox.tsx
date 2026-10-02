@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { PetData } from '@/lib/pets';
 import { getRecentSearches, addRecentSearch, removeRecentSearch as removeRecentSearchFromStorage } from '@/lib/searchHistory';
+import { IconClock, IconX, IconSearch } from '@tabler/icons-react';
 
 interface SearchBoxProps {
     pets: PetData[];
@@ -84,7 +85,7 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                                     >
                                         <div className="search-item-left">
                                             <div className="search-item-icon">
-                                                <i className="ti ti-clock"></i>
+                                                <IconClock />
                                             </div>
                                             <div className="search-item-info">
                                                 <span className="search-item-title">{search}</span>
@@ -96,7 +97,7 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                                             data-index={idx}
                                             onClick={(e) => removeRecentSearch(e, idx)}
                                         >
-                                            <i className="ti ti-x"></i>
+                                            <IconX />
                                         </button>
                                     </div>
                                 ))
@@ -116,7 +117,7 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                             >
                                 <div className="search-item-left">
                                     <div className="search-item-icon">
-                                        <i className="ti ti-search"></i>
+                                        <IconSearch />
                                     </div>
                                     <div className="search-item-info">
                                         <span className="search-item-title">
@@ -141,7 +142,7 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                                     >
                                         <div className="search-item-left">
                                             <div className="search-item-icon">
-                                                <i className="ti ti-search"></i>
+                                                <IconSearch />
                                             </div>
                                             <div className="search-item-info">
                                                 <span className="search-item-title">{pet.title}</span>
@@ -165,7 +166,7 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                     onSearch('');
                 }}
             >
-                <i className="ti ti-x"></i>
+                <IconX />
             </button>
         </div>
     );

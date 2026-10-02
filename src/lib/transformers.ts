@@ -111,7 +111,7 @@ function detectExternalType(sourceUrl: string | null): 'facebook' | 'instagram' 
 export function reportToPetData(report: Report): PetData {
     const id = report.id;
 
-    const isExternal = report.source_type === 'website';
+    const isExternal = report.report_type === 'unknown' && (report.source_type === 'website' || report.source_type === 'manual_admin');
 
     const isPremium = isPremiumReport(report);
     const externalType = isExternal ? detectExternalType(report.source_url) : undefined;

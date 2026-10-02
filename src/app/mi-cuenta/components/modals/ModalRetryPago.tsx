@@ -1,11 +1,11 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
 import { retryPayment, ReportsApiError } from '@/lib/reportsApi';
 import type { PaymentInfo } from '@/lib/paymentsApi';
 import CheckoutPago from '@/components/checkout/CheckoutPago';
+import { IconCreditCardPay, IconX, IconLoader, IconShieldCheck } from '@tabler/icons-react';
 
 interface ModalRetryPagoProps {
     isOpen: boolean;
@@ -68,23 +68,23 @@ export default function ModalRetryPago({ isOpen, id, onClose, onPaid }: ModalRet
                 <div className="planes-modal-header">
                     <div>
                         <span className="planes-modal-eyebrow">
-                            <i className="ti ti-credit-card-pay"></i> Terminar de pagar
+                            <IconCreditCardPay /> Terminar de pagar
                         </span>
                     </div>
                     <button type="button" className="planes-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
 
                 {isLoading || !pendingPayment ? (
                     <div className="admin-info-box info-box-revision">
-                        <i className="ti ti-loader"></i>
+                        <IconLoader />
                         <p>Preparando tu pago...</p>
                     </div>
                 ) : (
                     <div className="payment-gateway-box">
                         <h4>
-                            <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                            <IconShieldCheck /> Pago seguro
                         </h4>
                         <CheckoutPago
                             payment={pendingPayment}

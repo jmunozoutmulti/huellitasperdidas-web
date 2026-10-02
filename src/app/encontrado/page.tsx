@@ -17,6 +17,30 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { getCountryByAbbr, getLocaleForCountry, type Country } from '@/lib/countries';
 import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
 import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
+import {
+    IconSparkles,
+    IconHeartHandshake,
+    IconCameraPlus,
+    IconX,
+    IconCalendarSearch,
+    IconGenderMale,
+    IconVenus,
+    IconInfoCircle,
+    IconChevronLeft,
+    IconChevronRight,
+    IconCheck,
+    IconCircleCheck,
+    IconCalendarBolt,
+    IconEye,
+    IconBrandWhatsapp,
+    IconCut,
+    IconPlus,
+    IconMapPin,
+    IconClock,
+    IconLoader,
+    IconCircleCheckFilled,
+    IconCircleDashedCheck
+} from '@tabler/icons-react';
 
 export default function PublicarEncontradoPage() {
 
@@ -546,7 +570,7 @@ export default function PublicarEncontradoPage() {
                         <div className="slogan-paragraph">
                             <div>
                                 <span className="slogan-eyebrow">
-                                    <i className="ti ti-sparkles"></i> Cómo funciona
+                                    <IconSparkles /> Cómo funciona
                                 </span>
                                 <div className="slogan-body">
                                     <p>
@@ -557,7 +581,7 @@ export default function PublicarEncontradoPage() {
                                 <div className="slogan-reach-row">
                                     <div className="slogan-reach-item">
                                         <span className="slogan-reach-icon">
-                                            <i className="ti ti-heart-handshake"></i>
+                                            <IconHeartHandshake />
                                         </span>
                                         <span>
                                             Publicación <b>100% gratuita</b>, visible de inmediato para la comunidad.
@@ -602,7 +626,7 @@ export default function PublicarEncontradoPage() {
                                                 >
                                                     {!uploadedImages[idx] && (
                                                         <>
-                                                            <i className="ti ti-camera-plus"></i>
+                                                            <IconCameraPlus />
                                                             <input
                                                                 type="file"
                                                                 className="pet-photo-input"
@@ -627,7 +651,7 @@ export default function PublicarEncontradoPage() {
                                                             data-index={idx}
                                                             onClick={() => handleRemovePhoto(idx)}
                                                         >
-                                                            <i className="ti ti-x"></i>
+                                                            <IconX />
                                                         </button>
                                                     )}
                                                 </div>
@@ -677,7 +701,7 @@ export default function PublicarEncontradoPage() {
                                                     setIsDatePopoverOpen(!isDatePopoverOpen);
                                                 }}
                                             >
-                                                <i className="ti ti-calendar-search"></i>
+                                                <IconCalendarSearch />
                                                 <input
                                                     type="text"
                                                     id="e-fecha-display"
@@ -743,7 +767,8 @@ export default function PublicarEncontradoPage() {
                                                             clearFieldError('fecha');
                                                         }}
                                                         options={[
-                                                            { value: '2026', label: '2026' }
+                                                            { value: '2026', label: '2026' },
+                                                            { value: '2025', label: '2025' }
                                                         ]}
                                                     />
                                                 </div>
@@ -764,7 +789,8 @@ export default function PublicarEncontradoPage() {
                                                         clearFieldError('sexo');
                                                     }}
                                                 >
-                                                    <i className="ti ti-gender-male"></i> Macho
+                                                    <IconGenderMale /> Macho
+                                                    <IconCircleDashedCheck className="icon-check-active" />
                                                 </button>
                                                 <button
                                                     type="button"
@@ -776,7 +802,8 @@ export default function PublicarEncontradoPage() {
                                                         clearFieldError('sexo');
                                                     }}
                                                 >
-                                                    <i className="ti ti-venus"></i> Hembra
+                                                    <IconVenus /> Hembra
+                                                    <IconCircleDashedCheck className="icon-check-active" />
                                                 </button>
                                             </div>
                                         </div>
@@ -872,7 +899,7 @@ export default function PublicarEncontradoPage() {
                                             <label>¿Dónde lo encontraste?</label>
                                             {!isCountryReady ? (
                                                 <div className="admin-info-box">
-                                                    <i className="ti ti-info-circle"></i>
+                                                    <IconInfoCircle />
                                                     <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
                                                 </div>
                                             ) : (
@@ -983,7 +1010,7 @@ export default function PublicarEncontradoPage() {
                                             onClick={() => setIsCollapsibleOpen(!isCollapsibleOpen)}
                                         >
                                             <span className="icon">
-                                                <i className="fa-solid fa-plus"></i>
+                                                <IconPlus />
                                             </span>
                                             <div>
                                                 <strong>Agregar más detalles</strong>
@@ -1028,7 +1055,7 @@ export default function PublicarEncontradoPage() {
                                     </div>
 
                                     <div className="upgrade-notice-banner">
-                                        <i className="fa-solid fa-circle-info"></i>
+                                        <IconInfoCircle />
                                         <p>
                                             Gracias por ayudar. Tu publicación es <b>100% gratuita</b>{' '}
                                             y estará visible de inmediato para la comunidad.
@@ -1049,7 +1076,7 @@ export default function PublicarEncontradoPage() {
                                                 onChange={(e) => setAcceptTerms(e.target.checked)}
                                             />
                                             <span className="terms-checkbox-custom">
-                                                <i className="fa-solid fa-check"></i>
+                                                <i className="check"></i>
                                             </span>
                                             <span className="terms-checkbox-text">
                                                 Acepto que he leído y declaro que la información publicada es verídica.{' '}
@@ -1071,7 +1098,7 @@ export default function PublicarEncontradoPage() {
                                     style={{ display: currentStep > 1 ? 'inline-flex' : 'none' }}
                                     onClick={handlePrevStep}
                                 >
-                                    <i className="ti ti-chevron-left"></i> Anterior
+                                    <IconChevronLeft /> Anterior
                                 </button>
 
                                 <button
@@ -1087,11 +1114,11 @@ export default function PublicarEncontradoPage() {
                                         'Generando flyer...'
                                     ) : currentStep === 1 ? (
                                         <>
-                                            Siguiente <i className="ti ti-chevron-right"></i>
+                                            Siguiente <IconChevronRight />
                                         </>
                                     ) : (
                                         <>
-                                            <i className="ti ti-check"></i> Publicar Gratis
+                                            <IconCheck /> Publicar Gratis
                                         </>
                                     )}
                                 </button>
@@ -1114,7 +1141,7 @@ export default function PublicarEncontradoPage() {
                                         <span className="status-pulse"></span> Flyer Generado
                                     </span>
                                     <span className="summary-ready-badge">
-                                        <i className="ti ti-circle-check"></i> Listo
+                                        <IconCircleCheck /> Listo
                                     </span>
                                 </div>
                             </div>
@@ -1136,13 +1163,13 @@ export default function PublicarEncontradoPage() {
                                         <div className="summary-date-col">
                                             <span className="summary-date-label">Vigencia</span>
                                             <strong className="summary-date-value">
-                                                <i className="ti ti-calendar-bolt"></i> 3 meses
+                                                <IconCalendarBolt /> 3 meses
                                             </strong>
                                         </div>
                                     </div>
 
                                     <div className="summary-activacion-badge badge-activacion-green">
-                                        <i className="fa-solid fa-clock"></i>
+                                        <IconClock />
                                         <div>
                                             <b>En revisión</b>
                                             <p>Aprobación en máximo 24 hrs hábiles.</p>
@@ -1174,11 +1201,11 @@ export default function PublicarEncontradoPage() {
                                         >
                                             {isFlyerMobileVisible ? (
                                                 <>
-                                                    <i className="ti ti-x"></i> Cerrar
+                                                    <IconX /> Cerrar
                                                 </>
                                             ) : (
                                                 <>
-                                                    <i className="ti ti-eye"></i> Ver el Flyer
+                                                    <IconEye /> Ver el Flyer
                                                 </>
                                             )}
                                         </button>
@@ -1204,7 +1231,7 @@ export default function PublicarEncontradoPage() {
                                             >
                                                 {validPhotos.length === 0 ? (
                                                     <div className="flyer-img-placeholder" id="flyer-main-img-view">
-                                                        <i className="ti ti-camera-plus"></i>
+                                                        <IconCameraPlus />
                                                     </div>
                                                 ) : (
                                                     validPhotos.map((imgSrc, idx) => (
@@ -1220,9 +1247,9 @@ export default function PublicarEncontradoPage() {
                                                     ))
                                                 )}
                                             </div>
-                                            {distrito && (
+                                            {(distrito || provincia) && (
                                                 <p className="flyer-txt-distrito" id="flyer-txt-distrito">
-                                                    <i className="fa-solid fa-location-dot"></i> {distrito}
+                                                    <IconMapPin /> {distrito || provincia}
                                                 </p>
                                             )}
                                         </div>
@@ -1239,7 +1266,7 @@ export default function PublicarEncontradoPage() {
                                                     Si es tu mascota, llama o escribe al
                                                 </span>
                                                 <div className="flyer-footer-number">
-                                                    <i className="ti ti-brand-whatsapp"></i>
+                                                    <IconBrandWhatsapp />
                                                     <span id="flyer-txt-tel">{telefono || '---------'}</span>
                                                 </div>
                                             </div>
@@ -1247,7 +1274,7 @@ export default function PublicarEncontradoPage() {
                                     </div>
 
                                     <p className="editor-canvas-caption">
-                                        <i className="ti ti-cut"></i> Podrás imprimir este anuncio
+                                        <IconCut /> Podrás imprimir este anuncio
                                     </p>
                                 </div>
                             </div>
@@ -1266,7 +1293,7 @@ export default function PublicarEncontradoPage() {
                 <div className="status-overlay-card">
                     <div className="overlay-content">
                         <span className="overlay-eyebrow">
-                            <i className="fa-solid fa-circle-check"></i> Reporte enviado
+                            <IconCircleCheckFilled /> Reporte enviado
                         </span>
                         <h3 id="overlay-title">Procesando reporte...</h3>
                         <p id="overlay-msg">
@@ -1276,7 +1303,7 @@ export default function PublicarEncontradoPage() {
                     </div>
 
                     <div className="overlay-redirect-row">
-                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                        <IconLoader className="animate-spin" />
                         <span>Redirigiendo en unos segundos...</span>
                     </div>
 

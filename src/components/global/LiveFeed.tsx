@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import '@/styles/global/live-feed.css';
 import { fetchReports, type Report } from '@/lib/api';
+import { IconX } from '@tabler/icons-react';
 
 type FeedType = 'avistamiento' | 'perdido' | 'encontrado' | 'adopcion';
 
@@ -142,7 +143,7 @@ export default function LiveFeed() {
                 onClick={handleClose}
                 aria-label="Cerrar notificación"
             >
-                <i className="ti ti-x"></i>
+                <IconX />
             </button>
         </div>
     );

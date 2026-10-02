@@ -1,12 +1,13 @@
 'use client';
 
 import { ReactNode, useEffect, useRef } from 'react';
+import { IconRefresh, IconX } from '@tabler/icons-react';
 
 interface AlertBannerProps {
     type: 'danger' | 'info';
     message: ReactNode;
     actionLabel?: string;
-    actionIcon?: string;
+    actionIcon?: React.ReactNode;
     onAction?: () => void;
     onClose?: () => void;
     autoDismiss?: boolean;
@@ -17,15 +18,12 @@ export default function AlertBanner({
     type,
     message,
     actionLabel,
-    actionIcon = 'ti ti-refresh',
+    actionIcon = <IconRefresh />,
     onAction,
     onClose,
     autoDismiss = true,
     dismissible = true,
 }: AlertBannerProps) {
-    // Ref para siempre llamar el onClose más reciente, sin que el timer
-    // se reinicie cada vez que el padre se re-renderiza (onClose suele
-    // pasarse como función inline, que cambia de referencia en cada render).
     const onCloseRef = useRef(onClose);
     useEffect(() => {
         onCloseRef.current = onClose;
@@ -37,8 +35,6 @@ export default function AlertBanner({
             onCloseRef.current?.();
         }, 10000);
         return () => clearTimeout(timer);
-        // Se arma una sola vez al montar el banner — no se reinicia por re-renders del padre.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -50,7 +46,12 @@ export default function AlertBanner({
                         <>
                             {' '}
                             <button type="button" className="btn-time-add" onClick={onAction}>
-                                <i className={actionIcon}></i> {actionLabel}
+                                {actionIcon && (
+                                    <span className="alert-action-icon">
+                                        {typeof actionIcon === 'string' ? <i className={actionIcon}></i> : actionIcon}
+                                    </span>
+                                )}
+                                {' '}{actionLabel}
                             </button>
                         </>
                     )}
@@ -58,7 +59,7 @@ export default function AlertBanner({
             </div>
             {dismissible && onClose && (
                 <button type="button" className="btn-banner btn-banner-danger" onClick={onClose}>
-                    <i className="ti ti-x"></i>
+                    <IconX />
                 </button>
             )}
         </div>

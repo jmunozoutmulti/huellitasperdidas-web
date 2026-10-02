@@ -7,15 +7,24 @@ import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getDiasRestantes } from '@/lib/publications';
 import PubCard from '../cards/PubCard';
 import AlertBanner from '@/components/global/AlertBanner';
+import {
+    IconInfoCircle,
+    IconCheck,
+    IconClock,
+    IconCreditCard,
+    IconBan,
+    IconX,
+    IconHistory,
+} from '@tabler/icons-react';
 
 type Tab = 'activas' | 'revision' | 'pago_pendiente' | 'rechazadas' | 'finalizadas';
 
-const TAB_ICON: Record<Tab, string> = {
-    activas: 'ti-check',
-    revision: 'ti-clock',
-    pago_pendiente: 'ti-credit-card',
-    rechazadas: 'ti-ban',
-    finalizadas: 'ti-x',
+const TAB_ICON: Record<Tab, React.ElementType> = {
+    activas: IconCheck,
+    revision: IconClock,
+    pago_pendiente: IconCreditCard,
+    rechazadas: IconBan,
+    finalizadas: IconX,
 };
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -26,19 +35,12 @@ const TAB_LABEL: Record<Tab, string> = {
     finalizadas: 'Finalizados',
 };
 
-// Un aviso 'active' cuyo expires_at ya pasó se trata como Finalizado en
-// pantalla, aunque el backend todavía no tenga un job que lo pase a
-// spam/resolved automáticamente (confirmado con backend: no existe ese
-// job todavía) — evita mostrarlo como si siguiera vigente.
 function isExpired(pub: Report): boolean {
     if (!pub.expires_at) return false;
     return new Date(pub.expires_at).getTime() < Date.now();
 }
 
 function getTab(pub: Report): Tab | null {
-    // El pago manda primero: un aviso con pago pendiente/fallido no debe
-    // mezclarse en "En revisión" como si ya estuviera esperando aprobación
-    // normal — todavía no completó ni el primer paso (pagar).
     if (pub.payment_status === 'pending' || pub.payment_status === 'failed') {
         return 'pago_pendiente';
     }
@@ -47,11 +49,8 @@ function getTab(pub: Report): Tab | null {
     if (pub.status === 'active') {
         return isExpired(pub) ? 'finalizadas' : 'activas';
     }
-    // Detener pone status en 'spam' (confirmado con backend) — mismo bucket
-    // que "venció solo". Se distinguen dentro de la tarjeta con stopped_by_user,
-    // no con una pestaña aparte.
     if (pub.status === 'spam' || pub.status === 'resolved' || pub.status === 'inactive') return 'finalizadas';
-    return null; // 'deleted' u otro estado no contemplado — no se muestra
+    return null;
 }
 
 interface DashboardSectionProps {
@@ -141,7 +140,7 @@ export default function DashboardSection({
             <div className="dashboard-recent-header">
                 <h2 className="dashboard-subsection-title">Mis avisos</h2>
                 <p>
-                    <i className="ti ti-info-circle"></i> Resumen del rendimiento de tus avisos
+                    <IconInfoCircle /> Resumen del rendimiento de tus avisos
                 </p>
             </div>
 
@@ -165,7 +164,7 @@ export default function DashboardSection({
                             </>
                         }
                         actionLabel="Ampliar tiempo"
-                        actionIcon="ti ti-history"
+                        actionIcon={<IconHistory />}
                         onAction={() => onOpenTiempo(p.id)}
                         onClose={() => setDismissedBannerIds((prev) => new Set(prev).add(p.id))}
                     />
@@ -173,19 +172,22 @@ export default function DashboardSection({
 
             <div className="dashboard-filters">
                 <div className="pub-tabs">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            type="button"
-                            className={`pub-tab ${activePubTab === tab ? 'active' : ''}`}
-                            onClick={() => setActivePubTab(tab)}
-                        >
-                            <i className={`ti ${TAB_ICON[tab]}`}></i> {TAB_LABEL[tab]}{' '}
-                            <span className={`pub-tab-count ${countByTab(tab) > 9 ? 'pill' : ''}`}>
-                                {countByTab(tab)}
-                            </span>
-                        </button>
-                    ))}
+                    {tabs.map((tab) => {
+                        const TabIcon = TAB_ICON[tab];
+                        return (
+                            <button
+                                key={tab}
+                                type="button"
+                                className={`pub-tab ${activePubTab === tab ? 'active' : ''}`}
+                                onClick={() => setActivePubTab(tab)}
+                            >
+                                <TabIcon /> {TAB_LABEL[tab]}{' '}
+                                <span className={`pub-tab-count ${countByTab(tab) > 9 ? 'pill' : ''}`}>
+                                    {countByTab(tab)}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

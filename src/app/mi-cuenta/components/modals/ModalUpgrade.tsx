@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
@@ -8,6 +7,25 @@ import { getPackages, type PackageOption } from '@/lib/packagesApi';
 import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
 import type { PaymentInfo } from '@/lib/paymentsApi';
 import CheckoutPago from '@/components/checkout/CheckoutPago';
+import {
+    IconLoader,
+    IconBroadcast,
+    IconX,
+    IconInfoCircle,
+    IconUsers,
+    IconBolt,
+    IconCameraSearch,
+    IconHelp,
+    IconCheck,
+    IconShieldCheck,
+    IconCreditCard,
+    IconBrandFacebook,
+    IconBrandInstagram,
+    IconBrandTiktok,
+    IconBrandMessenger,
+    IconCurrentLocation
+} from '@tabler/icons-react';
+
 
 interface ModalUpgradeProps {
     isOpen: boolean;
@@ -83,7 +101,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                 <div className="planes-modal-backdrop" onClick={onClose}></div>
                 <div className="planes-modal-card wide">
                     <div className="admin-info-box info-box-revision">
-                        <i className="ti ti-loader"></i>
+                        <IconLoader />
                         <p>Cargando...</p>
                     </div>
                 </div>
@@ -99,15 +117,15 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                     <div className="planes-modal-header">
                         <div>
                             <span className="planes-modal-eyebrow">
-                                <i className="ti ti-broadcast"></i> Pasar a plan de pago
+                                <IconBroadcast /> Pasar a plan de pago
                             </span>
                         </div>
                         <button type="button" className="planes-modal-close" onClick={onClose}>
-                            <i className="ti ti-x"></i>
+                            <IconX />
                         </button>
                     </div>
                     <div className="admin-info-box">
-                        <i className="ti ti-info-circle"></i>
+                        <IconInfoCircle />
                         <p>Este país aún no está configurado para esta función. Vuelve más tarde.</p>
                     </div>
                 </div>
@@ -147,11 +165,11 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                 <div className="planes-modal-header">
                     <div>
                         <span className="planes-modal-eyebrow">
-                            <i className="ti ti-broadcast"></i> Pasar a plan de pago
+                            <IconBroadcast /> Pasar a plan de pago
                         </span>
                     </div>
                     <button type="button" className="planes-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
 
@@ -163,11 +181,11 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                 <div className="upgrade-map-ring-base"></div>
                                 <div className={`upgrade-map-ring-growth level-${packages.findIndex((p) => p.slug === val) + 1}`}></div>
                                 <div className="upgrade-map-pin">
-                                    <i className="fa-solid fa-street-view"></i>
+                                    <IconCurrentLocation />
                                 </div>
                             </div>
                             <p className="upgrade-map-caption">
-                                <i className="ti ti-users"></i>
+                                <IconUsers />
                                 Tu aviso llegará a <b>+{planActual?.adsMetaAudience?.toLocaleString(getLocaleForCountry(pub?.country)) ?? '0'}</b> personas en la <b>zona de perdida</b>
                             </p>
                         </div>
@@ -188,7 +206,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                         <div className={`plan-item ${isUrgente ? 'plan-item-premium' : ''}`}>
                                             {isUrgente && (
                                                 <span className="tag-info">
-                                                    <i className="ti ti-bolt"></i> Máxima Difusión
+                                                    <IconBolt /> Máxima Difusión
                                                 </span>
                                             )}
                                             <div className="row-plan">
@@ -198,7 +216,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                                 </div>
                                                 <div className="plan-card">
                                                     <div className="plan-price"><i>{currencySymbol}</i> {pkg.price} {currencyCode}</div>
-                                                    <span>/ <i className="fa-regular fa-credit-card"></i> Pago único</span>
+                                                    <span>/ <IconCreditCard /> Pago único</span>
                                                 </div>
                                             </div>
                                             <div className="row-data-plan">
@@ -206,10 +224,10 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                                     <div className="plan-features-list">
                                                         {pkg.channels.map((ch) => (
                                                             <span key={ch} className={`plan-feature-tag btn-${ch}`}>
-                                                                {ch === 'facebook' && <i className="fa-brands fa-facebook"></i>}
-                                                                {ch === 'instagram' && <i className="fa-brands fa-instagram"></i>}
-                                                                {ch === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                                                                {ch === 'messenger' && <i className="fa-brands fa-facebook-messenger"></i>}
+                                                                {ch === 'facebook' && <IconBrandFacebook />}
+                                                                {ch === 'instagram' && <IconBrandInstagram />}
+                                                                {ch === 'tiktok' && <IconBrandTiktok />}
+                                                                {ch === 'messenger' && <IconBrandMessenger />}
                                                                 {' '}{ch.charAt(0).toUpperCase() + ch.slice(1)}
                                                             </span>
                                                         ))}
@@ -217,18 +235,18 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                                 )}
                                                 <div className="attributes-plan">
                                                     <ul>
-                                                        <li><i className="ti ti-broadcast"></i><b>{pkg.days} días</b> de difusión</li>
+                                                        <li><IconBroadcast /><b>{pkg.days} días</b> de difusión</li>
                                                         {pkg.centinela && (
                                                             <li>
-                                                                <i className="ti ti-camera-search"></i> Incluye <b>Centinela IA</b> 24/7
+                                                                <IconCameraSearch /> Incluye <b>Centinela IA</b> 24/7
                                                             </li>
                                                         )}
                                                         {pkg.includesRefund && (
                                                             <li>
                                                                 <div className="tooltip-wrap">
-                                                                    <i className="ti ti-help tooltip-trigger"></i>
+                                                                    <IconHelp className="tooltip-trigger" />
                                                                     <span className="tooltip-box">
-                                                                        <i className="ti ti-info-circle"></i> Si encuentras a tu mascota antes, te <b>devolvemos</b> los días restantes del plan.
+                                                                        <IconInfoCircle /> Si encuentras a tu mascota antes, te <b>devolvemos</b> los días restantes del plan.
                                                                     </span>
                                                                 </div> Incluye <b><u>reembolso</u></b>
                                                             </li>
@@ -244,7 +262,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
 
                         <div className="planes-modal-actions">
                             <div className="text-modal">
-                                <i className="ti ti-info-circle"></i> Tu aviso mantiene su fecha de publicación original
+                                <IconInfoCircle /> Tu aviso mantiene su fecha de publicación original
                             </div>
                             <button
                                 type="button"
@@ -256,7 +274,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
                                     'Procesando...'
                                 ) : (
                                     <>
-                                        <i className="ti ti-check"></i> Continuar
+                                        <IconCheck /> Continuar
                                     </>
                                 )}
                             </button>
@@ -278,7 +296,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                    <IconShieldCheck /> Pago seguro
                                 </h4>
 
                                 <CheckoutPago

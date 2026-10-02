@@ -26,6 +26,10 @@
     color: var(--text-main);
 }
 
+.filter-buttons button svg {
+    width: 1.1em;
+    height: 1.1em;
+}
 
 .filter-buttons button.active[data-type="perdido"],
 .filter-buttons button[data-type="perdido"]:hover {
@@ -130,7 +134,8 @@
 }
 
 .filter-clear-icon {
-    font-size: 1.1em;
+    width: 1.1em;
+    height: 1.1em;
 }
 
 
@@ -192,6 +197,12 @@
     gap: 0.25em;
     align-items: center;
 }
+
+.badge svg {
+    width: 1em;
+    height: 1em;
+}
+
 
 .badge-max-priority {
     background-color: var(--yellow-brand);
@@ -267,6 +278,10 @@
 
 .pet-card-adoptar-premium .card-meta i {
     color: var(--purple-brand-light);
+}
+
+.pet-card-adoptar-premium .card-meta svg {
+    stroke: var(--purple-brand-light);
 }
 
 .pet-card-adoptar-premium .reward-amount-premium {
@@ -434,8 +449,11 @@
     color: var(--text-main);
 }
 
-.detail-location-row i {
-    font-size: 1.1em;
+.detail-location-row svg {
+    width: 1.1em;
+    height: 1.1em;
+    stroke: var(--text-main);
+    margin-bottom: -1px;
 }
 
 
@@ -465,8 +483,21 @@
     color: var(--text-secondary);
 }
 
+.card-meta svg {
+    width: 1.175em;
+    height: 1.175em;
+    min-width: 1.175em;
+    min-height: 1.175em;
+    stroke: var(--text-secondary);
+    margin-bottom: -1px;
+}
+
 .pet-card-premium .card-meta i {
     color: #fecdd3;
+}
+
+.pet-card-premium .card-meta svg {
+    stroke: #fecdd3;
 }
 
 .reward-container {
@@ -546,8 +577,9 @@
     gap: 3px;
 }
 
-.card-footer span i {
-    font-size: 1.175em;
+.card-footer span svg {
+    width: 1.175em;
+    height: 1.175em;
 }
 
 .card-footer span b {
@@ -577,7 +609,7 @@
     align-items: center;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 1em;
-    margin-bottom: 1em;
+    margin-bottom: 0.75em;
 }
 
 .header-right-actions {
@@ -602,6 +634,11 @@
     transition: all 0.3s ease;
 }
 
+.action-icon-btn svg {
+    height: 1.175em;
+    width: 1.175em;
+}
+
 .action-icon-btn:hover {
     background: var(--bg-hover);
     color: var(--text-white)
@@ -617,8 +654,9 @@
 }
 
 
-#btn-detail-share i {
-    font-size: 1.3em;
+#btn-detail-share svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
 
@@ -744,7 +782,7 @@
 }
 
 .item-x .grid-icon-circle img {
-    width: 1.3em;
+    width: 1.1em;
 }
 
 #btn-copy-link i {
@@ -830,8 +868,9 @@
     gap: 0.35em;
 }
 
-.detail-img-stats span i {
-    font-size: 1.175em;
+.detail-img-stats span svg {
+    width: 1.175em;
+    height: 1.175em;
 }
 
 #detail-img-badge {
@@ -1043,18 +1082,32 @@
     text-decoration: none;
     font-weight: 500;
     font-size: 0.9em;
+    width: fit-content;
     padding: 0.85em 1.375em;
     border-radius: 3em;
     display: flex;
     align-items: center;
     gap: 0.35em;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: transform 0.3s;
 }
 
-.btn-external-link i {
-    font-size: 1.3em;
+.btn-external-link svg {
+    width: 1.3em;
+    height: 1.3em;
 }
+
+.detail-btn-external-link {
+    margin-top: 1em;
+    font-size: 1em !important;
+    background: var(--bg-input) !important;
+}
+
+.detail-btn-external-link:hover {
+    background: var(--bg-hover) !important;
+    color: var(--text-white) !important;
+}
+
+
 
 a.pet-card.external-direct {
     text-decoration: none;
@@ -1091,8 +1144,9 @@ a.pet-card.external-direct:hover {
 }
 
 .accordion-arrow-icon {
-    font-size: 1em;
-    color: var(--text-main);
+    width: 1.5em;
+    height: 1.5em;
+    stroke: var(--text-main);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1187,15 +1241,21 @@ a.pet-card.external-direct:hover {
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
-    display: inline-flex;
     align-items: center;
     width: 1em;
-    justify-content: center;
 }
 
 .comment-action-icon-btn:hover {
     color: var(--text-main);
 }
+
+.comment-action-icon-btn svg {
+    width: 1.375em;
+    height: 1.375em;
+}
+
+
+
 
 .comment-reactions-badge {
     display: flex;
@@ -1241,7 +1301,7 @@ a.pet-card.external-direct:hover {
     flex-grow: 1;
     background: transparent;
     border: none;
-    padding: 0.5em 0;
+    padding: 0.7em 0;
     font-size: 1em;
     color: var(--text-main);
 }
@@ -1258,7 +1318,7 @@ a.pet-card.external-direct:hover {
     font-size: 1.3em;
     color: var(--text-main);
     width: 2em;
-    height: 2.2em;
+    height: 2em;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1266,8 +1326,13 @@ a.pet-card.external-direct:hover {
     transition: background-color 0.2s;
 }
 
-.dock-tool-btn:hover {
-    background-color: var(--bg-alt);
+.dock-tool-btn svg {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+.dock-tool-btn:hover svg {
+    stroke: var(--brand-red);
 }
 
 .emoji-picker-wrapper {
@@ -1695,8 +1760,9 @@ a.pet-card.external-direct:hover {
         font-size: 15.25px;
     }
 
-    .buttonmobilegrid {
-        font-size: 1.4em !important;
+    .buttonmobilegrid svg {
+        width: 1.6em !important;
+        height: 1.6em !important;
         padding: 0 !important;
     }
 

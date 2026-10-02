@@ -1,9 +1,15 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
 import { AuthApiError } from '@/lib/authApi';
+import {
+    IconX,
+    IconInfoCircle,
+    IconEye,
+    IconEyeOff,
+    IconDeviceFloppy,
+} from '@tabler/icons-react';
 
 interface ModalCambiarClaveProps {
     isOpen: boolean;
@@ -71,13 +77,13 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
                 <div className="app-modal-header">
                     <h3>{isCreating ? 'Crear contraseña' : 'Cambiar contraseña'}</h3>
                     <button type="button" className="app-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
                 <div className="app-modal-body">
                     {isCreating && (
                         <div className="admin-info-box">
-                            <i className="ti ti-info-circle"></i>
+                            <IconInfoCircle />
                             <p>
                                 Tu cuenta se creó con Google y todavía no tiene contraseña propia.
                                 Crea una para poder entrar también con tu correo y contraseña.
@@ -100,7 +106,7 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
                                 onClick={() => setShowCurrent((v) => !v)}
                                 aria-label={showCurrent ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                             >
-                                <i className={showCurrent ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                                {showCurrent ? <IconEyeOff /> : <IconEye />}
                             </button>
                         </div>
                     )}
@@ -120,7 +126,7 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
                             onClick={() => setShowNew((v) => !v)}
                             aria-label={showNew ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                         >
-                            <i className={showNew ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                            {showNew ? <IconEyeOff /> : <IconEye />}
                         </button>
                     </div>
 
@@ -144,7 +150,7 @@ export default function ModalCambiarClave({ isOpen, onClose }: ModalCambiarClave
                         disabled={!canSubmit || isSaving}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-device-floppy"></i>{' '}
+                        <IconDeviceFloppy />
                         {isSaving ? 'Guardando...' : isCreating ? 'Crear contraseña' : 'Guardar nueva contraseña'}
                     </button>
                 </div>

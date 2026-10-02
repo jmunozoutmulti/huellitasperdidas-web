@@ -1,4 +1,15 @@
 'use client';
+import {
+    IconInfoCircle,
+    IconSun,
+    IconMoon,
+    IconHeartBroken,
+    IconPaw,
+    IconBinoculars,
+    IconHomeHeart,
+    IconAlertTriangle,
+    IconTrash,
+} from '@tabler/icons-react';
 
 interface AjustesSectionProps {
     isDarkMode: boolean;
@@ -20,7 +31,7 @@ export default function AjustesSection({
             <div className="dashboard-recent-header">
                 <h2 className="dashboard-subsection-title">Ajustes</h2>
                 <p>
-                    <i className="ti ti-info-circle"></i> Personaliza tu experiencia
+                    <IconInfoCircle /> Personaliza tu experiencia
                 </p>
             </div>
 
@@ -29,7 +40,7 @@ export default function AjustesSection({
                     <div className="ajuste-info">
                         <div className="dropdown-theme-block">
                             <span className="dropdown-theme-label">
-                                <i className={isDarkMode ? 'ti ti-sun theme-icon' : 'ti ti-moon theme-icon'}></i>
+                                {isDarkMode ? <IconSun className="theme-icon" /> : <IconMoon className="theme-icon" />}
                                 <span className="theme-label">
                                     {isDarkMode ? 'Modo claro' : 'Modo oscuro'}
                                 </span>
@@ -52,7 +63,7 @@ export default function AjustesSection({
 
                 <div className="ajuste-row ajuste-col">
                     <div className="ajuste-info">
-                        <span className="ajuste-title">Notificarme solo de</span>
+                        <span className="ajuste-title">Notificaciones</span>
                         <span className="ajuste-desc">
                             Filtra los tipos de alertas que recibes por correo — si desactivas todas, no se te enviará ningún aviso
                         </span>
@@ -64,7 +75,7 @@ export default function AjustesSection({
                                 checked={notifTipos.lost}
                                 onChange={() => onToggleNotifTipo('lost')}
                             />
-                            <i className="ti ti-heart-broken"></i> Perdidos
+                            <IconHeartBroken /> Perdidos
                         </label>
                         <label className={`ajuste-check-btn ${notifTipos.found ? 'active' : ''}`}>
                             <input
@@ -72,7 +83,7 @@ export default function AjustesSection({
                                 checked={notifTipos.found}
                                 onChange={() => onToggleNotifTipo('found')}
                             />
-                            <i className="ti ti-paw"></i> Encontrados
+                            <IconPaw /> Encontrados
                         </label>
                         <label className={`ajuste-check-btn ${notifTipos.sighting ? 'active' : ''}`}>
                             <input
@@ -80,7 +91,7 @@ export default function AjustesSection({
                                 checked={notifTipos.sighting}
                                 onChange={() => onToggleNotifTipo('sighting')}
                             />
-                            <i className="ti ti-binoculars"></i> Avistamientos
+                            <IconBinoculars /> Avistamientos
                         </label>
                         <label className={`ajuste-check-btn ${notifTipos.adoption ? 'active' : ''}`}>
                             <input
@@ -88,7 +99,7 @@ export default function AjustesSection({
                                 checked={notifTipos.adoption}
                                 onChange={() => onToggleNotifTipo('adoption')}
                             />
-                            <i className="ti ti-home-heart"></i> Adopciones
+                            <IconHomeHeart /> Adopciones
                         </label>
                     </div>
                 </div>
@@ -96,7 +107,7 @@ export default function AjustesSection({
 
             <div className="datos-danger-zone">
                 <h5 className="danger-zone-title">
-                    <i className="ti ti-alert-triangle"></i> Zona de peligro
+                    <IconAlertTriangle /> Zona de peligro
                 </h5>
                 <p className="danger-zone-desc">
                     Eliminar tu cuenta es permanente.{' '}
@@ -106,7 +117,7 @@ export default function AjustesSection({
                         id="btn-baja-cuenta"
                         onClick={onOpenBajaCuenta}
                     >
-                        <i className="ti ti-trash"></i> <span>Eliminar</span>
+                        <IconTrash /> <span>Eliminar</span>
                     </button>
                 </p>
             </div>

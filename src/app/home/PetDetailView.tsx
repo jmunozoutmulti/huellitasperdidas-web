@@ -15,6 +15,23 @@ import { hasViewedReport, markReportViewed } from '@/lib/viewTracking';
 
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { startConversation, flagReport, MessagesApiError } from '@/lib/messagesApi';
+import {
+    IconHeartQuestion,
+    IconShare,
+    IconUsers,
+    IconX,
+    IconHeartFilled,
+    IconHeart,
+    IconMapPin,
+    IconBookmark,
+    IconBookmarkFilled,
+    IconBrandWhatsapp,
+    IconBrandMessenger,
+    IconBrandFacebook,
+    IconLink,
+    IconDotsVertical,
+    IconExternalLink
+} from '@tabler/icons-react';
 
 interface PetDetailViewProps {
     pet: PetData;
@@ -148,6 +165,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
     };
 
     const renderContactButton = () => {
+        if (pet.isExternal) return null;
         if (pet.badgeStyle === 'badge-sight') {
             if (pet.lat != null && pet.lng != null) {
                 return (
@@ -189,7 +207,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                     rel="noreferrer"
                     onClick={(e) => { if (!link) e.preventDefault(); }}
                 >
-                    <i className="fa-solid fa-heart"></i> ¡ADOPTAR!
+                    <IconHeartFilled /> ¡ADOPTAR!
                 </a>
             );
         }
@@ -203,7 +221,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                     rel="noreferrer"
                     onClick={(e) => { if (!link) e.preventDefault(); }}
                 >
-                    <i className="ti ti-heart-question"></i> Consultar mascota
+                    <IconHeartQuestion /> Consultar mascota
                 </a>
             );
         }
@@ -246,10 +264,10 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
 
                     <div className="detail-img-stats">
                         <span>
-                            <i className="ti ti-share"></i> <span id="detail-stat-shares">{pet.shares}</span> Compartidos
+                            <IconShare /> <span id="detail-stat-shares">{pet.shares}</span> Compartidos
                         </span>
                         <span>
-                            <i className="ti ti-users"></i> <span id="detail-stat-views">{pet.views}</span> Vistas
+                            <IconUsers /> <span id="detail-stat-views">{pet.views}</span> Vistas
                         </span>
                     </div>
                 </div>
@@ -259,7 +277,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                 <div className="detail-up-actions">
                     <div className="detail-header-actions">
                         <button type="button" className="action-icon-btn" id="btn-close-detail" onClick={onClose}>
-                            <i className="ti ti-x"></i>
+                            <IconX />
                         </button>
                         <div className="header-right-actions">
                             <button
@@ -269,10 +287,9 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                 data-tooltip="Me gusta"
                                 onClick={handleToggleLike}
                             >
-                                <i className={isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}></i>
+                                {isLiked ? <IconHeartFilled /> : <IconHeart />}
                                 <span className="like-counter-num">{likeCount}</span>
                             </button>
-
                             <button
                                 type="button"
                                 className={`action-icon-btn tooltip ${isFavorite ? 'favorite-active' : ''}`}
@@ -280,7 +297,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                 data-tooltip={isFavorite ? 'Quitar de guardados' : 'Guardar'}
                                 onClick={handleToggleFavorite}
                             >
-                                <i className={isFavorite ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'}></i>
+                                {isFavorite ? <IconBookmarkFilled /> : <IconBookmark />}
                             </button>
 
                             <div className="share-dropdown-wrapper" ref={shareMenuRef}>
@@ -291,7 +308,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                     data-tooltip="Compartir"
                                     onClick={() => setIsShareOpen(!isShareOpen)}
                                 >
-                                    <i className="ti ti-share"></i>
+                                    <IconShare />
                                 </button>
 
                                 {isShareOpen && (
@@ -308,7 +325,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                             }}
                                         >
                                             <span className="grid-icon-circle">
-                                                <i className="fa-solid fa-link"></i>
+                                                <IconLink />
                                             </span>
                                             <span className="grid-item-label">Copiar enlace</span>
                                         </button>
@@ -321,7 +338,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                             rel="noreferrer"
                                         >
                                             <span className="grid-icon-circle">
-                                                <i className="fa-brands fa-whatsapp"></i>
+                                                <IconBrandWhatsapp />
                                             </span>
                                             <span className="grid-item-label">WhatsApp</span>
                                         </a>
@@ -333,12 +350,11 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                             rel="noreferrer"
                                         >
                                             <span className="grid-icon-circle">
-                                                <i className="fa-brands fa-facebook-messenger"></i>
+                                                <IconBrandMessenger />
                                             </span>
                                             <span className="grid-item-label">Messenger</span>
                                         </a>
                                         <a
-
                                             href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                                             target="_blank"
                                             className="share-grid-item item-facebook"
@@ -346,7 +362,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                             rel="noreferrer"
                                         >
                                             <span className="grid-icon-circle">
-                                                <i className="fa-brands fa-facebook"></i>
+                                                <IconBrandFacebook />
                                             </span>
                                             <span className="grid-item-label">Facebook</span>
                                         </a>
@@ -367,154 +383,155 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                             </div>
                         </div>
                     </div>
-
-                    {pet.sourceType === 'user' ? (
-                        <div className="detail-author-row">
-                            <div className="detail-author-left">
-                                <div className="author-avatar-badge">
-                                    {pet.authorAvatar ? (
-                                        <img src={pet.authorAvatar} alt={pet.authorName ?? ''} />
-                                    ) : (
-                                        pet.authorName?.charAt(0).toUpperCase() ?? '?'
-                                    )}
+                    {!pet.isExternal && (
+                        pet.sourceType === 'user' ? (
+                            <div className="detail-author-row">
+                                <div className="detail-author-left">
+                                    <div className="author-avatar-badge">
+                                        {pet.authorAvatar ? (
+                                            <img src={pet.authorAvatar} alt={pet.authorName ?? ''} />
+                                        ) : (
+                                            pet.authorName?.charAt(0).toUpperCase() ?? '?'
+                                        )}
+                                    </div>
+                                    <span className="card-date">
+                                        <b> {pet.authorName ?? 'Usuario'}</b> · Publicado: {pet.publishedAtDisplay || pet.createdAtDisplay}
+                                    </span>
                                 </div>
+
+                                {currentUser && (
+                                    <div className="dropdown-menu-container detail-author-options" ref={authorMenuRef}>
+                                        <button
+                                            type="button"
+                                            className="comment-action-icon-btn btn-trigger-dropdown"
+                                            id="btn-author-ellipsis"
+                                            onClick={() => setIsAuthorEllipsisOpen(!isAuthorEllipsisOpen)}
+                                        >
+                                            <IconDotsVertical />
+                                        </button>
+
+                                        {isAuthorEllipsisOpen && (
+                                            <div className="comment-floating-menu author-floating-menu" style={{ display: 'block' }}>
+                                                <div className="menu-options-view">
+                                                    <button
+                                                        type="button"
+                                                        className="menu-option-item btn-open-author-popover"
+                                                        onClick={() => {
+                                                            setIsAuthorEllipsisOpen(false);
+                                                            setActiveAuthorPopover('message');
+                                                        }}
+                                                    >
+                                                        Dejar un mensaje
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="menu-option-item option-danger btn-open-author-popover"
+                                                        onClick={() => {
+                                                            setIsAuthorEllipsisOpen(false);
+                                                            setActiveAuthorPopover('report');
+                                                        }}
+                                                    >
+                                                        Reportar publicación
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {activeAuthorPopover === 'message' && (
+                                            <div className="author-inline-popover is-open" id="popover-author-message">
+                                                <textarea
+                                                    className="author-popover-textarea"
+                                                    placeholder="Añade un mensaje"
+                                                    rows={3}
+                                                    value={authorMessageInput}
+                                                    onChange={(e) => setAuthorMessageInput(e.target.value)}
+                                                ></textarea>
+                                                <div className="author-popover-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="author-popover-cancel-btn"
+                                                        onClick={() => {
+                                                            setAuthorMessageInput('');
+                                                            setActiveAuthorPopover(null);
+                                                        }}
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`author-popover-submit-btn ${authorMessageInput.trim().length > 0 ? 'is-active' : ''}`}
+                                                        onClick={async () => {
+                                                            if (authorMessageInput.trim()) {
+                                                                try {
+                                                                    await startConversation(pet.id, authorMessageInput.trim());
+                                                                    showToast('Mensaje enviado', 'success');
+                                                                    setAuthorMessageInput('');
+                                                                    setActiveAuthorPopover(null);
+                                                                } catch (err) {
+                                                                    const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu mensaje. Intenta de nuevo.';
+                                                                    showToast(message, 'error');
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        Enviar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {activeAuthorPopover === 'report' && (
+                                            <div className="author-inline-popover is-open" id="popover-author-report">
+                                                <textarea
+                                                    className="author-popover-textarea"
+                                                    placeholder="Explicar los motivos del reporte"
+                                                    rows={3}
+                                                    value={authorReportInput}
+                                                    onChange={(e) => setAuthorReportInput(e.target.value)}
+                                                ></textarea>
+                                                <div className="author-popover-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="author-popover-cancel-btn"
+                                                        onClick={() => {
+                                                            setAuthorReportInput('');
+                                                            setActiveAuthorPopover(null);
+                                                        }}
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`author-popover-submit-btn btn-report-submit ${authorReportInput.trim().length > 0 ? 'is-active' : ''}`}
+                                                        onClick={async () => {
+                                                            if (authorReportInput.trim()) {
+                                                                try {
+                                                                    await flagReport(pet.id, authorReportInput.trim());
+                                                                    showToast('Reporte enviado', 'success');
+                                                                    setAuthorReportInput('');
+                                                                    setActiveAuthorPopover(null);
+                                                                } catch (err) {
+                                                                    const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu reporte. Intenta de nuevo.';
+                                                                    showToast(message, 'error');
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        Reportar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="detail-author-row">
                                 <span className="card-date">
-                                    <b> {pet.authorName ?? 'Usuario'}</b> · Publicado: {pet.publishedAtDisplay || pet.createdAtDisplay}
+                                    <b>Publicado:</b> {pet.createdAtDisplay}
                                 </span>
                             </div>
-
-                            {currentUser && (
-                                <div className="dropdown-menu-container detail-author-options" ref={authorMenuRef}>
-                                    <button
-                                        type="button"
-                                        className="comment-action-icon-btn btn-trigger-dropdown"
-                                        id="btn-author-ellipsis"
-                                        onClick={() => setIsAuthorEllipsisOpen(!isAuthorEllipsisOpen)}
-                                    >
-                                        <i className="fa-solid fa-ellipsis-vertical"></i>
-                                    </button>
-
-                                    {isAuthorEllipsisOpen && (
-                                        <div className="comment-floating-menu author-floating-menu" style={{ display: 'block' }}>
-                                            <div className="menu-options-view">
-                                                <button
-                                                    type="button"
-                                                    className="menu-option-item btn-open-author-popover"
-                                                    onClick={() => {
-                                                        setIsAuthorEllipsisOpen(false);
-                                                        setActiveAuthorPopover('message');
-                                                    }}
-                                                >
-                                                    Dejar un mensaje
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="menu-option-item option-danger btn-open-author-popover"
-                                                    onClick={() => {
-                                                        setIsAuthorEllipsisOpen(false);
-                                                        setActiveAuthorPopover('report');
-                                                    }}
-                                                >
-                                                    Reportar publicación
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {activeAuthorPopover === 'message' && (
-                                        <div className="author-inline-popover is-open" id="popover-author-message">
-                                            <textarea
-                                                className="author-popover-textarea"
-                                                placeholder="Añade un mensaje"
-                                                rows={3}
-                                                value={authorMessageInput}
-                                                onChange={(e) => setAuthorMessageInput(e.target.value)}
-                                            ></textarea>
-                                            <div className="author-popover-actions">
-                                                <button
-                                                    type="button"
-                                                    className="author-popover-cancel-btn"
-                                                    onClick={() => {
-                                                        setAuthorMessageInput('');
-                                                        setActiveAuthorPopover(null);
-                                                    }}
-                                                >
-                                                    Cancelar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={`author-popover-submit-btn ${authorMessageInput.trim().length > 0 ? 'is-active' : ''}`}
-                                                    onClick={async () => {
-                                                        if (authorMessageInput.trim()) {
-                                                            try {
-                                                                await startConversation(pet.id, authorMessageInput.trim());
-                                                                showToast('Mensaje enviado', 'success');
-                                                                setAuthorMessageInput('');
-                                                                setActiveAuthorPopover(null);
-                                                            } catch (err) {
-                                                                const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu mensaje. Intenta de nuevo.';
-                                                                showToast(message, 'error');
-                                                            }
-                                                        }
-                                                    }}
-                                                >
-                                                    Enviar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {activeAuthorPopover === 'report' && (
-                                        <div className="author-inline-popover is-open" id="popover-author-report">
-                                            <textarea
-                                                className="author-popover-textarea"
-                                                placeholder="Explicar los motivos del reporte"
-                                                rows={3}
-                                                value={authorReportInput}
-                                                onChange={(e) => setAuthorReportInput(e.target.value)}
-                                            ></textarea>
-                                            <div className="author-popover-actions">
-                                                <button
-                                                    type="button"
-                                                    className="author-popover-cancel-btn"
-                                                    onClick={() => {
-                                                        setAuthorReportInput('');
-                                                        setActiveAuthorPopover(null);
-                                                    }}
-                                                >
-                                                    Cancelar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={`author-popover-submit-btn btn-report-submit ${authorReportInput.trim().length > 0 ? 'is-active' : ''}`}
-                                                    onClick={async () => {
-                                                        if (authorReportInput.trim()) {
-                                                            try {
-                                                                await flagReport(pet.id, authorReportInput.trim());
-                                                                showToast('Reporte enviado', 'success');
-                                                                setAuthorReportInput('');
-                                                                setActiveAuthorPopover(null);
-                                                            } catch (err) {
-                                                                const message = err instanceof MessagesApiError ? err.message : 'No pudimos enviar tu reporte. Intenta de nuevo.';
-                                                                showToast(message, 'error');
-                                                            }
-                                                        }
-                                                    }}
-                                                >
-                                                    Reportar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="detail-author-row">
-                            <span className="card-date">
-                                <b>Publicado:</b> {pet.createdAtDisplay}
-                            </span>
-                        </div>
+                        )
                     )}
 
                     {[pet.district, pet.province, pet.region].filter(Boolean).length > 0 && (
@@ -530,7 +547,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                         </h2>
                     )}
 
-                    {pet.badgeStyle !== 'badge-sight' && (
+                    {!pet.isExternal && pet.badgeStyle !== 'badge-sight' && (
                         <div className="detail-specs-grid">
                             {pet.lastSeenLocation && (pet.badgeStyle === 'badge-urgent' || pet.badgeStyle === 'badge-max-priority' || pet.badgeStyle === 'badge-adopt' || pet.badgeStyle === 'badge-adopt-premium' || pet.badgeStyle === 'badge-found') && (
                                 <div className="spec-item">
@@ -625,6 +642,18 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                     )}
 
                     {renderContactButton()}
+
+                    {pet.isExternal && pet.externalUrl && (
+                        <a
+                            id="detail-external-link"
+                            className="detail-btn-external-link btn-external-link"
+                            href={pet.externalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <IconExternalLink />  Ir a la publicación
+                        </a>
+                    )}
                 </div>
 
                 <CommentsWidget reportId={pet.id} />

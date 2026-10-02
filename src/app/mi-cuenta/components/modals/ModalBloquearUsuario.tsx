@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { blockUser, unblockUser, MessagesApiError } from '@/lib/messagesApi';
+import { IconBan } from '@tabler/icons-react';
 
 interface ModalBloquearUsuarioProps {
     isOpen: boolean;
@@ -51,7 +52,7 @@ export default function ModalBloquearUsuario({
             <div className="app-modal-card">
                 <div className="app-modal-body">
                     <div className="app-modal-confirm-icon warning">
-                        <i className="ti ti-ban"></i>
+                        <IconBan />
                     </div>
                     <div className="app-modal-confirm-text">
                         <h4>{isBlocked ? `¿Desbloquear a ${nombre}?` : `¿Bloquear a ${nombre}?`}</h4>
@@ -72,7 +73,7 @@ export default function ModalBloquearUsuario({
                         disabled={isProcessing}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-ban"></i>{' '}
+                        <IconBan />
                         {isProcessing ? 'Procesando...' : isBlocked ? 'Sí, desbloquear' : 'Sí, bloquear'}
                     </button>
                 </div>

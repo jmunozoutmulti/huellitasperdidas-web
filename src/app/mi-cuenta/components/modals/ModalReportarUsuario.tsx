@@ -1,8 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { reportUser, MessagesApiError } from '@/lib/messagesApi';
+import { IconX, IconFlag } from '@tabler/icons-react';
 
 interface ModalReportarUsuarioProps {
     isOpen: boolean;
@@ -49,7 +49,7 @@ export default function ModalReportarUsuario({ isOpen, userId, conversationId, o
                 <div className="app-modal-header">
                     <h3>Reportar usuario</h3>
                     <button type="button" className="app-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
                 <div className="app-modal-body">
@@ -74,7 +74,7 @@ export default function ModalReportarUsuario({ isOpen, userId, conversationId, o
                         disabled={isProcessing}
                         onClick={handleEnviar}
                     >
-                        <i className="ti ti-flag"></i> {isProcessing ? 'Enviando...' : 'Enviar reporte'}
+                        <IconFlag /> {isProcessing ? 'Enviando...' : 'Enviar reporte'}
                     </button>
                 </div>
             </div>

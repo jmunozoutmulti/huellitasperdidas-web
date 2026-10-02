@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { showToast } from '@/components/global/Toast';
 import { AuthApiError, resendVerification, forgotPassword, resetPassword, verifyEmail } from '@/lib/authApi';
-
+import { IconX, IconEye, IconEyeOff } from '@tabler/icons-react';
 type AuthMode = 'login' | 'register' | 'recover' | 'forgot' | 'reset' | 'verify';
 
 interface AuthModalProps {
@@ -170,7 +170,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                     data-close-modal
                     onClick={onClose}
                 >
-                    <i className="ti ti-x"></i>
+                    <IconX />
                 </button>
 
                 {/* ============ LOGIN ============ */}
@@ -210,7 +210,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                                     onClick={() => setShowLoginPassword((v) => !v)}
                                     aria-label={showLoginPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                                 >
-                                    <i className={showLoginPassword ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                                    {showLoginPassword ? <IconEyeOff /> : <IconEye />}
                                 </button>
                             </div>
                         </div>
@@ -299,7 +299,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                                     onClick={() => setShowRegisterPassword((v) => !v)}
                                     aria-label={showRegisterPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                                 >
-                                    <i className={showRegisterPassword ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                                    {showRegisterPassword ? <IconEyeOff /> : <IconEye />}
                                 </button>
                             </div>
                         </div>
@@ -490,7 +490,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                                             onClick={() => setShowNewPassword((v) => !v)}
                                             aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                                         >
-                                            <i className={showNewPassword ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                                            {showNewPassword ? <IconEyeOff /> : <IconEye />}
                                         </button>
                                     </div>
                                     <div className="field-auth">

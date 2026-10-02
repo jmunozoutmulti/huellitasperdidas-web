@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import '@/styles/global/toast.css';
+import {
+    IconCircleCheck,
+    IconCircleX,
+    IconInfoCircle,
+    IconAlertTriangle,
+    IconX,
+} from '@tabler/icons-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -11,11 +18,11 @@ interface ToastState {
     type: ToastType;
 }
 
-const ICONS: Record<ToastType, string> = {
-    success: 'ti ti-circle-check',
-    error: 'ti ti-circle-x',
-    info: 'ti ti-info-circle',
-    warning: 'ti ti-alert-triangle',
+const ICONS: Record<ToastType, React.ElementType> = {
+    success: IconCircleCheck,
+    error: IconCircleX,
+    info: IconInfoCircle,
+    warning: IconAlertTriangle,
 };
 
 export default function Toast() {
@@ -24,6 +31,8 @@ export default function Toast() {
         message: '',
         type: 'success',
     });
+
+    const ToastIcon = ICONS[toast.type];
 
     useEffect(() => {
         let toastTimer: NodeJS.Timeout | null = null;
@@ -65,7 +74,7 @@ export default function Toast() {
                 }`}
         >
             <span className="toast-icon-wrap">
-                <i id="toast-icon" className={`fa-solid ${ICONS[toast.type]}`}></i>
+                <ToastIcon />
             </span>
             <span id="toast-message">{toast.message}</span>
             <button
@@ -75,7 +84,7 @@ export default function Toast() {
                 onClick={handleClose}
                 aria-label="Cerrar notificación"
             >
-                <i className="ti ti-x"></i>
+                <IconX />
             </button>
         </div>
     );

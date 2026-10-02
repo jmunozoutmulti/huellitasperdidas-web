@@ -11,6 +11,21 @@ import { resizePetImage } from '@/lib/resizeImage';
 import { showToast } from '@/components/global/Toast';
 import { reverseGeocode } from '@/lib/geocoding';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import {
+    IconBolt,
+    IconBell,
+    IconCamera,
+    IconCameraPlus,
+    IconUpload,
+    IconX,
+    IconBellRinging,
+    IconReload,
+    IconDog,
+    IconCat,
+    IconCanary,
+    IconCurrentLocation,
+    IconCircleCheck
+} from '@tabler/icons-react';
 
 const MapPicker = dynamic(() => import('@/components/global/MapPicker'), { ssr: false });
 
@@ -302,19 +317,19 @@ export default function AvistamientoPage() {
                                 <div className="slogan-divider"></div>
                                 <div className="slogan-reach-row">
                                     <div className="slogan-reach-item">
-                                        <i className="ti ti-bolt"></i>
+                                        <IconBolt />
                                         <span>
                                             Reporte <b>instantáneo</b> — menos de 30 segundos.
                                         </span>
                                     </div>
                                     <div className="slogan-reach-item">
-                                        <i className="ti ti-bell"></i>
+                                        <IconBell />
                                         <span>
                                             Notificamos a dueños en la <b>zona exacta</b> de inmediato.
                                         </span>
                                     </div>
                                     <div className="slogan-reach-item">
-                                        <i className="ti ti-camera"></i>
+                                        <IconCamera />
                                         <span>
                                             La foto es lo más importante — <b>sube hasta 4 imágenes</b>.
                                         </span>
@@ -365,21 +380,21 @@ export default function AvistamientoPage() {
                             >
                                 <div className="sighting-pulse-radar">
                                     <div className="sighting-pulse-wave"></div>
-                                    <i className="ti ti-camera-plus sighting-icon-photo"></i>
+                                    <IconCameraPlus className="sighting-icon-photo" />
                                 </div>
                                 <h3 className="sighting-main-title">Sube una foto del animal</h3>
                                 <p className="sighting-sub-title">Arrastra o selecciona una imagen</p>
 
                                 <div className="sighting-upload-actions">
                                     <span className="sighting-upload-badge">
-                                        <i className="ti ti-upload"></i> Seleccionar
+                                        <IconUpload /> Seleccionar
                                     </span>
                                     <label
                                         htmlFor="sighting-file-input-capture"
                                         className="sighting-upload-badge sighting-capture-btn"
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        <i className="ti ti-camera"></i> Capturar
+                                        <IconCamera /> Capturar
                                     </label>
                                 </div>
                             </label>
@@ -404,7 +419,7 @@ export default function AvistamientoPage() {
                                     id="btn-reset-scanner"
                                     onClick={handleResetScanner}
                                 >
-                                    <i className="ti ti-x"></i> Cambiar
+                                    <IconX /> Cambiar
                                 </button>
                             </div>
                         </div>
@@ -421,7 +436,7 @@ export default function AvistamientoPage() {
                                 >
                                     {!uploadedThumbs[idx] && (
                                         <>
-                                            <i className="ti ti-camera-plus icon"></i>
+                                            <IconCameraPlus className="icon" />
                                             <input
                                                 type="file"
                                                 className="sighting-thumb-input"
@@ -449,7 +464,7 @@ export default function AvistamientoPage() {
                                                     handleRemoveThumb(idx);
                                                 }}
                                             >
-                                                <i className="ti ti-x"></i>
+                                                <IconX />
                                             </button>
                                         </>
                                     )}
@@ -479,30 +494,30 @@ export default function AvistamientoPage() {
                                 <div className={`pill-multi-group ${fieldErrors.tipoAnimal ? 'input-error' : ''}`}>
                                     <button
                                         type="button"
-                                        className={`pill-multi-btn sighting-type-btn ${tipoAnimal === 'Perro' ? 'active' : ''
+                                        className={`pill-sighting-btn sighting-type-btn ${tipoAnimal === 'Perro' ? 'active' : ''
                                             }`}
                                         data-value="Perro"
                                         onClick={() => setTipoAnimal('Perro')}
                                     >
-                                        <i className="fa-solid fa-dog"></i> Perro
+                                        <IconDog /> Perro
                                     </button>
                                     <button
                                         type="button"
-                                        className={`pill-multi-btn sighting-type-btn ${tipoAnimal === 'Gato' ? 'active' : ''
+                                        className={`pill-sighting-btn sighting-type-btn ${tipoAnimal === 'Gato' ? 'active' : ''
                                             }`}
                                         data-value="Gato"
                                         onClick={() => setTipoAnimal('Gato')}
                                     >
-                                        <i className="fa-solid fa-cat"></i> Gato
+                                        <IconCat /> Gato
                                     </button>
                                     <button
                                         type="button"
-                                        className={`pill-multi-btn sighting-type-btn ${tipoAnimal === 'Ave' ? 'active' : ''
+                                        className={`pill-sighting-btn sighting-type-btn ${tipoAnimal === 'Ave' ? 'active' : ''
                                             }`}
                                         data-value="Ave"
                                         onClick={() => setTipoAnimal('Ave')}
                                     >
-                                        <i className="fa-solid fa-dove"></i> Ave
+                                        <IconCanary /> Ave
                                     </button>
                                     <input type="hidden" id="s-tipo" value={tipoAnimal} />
                                 </div>
@@ -539,7 +554,7 @@ export default function AvistamientoPage() {
                                             }`}
                                         id="sighting-gps-icon"
                                     >
-                                        <i className="fa-solid fa-location-crosshairs"></i>
+                                        <IconCurrentLocation />
                                     </span>
                                 </div>
                             </div>
@@ -609,7 +624,7 @@ export default function AvistamientoPage() {
                             >
                                 {isSubmitting ? 'Enviando...' : (
                                     <>
-                                        Enviar alerta <i className="ti ti-bell-ringing"></i>
+                                        Enviar alerta <IconBellRinging />
                                     </>
                                 )}
                             </button>
@@ -627,7 +642,7 @@ export default function AvistamientoPage() {
                 <div className="sighting-status-overlay-card">
                     <div className="sighting-overlay-content">
                         <span className="sighting-overlay-eyebrow">
-                            <i className="fa-solid fa-circle-check"></i> Alerta enviada
+                            <IconCircleCheck /> Alerta enviada
                         </span>
                         <h3 id="overlay-title">¡Avistamiento recibido!</h3>
                         <p id="overlay-msg">
@@ -635,7 +650,7 @@ export default function AvistamientoPage() {
                         </p>
                     </div>
                     <div className="sighting-overlay-redirect-row">
-                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                        <IconReload className="animate-spin" />
                         <span>Redirigiendo en unos segundos...</span>
                     </div>
                     <div className="sighting-countdown-bar"></div>

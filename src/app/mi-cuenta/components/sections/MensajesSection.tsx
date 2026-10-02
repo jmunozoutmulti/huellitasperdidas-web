@@ -1,9 +1,18 @@
 'use client';
-
 import { KeyboardEvent, ChangeEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { showToast } from '@/components/global/Toast';
 import { resizePetImage } from '@/lib/resizeImage';
+import {
+    IconInfoCircle,
+    IconBan,
+    IconChevronDown,
+    IconArrowsMaximize,
+    IconX,
+    IconPhotoPlus,
+    IconSend,
+    IconDotsVertical
+} from '@tabler/icons-react';
 
 interface Mensaje {
     id: string;
@@ -102,7 +111,7 @@ export default function MensajesSection({
             <div className="dashboard-recent-header">
                 <h2 className="dashboard-subsection-title">Mis mensajes</h2>
                 <p>
-                    <i className="ti ti-info-circle"></i> Mensajes que otros usuarios dejaron en tus avisos
+                    <IconInfoCircle /> Mensajes que otros usuarios dejaron en tus avisos
                 </p>
             </div>
 
@@ -130,7 +139,7 @@ export default function MensajesSection({
                                     <span className="mensaje-hilo-badge-aviso">Sobre: {hilo.aviso}</span>
                                     {hilo.isBlocked && (
                                         <span className="mensaje-hilo-badge-aviso" style={{ color: 'var(--brand-red)' }}>
-                                            <i className="ti ti-ban"></i> Bloqueado
+                                            <IconBan /> Bloqueado
                                         </span>
                                     )}
                                 </div>
@@ -150,7 +159,7 @@ export default function MensajesSection({
                                         onSetOpenMessageMenuId(openMessageMenuId === hilo.id ? null : hilo.id);
                                     }}
                                 >
-                                    <i className="fa-solid fa-ellipsis-vertical"></i>
+                                    <IconDotsVertical />
                                 </button>
                                 {openMessageMenuId === hilo.id && (
                                     <div className="mensaje-hilo-floating-menu" style={{ display: 'block' }}>
@@ -189,7 +198,7 @@ export default function MensajesSection({
                             </div>
 
                             <button type="button" className="mensaje-hilo-chevron">
-                                <i className="ti ti-chevron-down"></i>
+                                <IconChevronDown />
                             </button>
                         </div>
 
@@ -197,7 +206,7 @@ export default function MensajesSection({
                             <div className="mensaje-hilo-body-inner">
                                 {hilo.adminReply && (
                                     <div className="admin-info-box">
-                                        <i className="ti ti-info-circle"></i>
+                                        <IconInfoCircle />
                                         <p>
                                             <b>Tu reporte fue revisado:</b> {hilo.adminReply}
                                         </p>
@@ -213,7 +222,7 @@ export default function MensajesSection({
                                             >
                                                 <img src={msg.imagen} alt="" className="mensaje-burbuja-imagen" />
                                                 <div className="mensaje-burbuja-imagen-overlay">
-                                                    <i className="ti ti-arrows-maximize"></i>
+                                                    <IconArrowsMaximize />
                                                 </div>
                                             </div>
                                         )}
@@ -224,7 +233,7 @@ export default function MensajesSection({
 
                                 {hilo.isBlocked ? (
                                     <div className="admin-info-box">
-                                        <i className="ti ti-ban"></i>
+                                        <IconBan />
                                         <p>Bloqueaste a este usuario. Ya no puede enviarte mensajes.</p>
                                     </div>
                                 ) : (
@@ -242,7 +251,7 @@ export default function MensajesSection({
                                                         });
                                                     }}
                                                 >
-                                                    <i className="ti ti-x"></i>
+                                                    <IconX />
                                                 </button>
                                             </div>
                                         )}
@@ -255,7 +264,7 @@ export default function MensajesSection({
                                                     fileInputRef.current?.click();
                                                 }}
                                             >
-                                                <i className="ti ti-photo-plus"></i>
+                                                <IconPhotoPlus />
                                             </button>
                                             <input
                                                 type="text"
@@ -273,7 +282,7 @@ export default function MensajesSection({
                                                 disabled={!hilo.replyInput.trim() && !pendingImages[hilo.id]}
                                                 onClick={() => handleSend(hilo.id)}
                                             >
-                                                <i className="ti ti-send"></i>
+                                                <IconSend />
                                             </button>
                                         </div>
                                     </>
@@ -286,7 +295,7 @@ export default function MensajesSection({
             {mounted && lightboxImage && createPortal(
                 <div className="mensaje-lightbox-overlay" onClick={() => setLightboxImage(null)}>
                     <button type="button" className="mensaje-lightbox-close" onClick={() => setLightboxImage(null)}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                     <img src={lightboxImage} alt="" onClick={(e) => e.stopPropagation()} />
                 </div>,

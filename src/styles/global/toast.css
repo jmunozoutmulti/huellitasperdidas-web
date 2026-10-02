@@ -35,6 +35,12 @@
     font-size: 1em;
 }
 
+.toast-icon-wrap svg {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+
 /* Tipos */
 .global-toast.toast-success .toast-icon-wrap {
     background: var(--brand-red-alpha);
@@ -67,6 +73,11 @@
     display: flex;
     align-items: center;
     transition: color 0.2s;
+}
+
+.toast-close-btn svg {
+    width: 1.1em;
+    height: 1.1em;
 }
 
 .toast-close-btn:hover {

@@ -1,8 +1,13 @@
 'use client';
-
 import { useState } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { updateReport, ReportsApiError } from '@/lib/reportsApi';
+import {
+    IconRefresh,
+    IconBulb,
+    IconBroadcast,
+    IconCheck,
+} from '@tabler/icons-react';
 
 interface ModalRepublicarGratisProps {
     isOpen: boolean;
@@ -47,7 +52,7 @@ export default function ModalRepublicarGratis({
             <div className="app-modal-card">
                 <div className="app-modal-body">
                     <div className="app-modal-confirm-icon warning">
-                        <i className="ti ti-refresh"></i>
+                        <IconRefresh />
                     </div>
                     <div className="app-modal-confirm-text">
                         <h4>¿Volver a publicar este aviso?</h4>
@@ -57,17 +62,17 @@ export default function ModalRepublicarGratis({
                     </div>
 
                     <div className="admin-info-box">
-                        <i className="ti ti-bulb"></i>
+                        <IconBulb />
                         <p>
                             ¿Buscas que llegue a <b>más personas</b> esta vez? Puedes activarlo directo con un plan de pago.
                         </p>
                     </div>
                 </div>
-                <div className="app-modal-footer" style={{ justifyContent: 'space-between' }}>
+                <div className="app-modal-footer group-reactivar">
                     <button type="button" className="btn-secondary" onClick={onClose}>
                         Cancelar
                     </button>
-                    <div style={{ display: 'flex', gap: '0.5em' }}>
+                    <div className='group-btn-modal'>
                         <button
                             type="button"
                             className="btn-secondary"
@@ -76,7 +81,7 @@ export default function ModalRepublicarGratis({
                                 onConPlanDePago(id);
                             }}
                         >
-                            <i className="ti ti-broadcast"></i> Con plan de pago
+                            <IconBroadcast /> Con plan de pago
                         </button>
                         <button
                             type="button"
@@ -84,7 +89,7 @@ export default function ModalRepublicarGratis({
                             disabled={isProcessing}
                             onClick={handlePublicarGratis}
                         >
-                            <i className="ti ti-check"></i> {isProcessing ? 'Publicando...' : 'Publicar gratis'}
+                            <IconCheck /> {isProcessing ? 'Publicando...' : 'Publicar gratis'}
                         </button>
                     </div>
                 </div>

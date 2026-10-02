@@ -1,11 +1,16 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
 import { getMyFavorites, unfavoriteReport } from '@/lib/socialApi';
 import { favoriteToCardData, type FavoriteCardData } from '@/lib/transformers';
+import {
+    IconInfoCircle,
+    IconPin,
+    IconExternalLink,
+    IconX,
+} from '@tabler/icons-react';
 
 export default function GuardadosSection() {
     const { currentUser } = useApp();
@@ -49,7 +54,7 @@ export default function GuardadosSection() {
             <div className="dashboard-recent-header">
                 <h2 className="dashboard-subsection-title">Favoritos</h2>
                 <p>
-                    <i className="ti ti-info-circle"></i> Publicaciones que guardaste desde <b>Explorar</b>
+                    <IconInfoCircle /> Publicaciones que guardaste desde <b>Explorar</b>
                 </p>
             </div>
 
@@ -80,7 +85,7 @@ export default function GuardadosSection() {
                                     <div className="guardado-meta">
                                         {pet.badgeStyle !== 'badge-sight' && (
                                             <span>
-                                                <i className="ti ti-pin"></i> {pet.district}
+                                                <IconPin /> {pet.district}
                                             </span>
                                         )}
                                         <span>
@@ -90,14 +95,14 @@ export default function GuardadosSection() {
                                 </div>
                                 <div className="guardado-actions">
                                     <Link href={`/?id=${pet.id}`}>
-                                        <i className="ti ti-external-link"></i>
+                                        <IconExternalLink />
                                     </Link>
                                     <button
                                         type="button"
                                         aria-label="Quitar de favoritos"
                                         onClick={() => handleRemove(pet.id)}
                                     >
-                                        <i className="ti ti-x"></i>
+                                        <IconX />
                                     </button>
                                 </div>
                             </div>

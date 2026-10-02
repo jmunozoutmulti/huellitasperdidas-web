@@ -1,8 +1,8 @@
 'use client';
-
 import { useState } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { deleteConversation, MessagesApiError } from '@/lib/messagesApi';
+import { IconTrash } from '@tabler/icons-react';
 
 interface ModalEliminarMensajeProps {
     isOpen: boolean;
@@ -42,7 +42,7 @@ export default function ModalEliminarMensaje({
             <div className="app-modal-card">
                 <div className="app-modal-body">
                     <div className="app-modal-confirm-icon danger">
-                        <i className="ti ti-trash"></i>
+                        <IconTrash />
                     </div>
                     <div className="app-modal-confirm-text">
                         <h4>¿Eliminar esta conversación?</h4>
@@ -61,7 +61,7 @@ export default function ModalEliminarMensaje({
                         disabled={isProcessing}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-trash"></i> {isProcessing ? 'Eliminando...' : 'Sí, eliminar'}
+                        <IconTrash /> {isProcessing ? 'Eliminando...' : 'Sí, eliminar'}
                     </button>
                 </div>
             </div>

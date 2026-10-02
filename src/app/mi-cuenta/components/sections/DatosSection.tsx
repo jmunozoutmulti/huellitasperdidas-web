@@ -1,10 +1,16 @@
 'use client';
-
 import { ChangeEvent, useState, useEffect } from 'react';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr, type Country } from '@/lib/countries';
 import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
+import {
+    IconInfoCircle,
+    IconCamera,
+    IconTrash,
+    IconDeviceFloppy,
+    IconLock,
+} from '@tabler/icons-react';
 
 interface SelectOption {
     value: string;
@@ -148,7 +154,7 @@ export default function DatosSection({
             <div className="dashboard-recent-header">
                 <h2 className="dashboard-subsection-title">Mis datos</h2>
                 <p>
-                    <i className="ti ti-info-circle"></i> Actualiza tu información personal
+                    <IconInfoCircle /> Actualiza tu información personal
                 </p>
             </div>
 
@@ -162,7 +168,7 @@ export default function DatosSection({
                             <img className="datos-avatar-img" id="datos-avatar-img" src={avatarSrc} alt="Avatar" />
                         )}
                         <label className="datos-avatar-edit-btn" htmlFor="datos-avatar-input">
-                            <i className="ti ti-camera"></i>
+                            <IconCamera />
                         </label>
                         <input
                             type="file"
@@ -173,7 +179,7 @@ export default function DatosSection({
                         />
                     </div>
                     <div className="datos-avatar-info">
-                        <span className="datos-avatar-hint">JPG o PNG. Máximo 5MB.</span>
+                        <span className="datos-avatar-hint">JPG o PNG. Máximo 2MB.</span>
                         {avatarSrc && (
                             <button
                                 type="button"
@@ -181,7 +187,7 @@ export default function DatosSection({
                                 id="datos-avatar-remove"
                                 onClick={onAvatarRemove}
                             >
-                                <i className="ti ti-trash"></i> Quitar foto
+                                <IconTrash /> Quitar foto
                             </button>
                         )}
                     </div>
@@ -232,12 +238,12 @@ export default function DatosSection({
                             <p className="form-label-note">Cargando...</p>
                         ) : !countryCode ? (
                             <div className="admin-info-box">
-                                <i className="ti ti-info-circle"></i>
+                                <IconInfoCircle />
                                 <p>No pudimos determinar tu país. Vuelve a intentar más tarde.</p>
                             </div>
                         ) : !isCountryConfigured ? (
                             <div className="admin-info-box">
-                                <i className="ti ti-info-circle"></i>
+                                <IconInfoCircle />
                                 <p>Este país aún no está configurado. Vuelve más tarde.</p>
                             </div>
                         ) : (
@@ -287,7 +293,7 @@ export default function DatosSection({
                         disabled={!isDatosChanged}
                         onClick={onSaveDatos}
                     >
-                        <i className="ti ti-device-floppy"></i> Guardar cambios
+                        <IconDeviceFloppy /> Guardar cambios
                     </button>
                 </div>
 
@@ -315,7 +321,7 @@ export default function DatosSection({
                             data-field="telefono"
                             onClick={onOpenCambiarNumero}
                         >
-                            <i className="ti ti-lock"></i> {dTelefono ? 'Cambiar' : 'Agregar'}
+                            <IconLock /> {dTelefono ? 'Cambiar' : 'Agregar'}
                         </button>
                     </div>
                 </div>
@@ -349,7 +355,7 @@ export default function DatosSection({
                             data-field="clave"
                             onClick={onOpenCambiarClave}
                         >
-                            <i className="ti ti-lock"></i> {currentUser?.hasPassword === false ? 'Crear' : 'Cambiar'}
+                            <IconLock /> {currentUser?.hasPassword === false ? 'Crear' : 'Cambiar'}
                         </button>
                     </div>
                 </div>

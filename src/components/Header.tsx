@@ -6,6 +6,21 @@ import { usePathname } from 'next/navigation';
 import AuthModal from './AuthModal';
 import { useApp } from '@/context/AppContext';
 import { useLayoutEffect } from 'react';
+import {
+    IconPlus,
+    IconHeartBroken,
+    IconPaw,
+    IconBinoculars,
+    IconHomeHeart,
+    IconBrandSafari,
+    IconCameraSearch,
+    IconUser,
+    IconSun,
+    IconMoon,
+    IconLogout,
+    IconHome,
+    IconChevronDown
+} from '@tabler/icons-react';
 
 export default function Header() {
     const pathname = usePathname();
@@ -131,7 +146,7 @@ export default function Header() {
                             type="button"
                             onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
                         >
-                            <i className="ti ti-plus btn-add-icon"></i>
+                            <IconPlus className="btn-add-icon" />
                         </button>
 
                         {isAddDropdownOpen && (
@@ -146,7 +161,7 @@ export default function Header() {
                                         onClick={() => setIsAddDropdownOpen(false)}
                                     >
                                         <div className="btn-add-option-icon">
-                                            <i className="ti ti-heart-broken"></i>
+                                            <IconHeartBroken />
                                         </div>
                                         <div className="btn-add-option-body">
                                             <span className="btn-add-option-label">Perdí mi mascota</span>
@@ -162,7 +177,7 @@ export default function Header() {
                                         onClick={() => setIsAddDropdownOpen(false)}
                                     >
                                         <div className="btn-add-option-icon">
-                                            <i className="ti ti-paw"></i>
+                                            <IconPaw />
                                         </div>
                                         <div className="btn-add-option-body">
                                             <span className="btn-add-option-label">
@@ -180,7 +195,7 @@ export default function Header() {
                                         onClick={() => setIsAddDropdownOpen(false)}
                                     >
                                         <div className="btn-add-option-icon">
-                                            <i className="ti ti-binoculars"></i>
+                                            <IconBinoculars />
                                         </div>
                                         <div className="btn-add-option-body">
                                             <span className="btn-add-option-label">Vi una mascota</span>
@@ -196,7 +211,7 @@ export default function Header() {
                                         onClick={() => setIsAddDropdownOpen(false)}
                                     >
                                         <div className="btn-add-option-icon">
-                                            <i className="ti ti-home-heart"></i>
+                                            <IconHomeHeart />
                                         </div>
                                         <div className="btn-add-option-body">
                                             <span className="btn-add-option-label">Dar en adopción</span>
@@ -217,13 +232,13 @@ export default function Header() {
                         href="/"
                         className={`tab-btn ${pathname === '/' ? 'active' : ''}`}
                     >
-                        <i className="ti ti-brand-safari"></i> <span>Explorar</span>
+                        <IconHome /> <span>Explorar</span>
                     </Link>
                     <Link
                         href="/buscar"
                         className={`tab-btn ${pathname.startsWith('/buscar') ? 'active' : ''}`}
                     >
-                        <i className="ti ti-camera-search"></i> <span>Centinela IA</span>
+                        <IconCameraSearch /> <span>Centinela IA</span>
                         {centinelaEstaActivo && (
                             <span
                                 className="centinela-active-dot"
@@ -237,7 +252,7 @@ export default function Header() {
                 <div className="right-navbar">
                     {!isWizardRoute && (
                         <Link href="/publicar" className="btn-ads" id="btn-ads-publish">
-                            <i className="fa-solid fa-heart-crack"></i>
+                            <svg viewBox="0 0 640 640"><path d="M197.1 96C214.4 96 231.3 99.4 247 105.7L301.8 190.9L226.4 266.3C224.9 267.8 224 269.9 224.1 272.1C224.2 274.3 225.1 276.3 226.7 277.8L338.7 381.8C341.6 384.5 346.1 384.7 349.2 382.1C352.3 379.5 353 375.1 350.9 371.7L290.5 273.6L381.2 198C383.8 195.9 384.7 192.3 383.6 189.2L360.4 124.6C383.6 106.3 412.6 96 442.9 96C516.4 96 576 155.6 576 229.1L576 231.7C576 343.9 436.1 474.2 363.1 529.9C350.7 539.3 335.5 544 320 544C304.5 544 289.2 539.4 276.9 529.9C203.9 474.2 64 343.9 64 231.7L64 229.1C64 155.6 123.6 96 197.1 96z" /></svg>
                             <span>Perdí mi mascota</span>
                         </Link>
                     )}
@@ -250,7 +265,7 @@ export default function Header() {
                             id="btn-open-login"
                             onClick={() => openAuthModal()}
                         >
-                            <i className="ti ti-user"></i> <span>Ingresar</span>
+                            <IconUser /> <span>Ingresar</span>
                         </button>
                     ) : (
                         <div className="nav-user-actions" id="nav-user-actions">
@@ -268,10 +283,7 @@ export default function Header() {
                                     )}
                                 </div>
                                 <span className="user-info">
-                                    <i
-                                        className={`fa-solid fa-chevron-down ${isUserDropdownOpen ? 'rotated' : ''}`}
-                                        id="user-chevron"
-                                    ></i>
+                                    <IconChevronDown className={`${isUserDropdownOpen ? 'rotated' : ''}`} id="user-chevron" />
                                 </span>
 
                                 {isUserDropdownOpen && (
@@ -292,7 +304,7 @@ export default function Header() {
 
                                         <div className="dropdown-theme-block">
                                             <span className="dropdown-theme-label">
-                                                <i className={isDarkMode ? 'ti ti-sun theme-icon' : 'ti ti-moon theme-icon'}></i>
+                                                {isDarkMode ? <IconSun className="theme-icon" size="1.2em" /> : <IconMoon className="theme-icon" size="1.2em" />}
                                                 <span className="theme-label">{isDarkMode ? 'Modo claro' : 'Modo oscuro'}</span>
                                             </span>
                                             <label className="ui-switch" onClick={(e) => e.stopPropagation()}>
@@ -308,7 +320,7 @@ export default function Header() {
 
                                         <div className="user-dropdown-divider"></div>
                                         <Link href="/mi-cuenta" className="user-dropdown-item">
-                                            <i className="ti ti-user"></i> Mi cuenta
+                                            <IconUser /> Mi cuenta
                                         </Link>
                                         <div className="user-dropdown-divider"></div>
                                         <button
@@ -318,7 +330,7 @@ export default function Header() {
                                                 logout();
                                             }}
                                         >
-                                            <i className="ti ti-logout"></i> Cerrar sesión
+                                            <IconLogout /> Cerrar sesión
                                         </button>
                                     </div>
                                 )}

@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr, type Country } from '@/lib/countries';
 import { AuthApiError } from '@/lib/authApi';
 import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
+import { IconX, IconLoader, IconInfoCircle, IconCheck } from '@tabler/icons-react';
 
 interface ModalAgregarNumeroProps {
     isOpen: boolean;
@@ -57,19 +58,19 @@ export default function ModalAgregarNumero({ isOpen, onClose, mode = 'add', mand
                     <h3>{mode === 'change' ? 'Cambiar número de contacto' : 'Agregar número de contacto'}</h3>
                     {!mandatory && (
                         <button type="button" className="app-modal-close" onClick={onClose}>
-                            <i className="ti ti-x"></i>
+                            <IconX />
                         </button>
                     )}
                 </div>
                 <div className="app-modal-body">
                     {isLoadingCountry ? (
                         <div className="admin-info-box info-box-revision">
-                            <i className="ti ti-loader"></i>
+                            <IconLoader />
                             <p>Cargando...</p>
                         </div>
                     ) : !country?.dialCode ? (
                         <div className="admin-info-box">
-                            <i className="ti ti-info-circle"></i>
+                            <IconInfoCircle />
                             <p>Tu país todavía no está configurado para agregar un número de contacto. Vuelve más tarde.</p>
                         </div>
                     ) : (
@@ -94,7 +95,7 @@ export default function ModalAgregarNumero({ isOpen, onClose, mode = 'add', mand
                                 </div>
                             </div>
                             <div className="admin-info-box info-box-revision">
-                                <i className="ti ti-info-circle"></i>
+                                <IconInfoCircle />
                                 <p>Este número se usará para notificaciones y podrás usarlo como contacto en tus avisos. <b>Verifícalo antes de guardar.</b></p>
                             </div>
                         </div>
@@ -140,7 +141,7 @@ export default function ModalAgregarNumero({ isOpen, onClose, mode = 'add', mand
                                     }
                                 }}
                             >
-                                <i className="ti ti-check"></i> {isSaving ? 'Guardando...' : 'Guardar número'}
+                                <IconCheck /> {isSaving ? 'Guardando...' : 'Guardar número'}
                             </button>
                         </div>
                     </div>

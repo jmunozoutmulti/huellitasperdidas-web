@@ -59,6 +59,10 @@
     transition: color 0.2s;
 }
 
+.live-feed-close svg {
+    width: 1.1em;
+    height: 1.1em;
+}
 
 /* Color del punto según tipo */
 .live-feed-popup.feed-perdido {

@@ -158,6 +158,10 @@
         border: 1px dashed #7f7f7f66;
     }
 
+    .photo-uploader-box>svg {
+        stroke: #d2d3d34d;
+    }
+
     .photo-uploader-box>i {
         color: #7f7f7f66;
     }
@@ -166,6 +170,9 @@
         border-color: #7f7f7f66;
     }
 
+    .item-link .grid-icon-circle {
+        color: #000;
+    }
 
     .btn-toggle-details .icon,
     .btn-toggle-details.open .icon {
@@ -226,9 +233,14 @@
         border-color: var(--yellow-brand);
     }
 
-    .btn-add>button:hover,
     .btn-add>button {
         box-shadow: 0 0 0 rgb(0 0 0 / 15%) !important;
+    }
+
+    .btn-add>button:hover {
+        box-shadow: 0 0 0 rgb(0 0 0 / 15%) !important;
+        background: #fff !important;
+        color: #000 !important;
     }
 
     .btn-remove-photo {
@@ -271,12 +283,44 @@
     .terms-checkbox-text a,
     .text-chat,
     .text-chat a {
-        color: #000;
+        color: #fff;
     }
 
     .terms-checkbox-text a:hover,
     .text-chat a:hover {
         color: #e70808;
     }
+
+    .payment-gateway-box .text-chat,
+    .payment-gateway-box .text-chat a {
+        color: #000;
+    }
+
+    .payment-gateway-box .text-chat a:hover {
+        color: #e70808;
+    }
+
+    .custom-select-search input {
+        color: var(--text-white);
+    }
+
+    .custom-select-search {
+        border-bottom: 1px solid #565656;
+    }
+
+    .ui-slider-btn {
+        background: #575757;
+    }
+
+    input:checked+.ui-slider-btn {
+        background-color: #575757;
+        border-color: #575757;
+    }
+
+    .search-box-wrapper:focus-within {
+        border-color: var(--border-color-focus);
+        box-shadow: 0 0 0;
+    }
+
 
 }

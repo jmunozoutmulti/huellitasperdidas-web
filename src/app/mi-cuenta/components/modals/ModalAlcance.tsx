@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
@@ -8,6 +7,17 @@ import { getPackages, type PackageOption, type ReachOption } from '@/lib/package
 import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
 import type { PaymentInfo } from '@/lib/paymentsApi';
 import CheckoutPago from '@/components/checkout/CheckoutPago';
+import {
+    IconLoader,
+    IconTrendingUp,
+    IconX,
+    IconInfoCircle,
+    IconRadar2,
+    IconRadar,
+    IconCheck,
+    IconShieldCheck,
+    IconCurrentLocation
+} from '@tabler/icons-react';
 
 interface ModalAlcanceProps {
     isOpen: boolean;
@@ -83,7 +93,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                 <div className="planes-modal-backdrop" onClick={onClose}></div>
                 <div className="planes-modal-card">
                     <div className="admin-info-box info-box-revision">
-                        <i className="ti ti-loader"></i>
+                        <IconLoader />
                         <p>Cargando...</p>
                     </div>
                 </div>
@@ -99,15 +109,15 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                     <div className="planes-modal-header">
                         <div>
                             <span className="planes-modal-eyebrow">
-                                <i className="ti ti-trending-up"></i> Llegar a más personas
+                                <IconTrendingUp /> Llegar a más personas
                             </span>
                         </div>
                         <button type="button" className="planes-modal-close" onClick={onClose}>
-                            <i className="ti ti-x"></i>
+                            <IconX />
                         </button>
                     </div>
                     <div className="admin-info-box">
-                        <i className="ti ti-info-circle"></i>
+                        <IconInfoCircle />
                         <p>Este plan todavía no tiene opciones de alcance extra configuradas para tu país. Vuelve más tarde.</p>
                     </div>
                 </div>
@@ -148,11 +158,11 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                 <div className="planes-modal-header">
                     <div>
                         <span className="planes-modal-eyebrow">
-                            <i className="ti ti-trending-up"></i> Llegar a más personas
+                            <IconTrendingUp /> Llegar a más personas
                         </span>
                     </div>
                     <button type="button" className="planes-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
 
@@ -166,7 +176,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
 
                                 <div className="alcance-radar-center">
                                     <div className="alcance-radar-pin">
-                                        <i className="fa-solid fa-street-view"></i>
+                                        <IconCurrentLocation />
                                     </div>
                                     <span className="badge-plan badge-plan-radar">
                                         <span className="status-pulse"></span> Anuncio
@@ -174,7 +184,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                                 </div>
                             </div>
                             <p className="alcance-radar-caption">
-                                <i className="ti ti-trending-up"></i>
+                                <IconTrendingUp />
                                 Incrementas tu alcance a un radio de <b>{tier.radiusKm} km</b>
                             </p>
                         </div>
@@ -192,7 +202,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                                     <div className="zona-option-item">
                                         <div className="zona-option-top">
                                             <div className="zona-icon">
-                                                <i className="ti ti-radar-2"></i>
+                                                <IconRadar2 />
                                             </div>
                                             <span className="zona-km">{t.radiusKm} km</span>
                                             <span className="zona-reach">
@@ -213,7 +223,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
 
                         <div className="planes-modal-actions">
                             <div className="text-modal">
-                                <i className="ti ti-radar"></i> El alcance se suma a tu plan actual
+                                <IconRadar /> El alcance se suma a tu plan actual
                             </div>
                             <button
                                 type="button"
@@ -225,7 +235,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
                                     'Procesando...'
                                 ) : (
                                     <>
-                                        <i className="ti ti-check"></i> Continuar
+                                        <IconCheck /> Continuar
                                     </>
                                 )}
                             </button>
@@ -247,7 +257,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                    <IconShieldCheck /> Pago seguro
                                 </h4>
 
                                 <CheckoutPago

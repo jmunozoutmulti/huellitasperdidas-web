@@ -17,6 +17,41 @@ import {
     type SearchResult,
     type SearchMeta,
 } from '@/lib/api';
+
+import {
+    IconRefresh,
+    IconClock,
+    IconX,
+    IconSearch,
+    IconWorldSearch,
+    IconFilter2Search,
+    IconInfoCircle,
+    IconPin,
+    IconCalendarBolt,
+    IconShare,
+    IconUsers,
+    IconWorldWww,
+    IconAlertTriangle,
+    IconCameraPlus,
+    IconUpload,
+    IconBrandFacebook,
+    IconBrandInstagram,
+    IconBrandTiktok,
+    IconBrandGoogle,
+    IconHeart,
+    IconLockCheck,
+    IconChevronDown,
+    IconDog,
+    IconCat,
+    IconCanary,
+    IconPower,
+    IconLock,
+    IconPaw,
+    IconCamera,
+    IconFilter,
+    IconSparkles
+} from '@tabler/icons-react';
+
 import {
     createOrReplaceCentinela,
     turnOffCentinela,
@@ -63,12 +98,10 @@ const TIEMPO_OPTIONS = [
 ];
 const TIEMPO_HOURS: Record<string, number> = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
 
-// Enum real confirmado de pet_type en español. Se quita 'otro' — si no es
-// perro/gato/ave, el usuario lo escribe directo en el buscador.
-const PET_TYPE_OPTIONS: { value: string; label: string; icon: string }[] = [
-    { value: 'perro', label: 'Perro', icon: 'fa-dog' },
-    { value: 'gato', label: 'Gato', icon: 'fa-cat' },
-    { value: 'ave', label: 'Ave', icon: 'fa-dove' },
+const PET_TYPE_OPTIONS = [
+    { value: 'perro', label: 'Perro', icon: IconDog },
+    { value: 'gato', label: 'Gato', icon: IconCat },
+    { value: 'ave', label: 'Ave', icon: IconCanary },
 ];
 
 // Convierte el AnalyzeImageResult en una lista plana de chips mostrables.
@@ -153,12 +186,15 @@ export default function BuscarIAPage() {
 
     const activeMyReports = myReports.filter((r) => {
         if (r.status !== 'active') return false;
-        if (r.payment_status === 'pending' || r.payment_status === 'failed') return false;
+        if (r.payment_status === 'pending' || r.payment_status === 'failed' || r.payment_status === 'refunded') return false;
         if (r.expires_at && new Date(r.expires_at).getTime() < Date.now()) return false;
         return true;
     });
 
-    const hasToolsAccess = activeMyReports.some((r) => {
+    const hasToolsAccess = myReports.some((r) => {
+        if (r.payment_status !== 'paid') return false;
+        if (r.status !== 'active' && r.status !== 'pending') return false;
+        if (r.expires_at && new Date(r.expires_at).getTime() < Date.now()) return false;
         const pkg = packages.find((p) => p.slug === r.package_slug);
         return pkg?.centinela === true;
     });
@@ -769,10 +805,10 @@ export default function BuscarIAPage() {
                                                 : { backgroundColor: '#4285f4' }
                                 }
                             >
-                                {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
-                                {pet.externalType === 'instagram' && <i className="fa-brands fa-instagram"></i>}
-                                {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                                {pet.externalType === 'google' && <i className="fa-brands fa-google"></i>}
+                                {pet.externalType === 'facebook' && <IconBrandFacebook />}
+                                {pet.externalType === 'instagram' && <IconBrandInstagram />}
+                                {pet.externalType === 'tiktok' && <IconBrandTiktok />}
+                                {pet.externalType === 'google' && <IconBrandGoogle />}
                                 {' '}{pet.badge}
                             </span>
                         ) : (
@@ -797,16 +833,16 @@ export default function BuscarIAPage() {
                                         options.onDismiss?.();
                                     }}
                                 >
-                                    <i className="fa-solid fa-xmark"></i>
+                                    <IconX />
                                 </button>
                             )}
                         </div>
                         <div className="card-meta-horizontal">
                             <span>
-                                <i className="ti ti-pin"></i> {formatPetLocation(pet)}
+                                <IconPin /> {formatPetLocation(pet)}
                             </span>
                             <span>
-                                <i className="ti ti-calendar-bolt"></i> {pet.date || '-'}
+                                <IconCalendarBolt /> {pet.date || '-'}
                             </span>
                         </div>
                         {pet.reward && pet.reward !== 'S/. 0' && pet.reward !== '0' && (
@@ -825,15 +861,15 @@ export default function BuscarIAPage() {
                             <>
                                 {pet.badgeStyle === 'badge-adopt' || pet.badgeStyle === 'badge-adopt-premium' ? (
                                     <span>
-                                        <i className="fa-solid fa-heart"></i> Adopción Responsable
+                                        <IconHeart /> Adopción Responsable
                                     </span>
                                 ) : (
                                     <div>
                                         <span>
-                                            <i className="ti ti-share"></i> {pet.shares}
+                                            <IconShare /> {pet.shares}
                                         </span>
                                         <span>
-                                            <i className="ti ti-users"></i> {pet.views}
+                                            <IconUsers /> {pet.views}
                                         </span>
                                     </div>
                                 )}
@@ -850,7 +886,7 @@ export default function BuscarIAPage() {
                         ) : (
                             <>
                                 <span>
-                                    <i className="ti ti-world-www"></i> Indexado
+                                    <IconWorldWww /> Indexado
                                 </span>
                                 <span
                                     style={
@@ -863,10 +899,10 @@ export default function BuscarIAPage() {
                                                     : {}
                                     }
                                 >
-                                    {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
-                                    {pet.externalType === 'instagram' && <i className="fa-brands fa-instagram"></i>}
-                                    {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                                    {pet.externalType === 'google' && <i className="fa-brands fa-google"></i>}
+                                    {pet.externalType === 'facebook' && <IconBrandFacebook />}
+                                    {pet.externalType === 'instagram' && <IconBrandInstagram />}
+                                    {pet.externalType === 'tiktok' && <IconBrandTiktok />}
+                                    {pet.externalType === 'google' && <IconBrandGoogle />}
                                     {' '}
                                     {pet.externalType === 'facebook'
                                         ? 'Facebook'
@@ -906,7 +942,7 @@ export default function BuscarIAPage() {
                                 <div className="layer-blocked"
                                 >
                                     <span className="badge-active-attribute">
-                                        <i className="fa-solid fa-lock"></i> Centinela activado
+                                        <IconLockCheck /> Centinela activado
                                     </span>
                                 </div>
                             )}
@@ -934,7 +970,7 @@ export default function BuscarIAPage() {
                                         className={`pill-btn pill-btn-reset ${activePetPill === 'nuevo' ? 'active' : ''}`}
                                         onClick={handleResetPetPill}
                                     >
-                                        <i className="ti ti-refresh"></i> Nueva búsqueda
+                                        <IconRefresh /> Nueva búsqueda
                                     </button>
                                 </div>
 
@@ -985,7 +1021,7 @@ export default function BuscarIAPage() {
                                                             >
                                                                 <div className="search-item-left">
                                                                     <div className="search-item-icon">
-                                                                        <i className="ti ti-clock"></i>
+                                                                        <IconClock />
                                                                     </div>
                                                                     <div className="search-item-info">
                                                                         <span className="search-item-title">{search}</span>
@@ -997,7 +1033,7 @@ export default function BuscarIAPage() {
                                                                     data-index={idx}
                                                                     onClick={(e) => removeRecentSearch(e, idx)}
                                                                 >
-                                                                    <i className="ti ti-x"></i>
+                                                                    <IconX />
                                                                 </button>
                                                             </div>
                                                         ))
@@ -1013,7 +1049,7 @@ export default function BuscarIAPage() {
                                             >
                                                 <div className="search-item-left">
                                                     <div className="search-item-icon">
-                                                        <i className="ti ti-search"></i>
+                                                        <IconSearch />
                                                     </div>
                                                     <div className="search-item-info">
                                                         <span className="search-item-title">
@@ -1031,7 +1067,7 @@ export default function BuscarIAPage() {
                                         id="btn-clear-all"
                                         onClick={() => setGlobalQuery('')}
                                     >
-                                        <i className="ti ti-x"></i>
+                                        <IconX />
                                     </button>
                                     <button
                                         type="button"
@@ -1053,7 +1089,7 @@ export default function BuscarIAPage() {
                                         : undefined
                                 }>
                                     <div className="source-check-item-modern">
-                                        <i className="ti ti-world-search"></i> Buscamos en Internet (sitios, redes y más)
+                                        <IconWorldSearch /> Buscamos en Internet (sitios, redes y más)
                                     </div>
                                 </div>
 
@@ -1070,9 +1106,9 @@ export default function BuscarIAPage() {
                                     }
                                 >
                                     <span>
-                                        <i className="ti ti-filter-2-search"></i> Filtros avanzados
+                                        <IconFilter2Search /> Filtros avanzados
                                     </span>
-                                    <i className="fa-solid fa-chevron-down toggle-chevron"></i>
+                                    <IconChevronDown className="toggle-chevron" />
                                 </button>
 
                                 <div
@@ -1159,17 +1195,20 @@ export default function BuscarIAPage() {
                                     <div className="filter-group">
                                         <label className="filter-label">Tipo de mascota</label>
                                         <div className="pill-multi-group">
-                                            {PET_TYPE_OPTIONS.map((t) => (
-                                                <button
-                                                    key={t.value}
-                                                    type="button"
-                                                    className={`pill-multi-btn ${petTypeFilter === t.value ? 'active' : ''
-                                                        }`}
-                                                    onClick={() => selectPetTypeFilter(t.value)}
-                                                >
-                                                    <i className={`fa-solid ${t.icon}`}></i> {t.label}
-                                                </button>
-                                            ))}
+                                            {PET_TYPE_OPTIONS.map((t) => {
+                                                const Icon = t.icon;
+
+                                                return (
+                                                    <button
+                                                        key={t.value}
+                                                        type="button"
+                                                        className={`pill-multi-btn ${petTypeFilter === t.value ? 'active' : ''}`}
+                                                        onClick={() => selectPetTypeFilter(t.value)}
+                                                    >
+                                                        <Icon size={18} stroke={2} /> {t.label}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
@@ -1183,9 +1222,10 @@ export default function BuscarIAPage() {
                             id="centinela-box"
                         >
                             <div className="centinela-header-row" >
-                                {/* Botón de Ajustes y centinela-config-flow comentados: no hay
-                                    frecuencia/alertas configurables todavía. */}
-                                <label className="ui-switch">
+                                <label
+                                    className="ui-switch tooltip"
+                                    data-tooltip={centinela?.activo ? 'Desactivar' : 'Activar'}
+                                >
                                     <input
                                         type="checkbox"
                                         checked={!!centinela?.activo}
@@ -1213,7 +1253,7 @@ export default function BuscarIAPage() {
                                             </>
                                         ) : (
                                             <>
-                                                <i className="fa-solid fa-circle-pause"></i> Apagado
+                                                <IconPower /> Apagado
                                             </>
                                         )}
                                     </span>
@@ -1232,14 +1272,14 @@ export default function BuscarIAPage() {
 
                             {isGatingReady && !hasToolsAccess && (
                                 <div className="first-visit-banner">
-                                    <Link href="/publicar"><i className="fa-solid fa-lock"></i> <b>Publica</b> un aviso para <b>desbloquear</b></Link>
+                                    <Link href="/publicar"><IconLock /> <b>Publica</b> un aviso para <b>desbloquear</b></Link>
                                 </div>
                             )}
                         </div>
 
                         {isMascotaMode && (
                             <p className="empty-criteria-message" style={{ 'margin': '0.5em 0' }}>
-                                <i className="ti ti-info-circle"></i> Quita el aviso seleccionado, para búsqueda manual.
+                                <IconInfoCircle /> Quita el aviso seleccionado, para búsqueda manual.
                             </p>
                         )}
 
@@ -1255,62 +1295,62 @@ export default function BuscarIAPage() {
                         >
                             {activePetPill !== 'nuevo' && (
                                 <span className="badge-active-attribute badge-pill-pet">
-                                    <i className="fa-solid fa-paw"></i> {selectedPetReport?.title || 'Mascota seleccionada'}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconPaw /> {selectedPetReport?.title || 'Mascota seleccionada'}{' '}
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={handleResetPetPill}
-                                    ></i>
+                                    />
                                 </span>
                             )}
 
                             {!isMascotaMode && globalQuery.trim() && (
                                 <span className="badge-active-attribute">
-                                    <i className="ti ti-search"></i> Criterio: &quot;{globalQuery}&quot;{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconSearch /> Criterio: &quot;{globalQuery}&quot;{' '}
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={() => setGlobalQuery('')}
-                                    ></i>
+                                    />
                                 </span>
                             )}
 
                             {!isMascotaMode && filterReportType && (
                                 <span className="badge-active-attribute">
-                                    <i className="fa-solid fa-filter"></i>{' '}
+                                    <IconFilter />{' '}
                                     {REPORT_TYPE_OPTIONS.find((o) => o.value === filterReportType)?.label}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={() => setFilterReportType('')}
-                                    ></i>
+                                    />
                                 </span>
                             )}
 
                             {!isMascotaMode && filterTiempo && (
                                 <span className="badge-active-attribute">
-                                    <i className="fa-solid fa-filter"></i>{' '}
+                                    <IconFilter />{' '}
                                     {TIEMPO_OPTIONS.find((o) => o.value === filterTiempo)?.label}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={() => setFilterTiempo('')}
-                                    ></i>
+                                    />
                                 </span>
                             )}
 
                             {!isMascotaMode && isBioConfirmed && bioAttributes.length > 0 && (
                                 <span className="badge-active-attribute badge-photo-attached">
-                                    <i className="fa-solid fa-camera"></i> Datos de IA{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconCamera /> Datos de IA{' '}
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={() => {
                                             setIsBioConfirmed(false);
                                             setIsZoneHighlighted(false);
                                         }}
-                                    ></i>
+                                    />
                                 </span>
                             )}
 
                             {activeTagsCount === 0 && (
                                 <p className="empty-criteria-message">
-                                    <i className="ti ti-info-circle"></i> Ingresa características de tu mascota y busca en el portal.
+                                    <IconInfoCircle /> Ingresa características de tu mascota y busca en el portal.
                                 </p>
                             )}
                         </div>
@@ -1328,12 +1368,12 @@ export default function BuscarIAPage() {
                         >
                             {(filterDepartamento || filterProvincia || filterDistrito) && (
                                 <span className="badge-active-attribute-avanced">
-                                    <i className="fa-solid fa-location-dot"></i>{' '}
+                                    <IconPin />{' '}
                                     {[filterDepartamento, filterProvincia, filterDistrito].filter(Boolean).join(', ')}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={clearLocationFilters}
-                                    ></i>
+                                    />
                                 </span>
                             )}
 
@@ -1341,16 +1381,20 @@ export default function BuscarIAPage() {
                                 <span className="badge-active-attribute-avanced">
                                     {(() => {
                                         const opt = PET_TYPE_OPTIONS.find((o) => o.value === petTypeFilter);
+                                        const Icon = opt?.icon;
+
                                         return (
                                             <>
-                                                {opt && <i className={`fa-solid ${opt.icon}`}></i>} {opt?.label ?? petTypeFilter}
+                                                {Icon && <Icon size={18} stroke={2} />}
+                                                {' '}
+                                                {opt?.label ?? petTypeFilter}
                                             </>
                                         );
                                     })()}{' '}
-                                    <i
-                                        className="fa-solid fa-xmark remove-tag-btn"
+                                    <IconX
+                                        className="remove-tag-btn"
                                         onClick={() => setPetTypeFilter('')}
-                                    ></i>
+                                    />
                                 </span>
                             )}
                         </div>
@@ -1386,7 +1430,7 @@ export default function BuscarIAPage() {
 
                                 {resultsSearchMeta && !centinela?.activo && (
                                     <p className="empty-criteria-message" style={{ 'marginBottom': '1em' }}>
-                                        <i className="fa-solid fa-wand-magic-sparkles"></i> {resultsSearchMeta.image_summary}
+                                        <IconSparkles /> {resultsSearchMeta.image_summary}
                                         {typeof resultsSearchMeta.phash_matches === 'number' &&
                                             ` · ${resultsSearchMeta.phash_matches} coincidencias por imagen`}
                                     </p>
@@ -1412,7 +1456,7 @@ export default function BuscarIAPage() {
                                 {searchError && (
                                     <div className="no-results-state">
                                         <div className="no-results-icon">
-                                            <i className="ti ti-alert-triangle"></i>
+                                            <IconAlertTriangle />
                                         </div>
                                         <h5 className="no-results-title">Ocurrió un error</h5>
                                         <p className="no-results-desc">{searchError}</p>
@@ -1422,7 +1466,7 @@ export default function BuscarIAPage() {
                                 {!searchError && !centinela?.activo && hasSearched && results.length === 0 && (
                                     <div className="no-results-state">
                                         <div className="no-results-icon">
-                                            <i className="ti ti-search"></i>
+                                            <IconSearch />
                                         </div>
                                         <h5 className="no-results-title">Sin coincidencias</h5>
                                         <p className="no-results-desc">
@@ -1454,7 +1498,7 @@ export default function BuscarIAPage() {
                                 <div className="layer-blocked"
                                 >
                                     <span className="badge-active-attribute">
-                                        <i className="fa-solid fa-lock"></i> Centinela activado
+                                        <IconLockCheck /> Centinela activado
                                     </span>
                                 </div>
                             )}
@@ -1491,7 +1535,7 @@ export default function BuscarIAPage() {
                                         <div id="dropzone-text-container" className="dropzone-content-wrapper">
                                             <div className="bio-pulse-radar">
                                                 <div className="pulse-wave"></div>
-                                                <i className="ti ti-camera-plus bio-icon-tech"></i>
+                                                <IconCameraPlus className="bio-icon-tech" />
                                             </div>
                                             <p className="bio-main-text">Sube una foto de tu mascota</p>
                                             <p className="bio-sub-text">
@@ -1504,7 +1548,7 @@ export default function BuscarIAPage() {
                                                 )}
                                             </p>
                                             <span className="bio-upload-badge">
-                                                <i className="ti ti-upload"></i> Seleccionar imagen
+                                                <IconUpload /> Seleccionar imagen
                                             </span>
                                         </div>
                                     </div>
@@ -1547,14 +1591,14 @@ export default function BuscarIAPage() {
                                                     aria-label="Quitar foto"
                                                     className="buttonRemoveBioImagePreview"
                                                 >
-                                                    <i className="ti ti-x"></i>
+                                                    <IconX />
                                                 </button>
                                             </div>
                                         )}
 
                                         {bioAnalysisError && (
                                             <div className="admin-info-box" style={{ marginTop: 12 }}>
-                                                <i className="ti ti-info-circle"></i>
+                                                <IconInfoCircle />
                                                 <p>{bioAnalysisError}</p>
                                             </div>
                                         )}
@@ -1566,10 +1610,10 @@ export default function BuscarIAPage() {
                                                         <span key={chip.id} className="badge-custom-tag">
                                                             {chip.label}
                                                             {!isBioConfirmed && (
-                                                                <i
-                                                                    className="fa-solid fa-xmark remove-tag-btn"
+                                                                <IconX
+                                                                    className="remove-tag-btn"
                                                                     onClick={() => handleRemoveBioAttribute(chip.id)}
-                                                                ></i>
+                                                                />
                                                             )}
                                                         </span>
                                                     ))}
@@ -1590,7 +1634,7 @@ export default function BuscarIAPage() {
 
                             {isGatingReady && isBioLocked && (
                                 <div className="first-visit-banner">
-                                    <Link href="/publicar"><i className="fa-solid fa-lock"></i> <b>Publica</b> un aviso para <b>desbloquear</b></Link>
+                                    <Link href="/publicar"><IconLock /> <b>Publica</b> un aviso para <b>desbloquear</b></Link>
                                 </div>
                             )}
                         </div>

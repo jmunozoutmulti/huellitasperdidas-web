@@ -1,7 +1,7 @@
 'use client';
-
 import { useState } from 'react';
 import { showToast } from '@/components/global/Toast';
+import { IconTrash } from '@tabler/icons-react';
 
 interface ModalEliminarAvisoProps {
     isOpen: boolean;
@@ -33,7 +33,7 @@ export default function ModalEliminarAviso({ isOpen, onClose, onConfirm }: Modal
             <div className="app-modal-card">
                 <div className="app-modal-body">
                     <div className="app-modal-confirm-icon danger">
-                        <i className="ti ti-trash"></i>
+                        <IconTrash />
                     </div>
                     <div className="app-modal-confirm-text">
                         <h4>¿Eliminar este anuncio?</h4>
@@ -53,7 +53,7 @@ export default function ModalEliminarAviso({ isOpen, onClose, onConfirm }: Modal
                         disabled={isProcessing}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-trash"></i> {isProcessing ? 'Eliminando...' : 'Sí, eliminar definitivamente'}
+                        <IconTrash /> {isProcessing ? 'Eliminando...' : 'Sí, eliminar definitivamente'}
                     </button>
                 </div>
             </div>

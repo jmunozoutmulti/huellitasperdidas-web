@@ -15,6 +15,8 @@ import { useApp } from '@/context/AppContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import CustomSelect from '@/components/ui/CustomSelect';
 import Masonry from 'react-masonry-css';
+import { IconX, IconGridDots, IconPlus, IconHeartFilled } from '@tabler/icons-react';
+
 interface SearchItem {
   title: string;
   subtitle: string;
@@ -210,11 +212,6 @@ function HomeContent() {
   }, [page, totalPages, countryCode, searchQuery, isLoadingMore]);
 
   const openDetail = (pet: PetData) => {
-    if (pet.isExternal && pet.externalUrl) {
-      window.open(pet.externalUrl, '_blank');
-      return;
-    }
-
     router.push(`/?id=${pet.id}`);
   };
 
@@ -302,7 +299,7 @@ function HomeContent() {
               onClick={() => handleFilterClick('perdido')}
             >
               Perdidos
-              {activeFilter === 'perdido' && <i className="ti ti-x filter-clear-icon"></i>}
+              {activeFilter === 'perdido' && <IconX className="filter-clear-icon" />}
             </button>
             <button
               data-type="encontrado"
@@ -310,7 +307,7 @@ function HomeContent() {
               onClick={() => handleFilterClick('encontrado')}
             >
               Encontrados
-              {activeFilter === 'encontrado' && <i className="ti ti-x filter-clear-icon"></i>}
+              {activeFilter === 'encontrado' && <IconX className="filter-clear-icon" />}
             </button>
             <button
               data-type="avistamiento"
@@ -318,15 +315,15 @@ function HomeContent() {
               onClick={() => handleFilterClick('avistamiento')}
             >
               Avistamientos
-              {activeFilter === 'avistamiento' && <i className="ti ti-x filter-clear-icon"></i>}
+              {activeFilter === 'avistamiento' && <IconX className="filter-clear-icon" />}
             </button>
             <button
               data-type="adoptar"
               className={`btn-filter-adoption ${activeFilter === 'adoptar' ? 'active' : ''}`}
               onClick={() => handleFilterClick('adoptar')}
             >
-              <i className="fa-solid fa-heart"></i> Adopciones
-              {activeFilter === 'adoptar' && <i className="ti ti-x filter-clear-icon"></i>}
+              <IconHeartFilled style={{ fill: 'var(--purple-brand)' }} /> Adopciones
+              {activeFilter === 'adoptar' && <IconX className="filter-clear-icon" />}
             </button>
           </div>
 
@@ -355,7 +352,7 @@ function HomeContent() {
             onClick={() => handleFilterClick('perdido')}
           >
             Perdidos
-            {activeFilter === 'perdido' && <i className="ti ti-x filter-clear-icon"></i>}
+            {activeFilter === 'perdido' && <IconX className="filter-clear-icon" />}
           </button>
           <button
             data-type="encontrado"
@@ -363,7 +360,7 @@ function HomeContent() {
             onClick={() => handleFilterClick('encontrado')}
           >
             Encontrados
-            {activeFilter === 'encontrado' && <i className="ti ti-x filter-clear-icon"></i>}
+            {activeFilter === 'encontrado' && <IconX className="filter-clear-icon" />}
           </button>
           <button
             data-type="avistamiento"
@@ -371,15 +368,15 @@ function HomeContent() {
             onClick={() => handleFilterClick('avistamiento')}
           >
             Vistos
-            {activeFilter === 'avistamiento' && <i className="ti ti-x filter-clear-icon"></i>}
+            {activeFilter === 'avistamiento' && <IconX className="filter-clear-icon" />}
           </button>
           <button
             data-type="adoptar"
             className={`btn-filter-adoption ${activeFilter === 'adoptar' ? 'active' : ''}`}
             onClick={() => handleFilterClick('adoptar')}
           >
-            <i className="fa-solid fa-heart"></i> Adopción
-            {activeFilter === 'adoptar' && <i className="ti ti-x filter-clear-icon"></i>}
+            <IconHeartFilled style={{ fill: 'var(--purple-brand)' }} /> Adopción
+            {activeFilter === 'adoptar' && <IconX className="filter-clear-icon" />}
           </button>
           <button
             type="button"
@@ -387,7 +384,7 @@ function HomeContent() {
             onClick={() => setIsCompactView((prev) => !prev)}
             aria-label="Vista rápida"
           >
-            <i className="ti ti-grid-dots"></i>
+            <IconGridDots />
           </button>
 
         </div>
@@ -456,7 +453,7 @@ function HomeContent() {
         <Link href="/publicar" className="fab-publish-btn">
           <div className="fab-halo"></div>
           <div className="fab-halo fab-halo-2"></div>
-          <i className="ti ti-plus"></i>
+          <IconPlus />
         </Link>
       </div>
     </main >

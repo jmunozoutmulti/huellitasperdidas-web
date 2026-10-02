@@ -5,6 +5,7 @@ import { showToast } from '@/components/global/Toast';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { useApp } from '@/context/AppContext';
 import { getComments, createComment, updateComment, deleteComment, type ApiComment, CommentsApiError } from '@/lib/commentsApi';
+import { IconSend, IconMoodEdit, IconChevronDown, IconDotsVertical } from '@tabler/icons-react';
 
 interface CommentsWidgetProps {
     reportId: string;
@@ -108,10 +109,10 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
             setComments((prev) =>
                 isReply
                     ? prev.map((c) =>
-                          c.id === parentId
-                              ? { ...c, replies: c.replies.map((r) => (r.id === commentId ? actualizado : r)) }
-                              : c
-                      )
+                        c.id === parentId
+                            ? { ...c, replies: c.replies.map((r) => (r.id === commentId ? actualizado : r)) }
+                            : c
+                    )
                     : prev.map((c) => (c.id === commentId ? { ...actualizado, replies: c.replies } : c))
             );
             setEditingCommentId(null);
@@ -128,8 +129,8 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
             setComments((prev) =>
                 isReply
                     ? prev.map((c) =>
-                          c.id === parentId ? { ...c, replies: c.replies.filter((r) => r.id !== commentId) } : c
-                      )
+                        c.id === parentId ? { ...c, replies: c.replies.filter((r) => r.id !== commentId) } : c
+                    )
                     : prev.filter((c) => c.id !== commentId)
             );
             setOpenCommentDropdownId(null);
@@ -210,7 +211,7 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
                                         setOpenCommentDropdownId(openCommentDropdownId === comment.id ? null : comment.id);
                                     }}
                                 >
-                                    <i className="fa-solid fa-ellipsis-vertical"></i>
+                                    <IconDotsVertical />
                                 </button>
 
                                 {openCommentDropdownId === comment.id && (
@@ -348,7 +349,7 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
                 <span className="comments-counter-text">
                     {isLoading ? 'Cargando comentarios...' : `${totalCount} ${totalCount === 1 ? 'comentario' : 'comentarios'}`}
                 </span>
-                <i className="fa-solid fa-chevron-down accordion-arrow-icon"></i>
+                <IconChevronDown className="accordion-arrow-icon" />
             </div>
 
             <div className="comments-scrollable-deck">
@@ -376,7 +377,7 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
                                 disabled={!commentInput.trim() || isSubmitting}
                                 title="Enviar"
                             >
-                                <i className="ti ti-send"></i>
+                                <IconSend />
                             </button>
                             <div className="emoji-picker-wrapper" ref={emojiPickerRef}>
                                 <button
@@ -386,7 +387,7 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
                                     title="Emojis"
                                     onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
                                 >
-                                    <i className="fa-regular fa-face-smile"></i>
+                                    <IconMoodEdit />
                                 </button>
 
                                 {isEmojiPickerOpen && (

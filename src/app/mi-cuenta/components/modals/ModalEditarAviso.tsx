@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { showToast } from '@/components/global/Toast';
@@ -14,7 +13,18 @@ import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE 
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { generateFlyerImage } from '@/lib/flyerExport';
 import { resizePetImage } from '@/lib/resizeImage';
-
+import {
+    IconX,
+    IconInfoCircle,
+    IconCameraPlus,
+    IconCalendarX,
+    IconGenderMale,
+    IconGenderFemale,
+    IconBrandWhatsapp,
+    IconCheck,
+    IconMapPin,
+    IconCircleDashedCheck
+} from '@tabler/icons-react';
 interface ModalEditarAvisoProps {
     isOpen: boolean;
     id: string;
@@ -532,7 +542,7 @@ export default function ModalEditarAviso({
                 <div className="app-modal-header">
                     <h3 id="editar-modal-title">Editar aviso</h3>
                     <button type="button" className="app-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
                 <div className="app-modal-body form-account">
@@ -541,7 +551,7 @@ export default function ModalEditarAviso({
                     ) : (
                         <>
                             <div className="admin-info-box info-box-revision">
-                                <i className="ti ti-info-circle"></i>
+                                <IconInfoCircle />
                                 <p>
                                     {rejectionReason ? (
                                         <>
@@ -556,9 +566,8 @@ export default function ModalEditarAviso({
                             </div>
 
                             {/*ubicacionCompleta && (
-                                
                                 <div className="admin-info-box">
-                                    <i className="ti ti-map-pin"></i>
+                                    <IconMapPin />
                                     <p>
                                         <b>Ubicación:</b> {ubicacionCompleta}
                                         {readOnlyAddressHint && <> — {readOnlyAddressHint}</>}. La ubicación no se puede editar después de publicado.
@@ -606,7 +615,7 @@ export default function ModalEditarAviso({
                                                             : {}),
                                                     }}
                                                 >
-                                                    {!previewUrl && <i className="ti ti-camera-plus"></i>}
+                                                    {!previewUrl && <IconCameraPlus />}
 
                                                     {!previewUrl && (
                                                         <input
@@ -639,7 +648,7 @@ export default function ModalEditarAviso({
                                                                 handleRemoveEditFoto(idx);
                                                             }}
                                                         >
-                                                            <i className="ti ti-x"></i>
+                                                            <IconX />
                                                         </button>
                                                     )}
                                                 </div>
@@ -672,7 +681,7 @@ export default function ModalEditarAviso({
                                                     setEditDatePopoverOpen((prev) => !prev);
                                                 }}
                                             >
-                                                <i className="ti ti-calendar-x"></i>
+                                                <IconCalendarX />
                                                 <input
                                                     type="text"
                                                     className="form-input"
@@ -711,7 +720,8 @@ export default function ModalEditarAviso({
                                                             value={editFechaAnio}
                                                             onChange={(val) => setEditFechaAnio(val)}
                                                             options={[
-                                                                { value: '2026', label: '2026' }
+                                                                { value: '2026', label: '2026' },
+                                                                { value: '2025', label: '2025' }
                                                             ]}
                                                         />
                                                     </div>
@@ -729,14 +739,16 @@ export default function ModalEditarAviso({
                                                 className={`gender-pill-btn ${editSexo === 'Macho' ? 'active' : ''}`}
                                                 onClick={() => setEditSexo('Macho')}
                                             >
-                                                <i className="ti ti-gender-male"></i> Macho
+                                                <IconGenderMale /> Macho
+                                                <IconCircleDashedCheck className="icon-check-active" />
                                             </button>
                                             <button
                                                 type="button"
                                                 className={`gender-pill-btn ${editSexo === 'Hembra' ? 'active' : ''}`}
                                                 onClick={() => setEditSexo('Hembra')}
                                             >
-                                                <i className="ti ti-gender-female"></i> Hembra
+                                                <IconGenderFemale /> Hembra
+                                                <IconCircleDashedCheck className="icon-check-active" />
                                             </button>
                                         </div>
                                     </div>
@@ -883,7 +895,7 @@ export default function ModalEditarAviso({
                                                         onChange={(e) => setEditOcultarMonto(e.target.checked)}
                                                     />
                                                     <span className="terms-checkbox-custom">
-                                                        <i className="fa-solid fa-check"></i>
+                                                        <i className="check"></i>
                                                     </span>
                                                     <span className="terms-checkbox-text">Ocultar monto</span>
                                                 </label>
@@ -911,7 +923,7 @@ export default function ModalEditarAviso({
                                                         onChange={(e) => setEditOcultarExtras(e.target.checked)}
                                                     />
                                                     <span className="terms-checkbox-custom">
-                                                        <i className="fa-solid fa-check"></i>
+                                                        <i className="check"></i>
                                                     </span>
                                                     <span className="terms-checkbox-text">Ocultar detalles</span>
                                                 </label>
@@ -959,7 +971,7 @@ export default function ModalEditarAviso({
                                             >
                                                 {flyerPhotoSrcs.length === 0 ? (
                                                     <div className="flyer-img-placeholder">
-                                                        <i className="ti ti-camera-plus"></i>
+                                                        <IconCameraPlus />
                                                     </div>
                                                 ) : (
                                                     flyerPhotoSrcs.map((src, idx) => (
@@ -969,9 +981,9 @@ export default function ModalEditarAviso({
                                                     ))
                                                 )}
                                             </div>
-                                            {readOnlyDistrict && (
+                                            {(readOnlyDistrict || readOnlyProvince) && (
                                                 <p className="flyer-txt-distrito">
-                                                    <i className="fa-solid fa-location-dot"></i> {readOnlyDistrict}
+                                                    <IconMapPin /> {readOnlyDistrict || readOnlyProvince}
                                                 </p>
                                             )}
                                             {fc.showNombre && (
@@ -1005,7 +1017,7 @@ export default function ModalEditarAviso({
                                             <div className="flyer-footer-contact">
                                                 <span className="flyer-footer-call-to-action">{fc.cta}</span>
                                                 <div className="flyer-footer-number">
-                                                    <i className="ti ti-brand-whatsapp"></i>
+                                                    <IconBrandWhatsapp />
                                                     <span>{editTelefono || '---------'}</span>
                                                 </div>
                                             </div>
@@ -1026,7 +1038,7 @@ export default function ModalEditarAviso({
                         disabled={!isUnlocked || isLoading || isSaving}
                         onClick={handleGuardar}
                     >
-                        <i className="ti ti-check"></i> {isSaving ? 'Guardando...' : 'Enviar a revisión'}
+                        <IconCheck /> {isSaving ? 'Guardando...' : 'Enviar a revisión'}
                     </button>
                 </div>
             </div>

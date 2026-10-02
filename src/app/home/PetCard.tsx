@@ -1,6 +1,20 @@
 'use client';
 import { PetData } from '@/lib/pets';
-
+import {
+    IconExternalLink,
+    IconPin,
+    IconCalendarBolt,
+    IconWorldWww,
+    IconBrandFacebook,
+    IconBrandInstagram,
+    IconBrandTiktok,
+    IconBrandGoogle,
+    IconClockBolt,
+    IconHeartQuestion,
+    IconShare,
+    IconUsers,
+    IconHeartFilled
+} from '@tabler/icons-react';
 
 interface PetCardProps {
     pet: PetData;
@@ -8,55 +22,59 @@ interface PetCardProps {
 }
 
 export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
-    // 1. TARJETA EXTERNA (Instagram, TikTok, Facebook)
+    // 1. TARJETA EXTERNA (Instagram, TikTok, Facebook, Google)
     if (pet.isExternal) {
         return (
             <div className="masonry-item">
-                <a
-                    href={pet.externalUrl}
-                    target="_blank"
-                    className="pet-card pet-card-external external-direct"
-                    rel="noreferrer">
+                <div
+                    className="pet-card pet-card-external"
+                    data-id={pet.id}
+                    onClick={() => onOpenDetail(pet)}
+                >
                     <div className="card-badges">
                         <span className={`badge badge-ext-${pet.externalType}`}>
-                            {pet.externalType === 'instagram' && <i className="fa-brands fa-instagram"></i>}
-                            {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                            {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
-                            {pet.externalType === 'google' && <i className="fa-brands fa-google"></i>}
+                            {pet.externalType === 'facebook' && <IconBrandFacebook />}
+                            {pet.externalType === 'instagram' && <IconBrandInstagram />}
+                            {pet.externalType === 'tiktok' && <IconBrandTiktok />}
+                            {pet.externalType === 'google' && <IconBrandGoogle />}
                             {' '}{pet.badge}
                         </span>
                     </div>
 
                     <div className="card-overlay">
                         <span className="btn-external-link">
-                            <i className="ti ti-external-link"></i> Ver enlace original
+                            <IconExternalLink /> VER
                         </span>
                     </div>
+
                     <div className="card-img">
-                        <img src={pet.imgSrc} alt={pet.title} />
+                        <a href="#" onClick={(e) => e.preventDefault()}>
+                            <img src={pet.imgSrc} alt={pet.title} />
+                        </a>
                     </div>
 
                     {pet.title && (
                         <div className="card-body">
                             <div className="card-meta">
-                                <span><i className="ti ti-pin"></i> {pet.district}</span>
-                                <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                                <span><IconPin /> {[pet.district, pet.province, pet.region].filter(Boolean).join(', ')}</span>
+                                <span><IconCalendarBolt /> {pet.date}</span>
                             </div>
                             <h3 className="card-title">{pet.title}</h3>
                         </div>
                     )}
 
                     <div className="card-footer card-footer-external">
-                        <span><i className="ti ti-world-www"></i> Indexado</span>
+                        <span><IconWorldWww /> Indexado</span>
                         <span className="source-tag">
-                            {pet.externalType === 'instagram' && <i className="ti ti-brand-instagram"></i>}
-                            {pet.externalType === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                            {pet.externalType === 'facebook' && <i className="fa-brands fa-facebook"></i>}
+                            {pet.externalType === 'facebook' && <IconBrandFacebook />}
+                            {pet.externalType === 'instagram' && <IconBrandInstagram />}
+                            {pet.externalType === 'tiktok' && <IconBrandTiktok />}
+                            {pet.externalType === 'google' && <IconBrandGoogle />}
                             {' '}{pet.badge}
                         </span>
                     </div>
-                </a>
-            </div >
+                </div>
+            </div>
         );
     }
 
@@ -71,7 +89,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                 >
                     <div className="card-badges">
                         <span className="badge badge-adopt">
-                            <i className="fa-solid fa-heart"></i> {pet.badge}
+                            <IconHeartFilled /> {pet.badge}
                         </span>
                     </div>
                     <div className="card-img">
@@ -82,8 +100,8 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
 
                     <div className="card-body">
                         <div className="card-meta">
-                            <span><i className="ti ti-pin"></i> {pet.district}</span>
-                            <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                            <span><IconPin /> {[pet.district, pet.province, pet.region].filter(Boolean).join(', ')}</span>
+                            <span><IconCalendarBolt /> {pet.date}</span>
                         </div>
                         {pet.title && <h3 className="card-title">{pet.title}</h3>}
 
@@ -112,7 +130,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                 >
                     <div className="card-badges">
                         <span className="badge badge-max-priority">
-                            <i className="ti ti-clock-bolt"></i> {pet.badge}
+                            <IconClockBolt /> {pet.badge}
                         </span>
                     </div>
                     <div className="card-img">
@@ -123,8 +141,8 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
 
                     <div className="card-body">
                         <div className="card-meta">
-                            <span><i className="ti ti-pin"></i> {pet.district}</span>
-                            <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                            <span><IconPin /> {[pet.district, pet.province, pet.region].filter(Boolean).join(', ')}</span>
+                            <span><IconCalendarBolt /> {pet.date}</span>
                         </div>
                         {pet.title && <h3 className="card-title">{pet.title}</h3>}
 
@@ -164,7 +182,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
             >
                 <div className="card-badges">
                     <span className={`badge ${pet.badgeStyle}`}>
-                        {pet.badgeStyle === 'badge-adopt' && <i className="fa-solid fa-heart"></i>}
+                        {pet.badgeStyle === 'badge-adopt' && <IconHeartFilled />}
                         {pet.badge}
                     </span>
                 </div>
@@ -174,7 +192,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                         <button type="button" className="btn-purple">¡ADOPTAR!</button>
                     ) : pet.badgeStyle === 'badge-found' ? (
                         <button type="button" className="btn-green">
-                            <i className="ti ti-heart-question"></i> Ver mascota
+                            <IconHeartQuestion /> Ver mascota
                         </button>
                     ) : pet.badgeStyle === 'badge-sight' ? (
                         <button type="button" className="btn-yellow">¡VER!</button>
@@ -189,16 +207,16 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                 {pet.badgeStyle !== 'badge-sight' && (
                     <div className="card-body">
                         <div className="card-meta">
-                            <span><i className="ti ti-pin"></i> {pet.district}</span>
-                            <span><i className="ti ti-calendar-bolt"></i> {pet.date}</span>
+                            <span><IconPin /> {[pet.district, pet.province, pet.region].filter(Boolean).join(', ')}</span>
+                            <span><IconCalendarBolt /> {pet.date}</span>
                         </div>
                         {pet.title && <h3 className="card-title">{pet.title}</h3>}
                     </div>
                 )}
 
                 <div className="card-footer">
-                    <span><i className="ti ti-share"></i> {pet.shares} <b>Compartidos</b></span>
-                    <span><i className="ti ti-users"></i> {pet.views} <b>Vistas</b></span>
+                    <span><IconShare /> {pet.shares} <b>Compartidos</b></span>
+                    <span><IconUsers /> {pet.views} <b>Vistas</b></span>
                 </div>
             </div>
         </div>

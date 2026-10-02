@@ -6,6 +6,22 @@ import Link from 'next/link';
 import '@/styles/global/planes-modal.css';
 import { useApp } from '@/context/AppContext';
 import { getCountryByAbbr } from '@/lib/countries';
+import {
+    IconSettingsSearch,
+    IconX,
+    IconLoader,
+    IconInfoCircle,
+    IconCheck,
+    IconCancel,
+    IconClockHour5,
+    IconBolt,
+    IconWorldSearch,
+    IconChevronRight,
+    IconChevronLeft,
+    IconShieldCheck,
+    IconCreditCard,
+    IconDeviceMobile
+} from '@tabler/icons-react';
 
 // Antes esto era 'local' | 'amplio' | 'urgente', pero los radio buttons reales
 // usaban 'local' | 'estandar' | 'pro' — no coincidían, así que elegir Estándar
@@ -157,7 +173,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                 <div className="planes-modal-backdrop" onClick={handleClose}></div>
                 <div className="planes-modal-card">
                     <div className="admin-info-box info-box-revision">
-                        <i className="ti ti-loader"></i>
+                        <IconLoader />
                         <p>Cargando...</p>
                     </div>
                 </div>
@@ -173,15 +189,15 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                     <div className="planes-modal-header">
                         <div>
                             <span className="planes-modal-eyebrow">
-                                <i className="ti ti-settings-search"></i> Herramientas Avanzadas
+                                <IconSettingsSearch /> Herramientas Avanzadas
                             </span>
                         </div>
                         <button type="button" className="planes-modal-close" onClick={handleClose}>
-                            <i className="ti ti-x"></i>
+                            <IconX />
                         </button>
                     </div>
                     <div className="admin-info-box">
-                        <i className="ti ti-info-circle"></i>
+                        <IconInfoCircle />
                         <p>Este país aún no está configurado para esta función. Vuelve más tarde.</p>
                     </div>
                 </div>
@@ -214,7 +230,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                 <div className="planes-modal-header">
                     <div>
                         <span className="planes-modal-eyebrow">
-                            <i className="ti ti-settings-search"></i> Herramientas Avanzadas
+                            <IconSettingsSearch /> Herramientas Avanzadas
                         </span>
                     </div>
                     <button
@@ -223,7 +239,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                         id="planes-modal-close"
                         onClick={handleClose}
                     >
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
 
@@ -247,13 +263,13 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                         </div>
                                         <ul className="planes-modal-features">
                                             <li>
-                                                <i className="ti ti-check"></i> Buscador automático 24/7
+                                                <IconCheck /> Buscador automático 24/7
                                             </li>
                                             <li className="feat-disabled">
-                                                <i className="ti ti-cancel"></i> Búsqueda por foto
+                                                <IconCheck /> Búsqueda por foto
                                             </li>
                                             <li className="feat-disabled">
-                                                <i className="ti ti-cancel"></i> Alertas WhatsApp
+                                                <IconCheck /> Alertas WhatsApp
                                             </li>
                                         </ul>
                                     </div>
@@ -262,10 +278,10 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                             <span>
                                                 <i>{currencySymbol}</i> {planes.local.precio}
                                             </span>{' '}
-                                            <p>/ <i className="fa-solid fa-credit-card"></i> Pago único</p>
+                                            <p>/ <IconCreditCard /> Pago único</p>
                                         </div>
                                         <p className="planes-modal-plan-days">
-                                            <i className="ti ti-clock-hour-5"></i>Duración: <b>{planes.local.dias} día{planes.local.dias === 1 ? '' : 's'}</b>
+                                            <IconClockHour5 /> Duración: <b>{planes.local.dias} día{planes.local.dias === 1 ? '' : 's'}</b>
                                         </p>
                                     </div>
                                 </div>
@@ -287,13 +303,13 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                         </div>
                                         <ul className="planes-modal-features">
                                             <li>
-                                                <i className="ti ti-check"></i> Buscador automático 24/7
+                                                <IconCheck /> Buscador automático 24/7
                                             </li>
                                             <li>
-                                                <i className="ti ti-check"></i> Búsqueda por foto
+                                                <IconCheck /> Búsqueda por foto
                                             </li>
                                             <li className="feat-disabled">
-                                                <i className="ti ti-cancel"></i> Alertas WhatsApp
+                                                <IconCancel /> Alertas WhatsApp
                                             </li>
                                         </ul>
                                     </div>
@@ -302,10 +318,10 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                             <span>
                                                 <i>{currencySymbol}</i> {planes.estandar.precio}
                                             </span>{' '}
-                                            <p>/ <i className="fa-solid fa-credit-card"></i> Pago único</p>
+                                            <p>/ <IconCreditCard /> Pago único</p>
                                         </div>
                                         <p className="planes-modal-plan-days">
-                                            <i className="ti ti-clock-hour-5"></i>Duración: <b>{planes.estandar.dias} días</b>
+                                            <IconClockHour5 /> Duración: <b>{planes.estandar.dias} días</b>
                                         </p>
                                     </div>
                                 </div>
@@ -323,20 +339,20 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                 <div className="planes-modal-plan-item planes-modal-plan-recommended">
                                     <div className="box-modal-plan-top">
                                         <span className="planes-modal-recommended-tag">
-                                            <i className="ti ti-bolt"></i> Recomendado
+                                            <IconBolt /> Recomendado
                                         </span>
                                         <div className="planes-modal-plan-top">
                                             <h4 className="planes-modal-plan-name">Avanzado</h4>
                                         </div>
                                         <ul className="planes-modal-features">
                                             <li>
-                                                <i className="ti ti-check"></i> Buscador automático 24/7
+                                                <IconCheck /> Buscador automático 24/7
                                             </li>
                                             <li>
-                                                <i className="ti ti-check"></i> Búsqueda por foto
+                                                <IconCheck /> Búsqueda por foto
                                             </li>
                                             <li>
-                                                <i className="ti ti-check"></i> Alertas WhatsApp
+                                                <IconCheck /> Alertas WhatsApp
                                             </li>
                                         </ul>
                                     </div>
@@ -345,10 +361,10 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                             <span>
                                                 <i>{currencySymbol}</i> {planes.pro.precio}
                                             </span>{' '}
-                                            <p>/ <i className="fa-solid fa-credit-card"></i> Pago único</p>
+                                            <p>/ <IconCreditCard /> Pago único</p>
                                         </div>
                                         <p className="planes-modal-plan-days">
-                                            <i className="ti ti-clock-hour-5"></i>Duración: <b>{planes.pro.dias} días</b>
+                                            <IconClockHour5 /> Duración: <b>{planes.pro.dias} días</b>
                                         </p>
                                     </div>
                                 </div>
@@ -357,7 +373,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
 
                         <div className="planes-modal-actions">
                             <div className="text-modal">
-                                <i className="ti ti-world-search"></i> Buscamos en Internet (sitios, redes y más)
+                                <IconWorldSearch /> Buscamos en Internet (sitios, redes y más)
                             </div>
                             <button
                                 type="button"
@@ -365,7 +381,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                 className="btn-publish"
                                 onClick={handleNextStep}
                             >
-                                Continuar <i className="ti ti-chevron-right"></i>
+                                Continuar <IconChevronRight />
                             </button>
                         </div>
                     </div>
@@ -387,7 +403,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                    <IconShieldCheck /> Pago seguro
                                 </h4>
 
                                 <div className="payment-methods-tabs">
@@ -396,14 +412,14 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                         className={`pay-tab-btn ${payMethod === 'card' ? 'active' : ''}`}
                                         onClick={() => setPayMethod('card')}
                                     >
-                                        <i className="fa-solid fa-credit-card"></i> Tarjeta de Crédito/Débito
+                                        <IconCreditCard /> Tarjeta de Crédito/Débito
                                     </button>
                                     <button
                                         type="button"
                                         className={`pay-tab-btn ${payMethod === 'yape' ? 'active' : ''}`}
                                         onClick={() => setPayMethod('yape')}
                                     >
-                                        <i className="fa-solid fa-mobile-screen-button"></i> Yape
+                                        <IconDeviceMobile /> Yape
                                     </button>
                                 </div>
 
@@ -440,8 +456,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                             <div className="yape-mock-wrapper">
                                                 <p>Escanea desde la app Yape o ingresa tu código de aprobación:</p>
                                                 <div className="yape-qr-box">
-                                                    <i className="fa-solid fa-qrcode"></i>
-                                                    <span>QR HUELLITAS PERÚ</span>
+                                                    <span>QR HUELLAS PERÚ</span>
                                                 </div>
                                                 <div className="form-group">
                                                     <label className="form-label">Código de aprobación Yape (6 dígitos)</label>
@@ -462,7 +477,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                             onChange={(e) => setAcceptedTerms(e.target.checked)}
                                         />
                                         <span className="terms-checkbox-custom">
-                                            <i className="fa-solid fa-check"></i>
+                                            <i className="check"></i>
                                         </span>
                                         <span className="terms-checkbox-text">
                                             Acepto los{' '}
@@ -483,7 +498,7 @@ export default function PlanesModal({ isOpen: externalIsOpen, onClose: externalO
                                 className="btn-secondary"
                                 onClick={handleBackStep}
                             >
-                                <i className="ti ti-chevron-left"></i> Volver
+                                <IconChevronLeft /> Volver
                             </button>
                             <button
                                 type="button"

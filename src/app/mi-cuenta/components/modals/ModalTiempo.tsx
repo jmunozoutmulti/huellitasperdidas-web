@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { fetchReport, type ReportDetail } from '@/lib/api';
@@ -8,6 +7,15 @@ import { getPackages, type PackageOption, type ExtensionOption } from '@/lib/pac
 import { getCountryByAbbr, getLocaleForCountry } from '@/lib/countries';
 import type { PaymentInfo } from '@/lib/paymentsApi';
 import CheckoutPago from '@/components/checkout/CheckoutPago';
+import {
+    IconLoader,
+    IconHistory,
+    IconX,
+    IconInfoCircle,
+    IconCalendarPlus,
+    IconCheck,
+    IconShieldCheck
+} from '@tabler/icons-react';
 
 interface ModalTiempoProps {
     isOpen: boolean;
@@ -83,7 +91,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                 <div className="planes-modal-backdrop" onClick={onClose}></div>
                 <div className="planes-modal-card">
                     <div className="admin-info-box info-box-revision">
-                        <i className="ti ti-loader"></i>
+                        <IconLoader />
                         <p>Cargando...</p>
                     </div>
                 </div>
@@ -99,15 +107,15 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                     <div className="planes-modal-header">
                         <div>
                             <span className="planes-modal-eyebrow">
-                                <i className="ti ti-history"></i> Ampliar tiempo del aviso
+                                <IconHistory /> Ampliar tiempo del aviso
                             </span>
                         </div>
                         <button type="button" className="planes-modal-close" onClick={onClose}>
-                            <i className="ti ti-x"></i>
+                            <IconX />
                         </button>
                     </div>
                     <div className="admin-info-box">
-                        <i className="ti ti-info-circle"></i>
+                        <IconInfoCircle />
                         <p>Este plan todavía no tiene opciones de tiempo adicional configuradas para tu país. Vuelve más tarde.</p>
                     </div>
                 </div>
@@ -159,11 +167,11 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                 <div className="planes-modal-header">
                     <div>
                         <span className="planes-modal-eyebrow">
-                            <i className="ti ti-history"></i> Ampliar tiempo del aviso
+                            <IconHistory /> Ampliar tiempo del aviso
                         </span>
                     </div>
                     <button type="button" className="planes-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
 
@@ -196,7 +204,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                             </div>
 
                             <p className="tiempo-timeline-caption">
-                                <i className="ti ti-history"></i>
+                                <IconHistory />
                                 Tu aviso seguirá activo hasta el <b>{fechaNuevaLarga}</b>{' '}
                                 <b>(+{tier.extraDays} días adicionales)</b>
                             </p>
@@ -215,7 +223,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                                     <div className="zona-option-item">
                                         <div className="zona-option-top">
                                             <div className="zona-icon">
-                                                <i className="ti ti-calendar-plus animation-none"></i>
+                                                <IconCalendarPlus className="animation-none" />
                                             </div>
                                             <span className="zona-km">+{t.extraDays} día{t.extraDays === 1 ? '' : 's'}</span>
                                         </div>
@@ -229,7 +237,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
 
                         <div className="planes-modal-actions">
                             <p className="tiempo-note">
-                                <i className="ti ti-info-circle"></i> La ampliación mantiene activa la difusión.
+                                <IconInfoCircle /> La ampliación mantiene activa la difusión.
                             </p>
                             <button
                                 type="button"
@@ -241,7 +249,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                                     'Procesando...'
                                 ) : (
                                     <>
-                                        <i className="ti ti-check"></i> Continuar
+                                        <IconCheck /> Continuar
                                     </>
                                 )}
                             </button>
@@ -263,7 +271,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
 
                             <div className="payment-gateway-box">
                                 <h4>
-                                    <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                    <IconShieldCheck /> Pago seguro
                                 </h4>
                                 <CheckoutPago
                                     payment={pendingPayment}

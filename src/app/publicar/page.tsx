@@ -23,6 +23,45 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { getCountryByAbbr, getLocaleForCountry, type Country } from '@/lib/countries';
 import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
 import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
+import {
+    IconSparkles,
+    IconDeviceMobileMessage,
+    IconCameraPlus,
+    IconX,
+    IconCalendarX,
+    IconGenderMale,
+    IconVenus,
+    IconInfoCircle,
+    IconBolt,
+    IconBan,
+    IconBroadcast,
+    IconCameraSearch,
+    IconHelp,
+    IconChevronLeft,
+    IconCheck,
+    IconChevronRight,
+    IconCircleCheck,
+    IconCircleDashedCheck,
+    IconHandFingerLeft,
+    IconHandFingerDown,
+    IconHandFinger,
+    IconCalendarBolt,
+    IconEye,
+    IconBrandWhatsapp,
+    IconCut,
+    IconCreditCard,
+    IconBrandFacebook,
+    IconBrandInstagram,
+    IconBrandTiktok,
+    IconBrandMessenger,
+    IconShieldCheck,
+    IconCurrentLocation,
+    IconMapPin,
+    IconLoader,
+    IconPlus,
+    IconCircleCheckFilled,
+    IconClock
+} from '@tabler/icons-react';
 
 const MapPicker = dynamic(() => import('@/components/global/MapPicker'), { ssr: false });
 
@@ -706,7 +745,7 @@ export default function PublicarPerdidaPage() {
                         >
                             <div>
                                 <span className="slogan-eyebrow">
-                                    <i className="ti ti-sparkles"></i> Cómo funciona
+                                    <IconSparkles /> Cómo funciona
                                 </span>
                                 <div className="slogan-body">
                                     <p>
@@ -718,7 +757,7 @@ export default function PublicarPerdidaPage() {
                                 <div className="slogan-reach-row">
                                     <div className="slogan-reach-item">
                                         <span className="slogan-reach-icon">
-                                            <i className="ti ti-device-mobile-message"></i>
+                                            <IconDeviceMobileMessage />
                                         </span>
                                         <span>
                                             El aviso se muestra a <b>personas cercanas</b>, incluso si
@@ -781,7 +820,7 @@ export default function PublicarPerdidaPage() {
                                                 >
                                                     {!uploadedImages[idx] && (
                                                         <>
-                                                            <i className="ti ti-camera-plus"></i>
+                                                            <IconCameraPlus />
                                                             <input
                                                                 type="file"
                                                                 className="pet-photo-input"
@@ -806,7 +845,7 @@ export default function PublicarPerdidaPage() {
                                                             data-index={idx}
                                                             onClick={() => handleRemovePhoto(idx)}
                                                         >
-                                                            <i className="ti ti-x"></i>
+                                                            <IconX />
                                                         </button>
                                                     )}
                                                 </div>
@@ -849,7 +888,7 @@ export default function PublicarPerdidaPage() {
                                                     setIsDatePopoverOpen(!isDatePopoverOpen);
                                                 }}
                                             >
-                                                <i className="ti ti-calendar-x"></i>
+                                                <IconCalendarX />
                                                 <input
                                                     type="text"
                                                     id="p-fecha-display"
@@ -917,7 +956,8 @@ export default function PublicarPerdidaPage() {
                                                             clearFieldError('fecha');
                                                         }}
                                                         options={[
-                                                            { value: '2026', label: '2026' }
+                                                            { value: '2026', label: '2026' },
+                                                            { value: '2025', label: '2025' }
                                                         ]}
                                                     />
                                                 </div>
@@ -937,7 +977,8 @@ export default function PublicarPerdidaPage() {
                                                         clearFieldError('sexo');
                                                     }}
                                                 >
-                                                    <i className="ti ti-gender-male"></i> Macho
+                                                    <IconGenderMale /> Macho
+                                                    <IconCircleDashedCheck className="icon-check-active" />
                                                 </button>
                                                 <button
                                                     type="button"
@@ -948,7 +989,8 @@ export default function PublicarPerdidaPage() {
                                                         clearFieldError('sexo');
                                                     }}
                                                 >
-                                                    <i className="ti ti-venus"></i> Hembra
+                                                    <IconVenus /> Hembra
+                                                    <IconCircleDashedCheck className="icon-check-active" />
                                                 </button>
                                             </div>
                                         </div>
@@ -1064,7 +1106,7 @@ export default function PublicarPerdidaPage() {
                                             <label>¿Dónde ocurrió la pérdida? </label>
                                             {!isCountryReady ? (
                                                 <div className="admin-info-box">
-                                                    <i className="ti ti-info-circle"></i>
+                                                    <IconInfoCircle />
                                                     <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
                                                 </div>
                                             ) : (
@@ -1173,7 +1215,7 @@ export default function PublicarPerdidaPage() {
                                             onClick={() => setIsCollapsibleOpen(!isCollapsibleOpen)}
                                         >
                                             <span className="icon">
-                                                <i className="fa-solid fa-plus"></i>
+                                                <IconPlus />
                                             </span>
                                             <div>
                                                 <strong>Agregar más detalles</strong>
@@ -1231,7 +1273,7 @@ export default function PublicarPerdidaPage() {
                                                                 }
                                                             />
                                                             <span className="terms-checkbox-custom">
-                                                                <i className="fa-solid fa-check"></i>
+                                                                <i className="check"></i>
                                                             </span>
                                                             <span className="terms-checkbox-text">
                                                                 Ocultar monto
@@ -1287,7 +1329,7 @@ export default function PublicarPerdidaPage() {
                                                     <div className={`plan-item ${isFree ? 'free' : ''} ${isUrgente ? 'plan-item-premium' : ''}`}>
                                                         {isUrgente && (
                                                             <span className="tag-info">
-                                                                <i className="ti ti-bolt"></i> Máxima Difusión
+                                                                <IconBolt /> Máxima Difusión
                                                             </span>
                                                         )}
                                                         <div className="row-plan">
@@ -1312,7 +1354,7 @@ export default function PublicarPerdidaPage() {
                                                                 </div>
                                                                 {!isFree && (
                                                                     <span>
-                                                                        / <i className="fa-regular fa-credit-card"></i> Pago único
+                                                                        / <IconCreditCard /> Pago único
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -1322,10 +1364,10 @@ export default function PublicarPerdidaPage() {
                                                                 <div className="plan-features-list">
                                                                     {pkg.channels.map((ch) => (
                                                                         <span key={ch} className={`plan-feature-tag btn-${ch}`}>
-                                                                            {ch === 'facebook' && <i className="fa-brands fa-facebook"></i>}
-                                                                            {ch === 'instagram' && <i className="fa-brands fa-instagram"></i>}
-                                                                            {ch === 'tiktok' && <i className="fa-brands fa-tiktok"></i>}
-                                                                            {ch === 'messenger' && <i className="fa-brands fa-facebook-messenger"></i>}
+                                                                            {ch === 'facebook' && <IconBrandFacebook />}
+                                                                            {ch === 'instagram' && <IconBrandInstagram />}
+                                                                            {ch === 'tiktok' && <IconBrandTiktok />}
+                                                                            {ch === 'messenger' && <IconBrandMessenger />}
                                                                             {' '}
                                                                             {ch.charAt(0).toUpperCase() + ch.slice(1)}
                                                                         </span>
@@ -1336,27 +1378,27 @@ export default function PublicarPerdidaPage() {
                                                                 <ul>
                                                                     {isFree ? (
                                                                         <li>
-                                                                            <i className="ti ti-ban"></i> Sin impulso en la zona de
+                                                                            <IconBan /> Sin impulso en la zona de
                                                                             pérdida
                                                                         </li>
                                                                     ) : (
                                                                         <li>
-                                                                            <i className="ti ti-broadcast"></i>
+                                                                            <IconBroadcast />
                                                                             <b>{pkg.days} días</b> de difusión
                                                                         </li>
                                                                     )}
 
                                                                     {pkg.centinela && (
                                                                         <li>
-                                                                            <i className="ti ti-camera-search"></i> Incluye <b>Centinela IA</b> 24/7
+                                                                            <IconCameraSearch /> Incluye <b>Centinela IA</b> 24/7
                                                                         </li>
                                                                     )}
                                                                     {pkg.includesRefund && (
                                                                         <li>
                                                                             <div className="tooltip-wrap">
-                                                                                <i className="ti ti-help tooltip-trigger"></i>
+                                                                                <IconHelp className="tooltip-trigger" />
                                                                                 <span className="tooltip-box">
-                                                                                    <i className="ti ti-info-circle"></i> Si
+                                                                                    <IconInfoCircle /> Si
                                                                                     encuentras a tu mascota antes, te <b>devolvemos</b>{' '}
                                                                                     los días restantes del plan.
                                                                                 </span>
@@ -1389,7 +1431,7 @@ export default function PublicarPerdidaPage() {
                                 >
                                     <div className="payment-gateway-box">
                                         <h4>
-                                            <i className="fa-solid fa-shield-halved"></i> Pago seguro
+                                            <IconShieldCheck /> Pago seguro
                                         </h4>
 
                                         {pendingPayment && (
@@ -1419,7 +1461,7 @@ export default function PublicarPerdidaPage() {
                                     </div>
 
                                     <div className="upgrade-notice-banner">
-                                        <i className="fa-solid fa-circle-info"></i>
+                                        <IconInfoCircle />
                                         <p>
                                             Recuerda que después puedes cambiar tu anuncio a un{' '}
                                             <b>plan de pago</b> desde <b>Mi cuenta</b>, para llegar
@@ -1437,7 +1479,7 @@ export default function PublicarPerdidaPage() {
                                                 onChange={(e) => setAcceptTerms(e.target.checked)}
                                             />
                                             <span className="terms-checkbox-custom">
-                                                <i className="fa-solid fa-check"></i>
+                                                <i className="check"></i>
                                             </span>
                                             <span className="terms-checkbox-text">
                                                 Acepto que he leído y declaro que la información publicada es verídica.{' '}
@@ -1450,7 +1492,7 @@ export default function PublicarPerdidaPage() {
                                 </div>
                             </div>
 
-                            {currentStep === 2 && selectedPlan !== 'gratis' && (
+                            {currentStep === 2 && (
                                 <p className="terms-inline-note">
                                     Al continuar aceptas los{' '}
                                     <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">
@@ -1469,7 +1511,7 @@ export default function PublicarPerdidaPage() {
                                     style={{ display: currentStep > 1 && !pendingPayment ? 'inline-flex' : 'none' }}
                                     onClick={handlePrevStep}
                                 >
-                                    <i className="ti ti-chevron-left"></i> Anterior
+                                    <IconChevronLeft /> Anterior
                                 </button>
 
                                 {!pendingPayment && (
@@ -1487,20 +1529,20 @@ export default function PublicarPerdidaPage() {
                                         ) : currentStep < 3 ? (
                                             currentStep === 2 && selectedPlan !== 'gratis' ? (
                                                 <>
-                                                    <i className="ti ti-check"></i> Continuar
+                                                    <IconCheck /> Continuar
                                                 </>
                                             ) : (
                                                 <>
-                                                    Siguiente <i className="ti ti-chevron-right"></i>
+                                                    Siguiente <IconChevronRight />
                                                 </>
                                             )
                                         ) : selectedPlan === 'gratis' ? (
                                             <>
-                                                <i className="ti ti-check"></i> Publicar Gratis
+                                                <IconCheck /> Publicar Gratis
                                             </>
                                         ) : (
                                             <>
-                                                <i className="ti ti-check"></i> Continuar
+                                                <IconCheck /> Continuar
                                             </>
                                         )}
                                     </button>
@@ -1525,7 +1567,7 @@ export default function PublicarPerdidaPage() {
                                         <span className="status-pulse"></span> Flyer Generado
                                     </span>
                                     <span className="summary-ready-badge">
-                                        <i className="ti ti-circle-check"></i> Listo
+                                        <IconCircleCheck /> Listo
                                     </span>
                                 </div>
                             </div>
@@ -1533,7 +1575,7 @@ export default function PublicarPerdidaPage() {
                             <div className="map-section">
                                 <div className="map-header">
                                     <h4>
-                                        <i className="fa-solid fa-location-crosshairs"></i> Zona de
+                                        <IconCurrentLocation /> Zona de
                                         perdida
                                     </h4>
                                     <span
@@ -1543,7 +1585,7 @@ export default function PublicarPerdidaPage() {
                                             display: selectedPlan !== 'gratis' ? 'inline-flex' : 'none',
                                         }}
                                     >
-                                        <i className="ti ti-circle-dashed-check"></i> Radio de
+                                        <IconCircleDashedCheck /> Radio de
                                         búsqueda listo
                                     </span>
                                 </div>
@@ -1565,11 +1607,11 @@ export default function PublicarPerdidaPage() {
                                     ) : (
                                         <div className="map-radar-wrap">
                                             <div className="map-radar-pin">
-                                                <i className="fa-solid fa-street-view"></i>
+                                                <IconCurrentLocation />
                                             </div>
                                             <p className="map-no-plan-msg">
-                                                <i className="ti ti-hand-finger-left map-hint-icon-desktop"></i>
-                                                <i className="ti ti-hand-finger-down map-hint-icon-mobile"></i>
+                                                <IconHandFingerLeft className="map-hint-icon-desktop" />
+                                                <IconHandFingerDown className="map-hint-icon-mobile" />
                                                 {selectedPlan === 'gratis'
                                                     ? 'Selecciona un plan para ver el alcance de la zona de pérdida.'
                                                     : isGeocoding
@@ -1591,11 +1633,11 @@ export default function PublicarPerdidaPage() {
                                         onChange={(e) => setIsAdjustingMap(e.target.checked)}
                                     />
                                     <span className="terms-checkbox-custom">
-                                        <i className="fa-solid fa-check"></i>
+                                        <i className="check"></i>
                                     </span>
                                     <span className="terms-checkbox-text">
                                         <small>Ajustar ubicación en el mapa  {isAdjustingMap && (
-                                            <i className="map-adjust-hint"><i className="ti ti-hand-finger"></i> Arrastra el círculo</i>
+                                            <i className="map-adjust-hint"><IconHandFinger /> Arrastra el círculo</i>
                                         )}</small>
                                     </span>
                                 </label>
@@ -1614,7 +1656,7 @@ export default function PublicarPerdidaPage() {
                                         <span className="status-pulse"></span> Flyer Generado
                                     </span>
                                     <span className="summary-ready-badge">
-                                        <i className="ti ti-circle-check"></i> Listo
+                                        <IconCircleCheck /> Listo
                                     </span>
                                 </div>
                                 <div
@@ -1624,10 +1666,10 @@ export default function PublicarPerdidaPage() {
                                     }}
                                 >
                                     <span className="summary-title-item ">
-                                        <i className="ti ti-current-location"></i> Zona de búsqueda
+                                        <IconCurrentLocation /> Zona de búsqueda
                                     </span>
                                     <span className="summary-ready-badge">
-                                        <i className="ti ti-circle-check"></i> Listo
+                                        <IconCircleCheck /> Listo
                                     </span>
                                 </div>
                             </div>
@@ -1652,7 +1694,7 @@ export default function PublicarPerdidaPage() {
                                         <div className="summary-date-col">
                                             <span className="summary-date-label">Días de circulación</span>
                                             <strong className="summary-date-value">
-                                                <i className="ti ti-calendar-bolt"></i>{' '}
+                                                <IconCalendarBolt />
                                                 {getFechaRange().diasTexto}
                                             </strong>
                                         </div>
@@ -1691,7 +1733,7 @@ export default function PublicarPerdidaPage() {
                                             id="sum-activacion-pago"
                                             className="summary-activacion-badge badge-activacion-green"
                                         >
-                                            <i className="fa-solid fa-bolt"></i>
+                                            <IconBolt />
                                             <div>
                                                 <b>Activo en máximo 30 minutos</b>
                                                 <p>Tu aviso se activará tras confirmar el pago.</p>
@@ -1702,7 +1744,7 @@ export default function PublicarPerdidaPage() {
                                             id="sum-activacion-gratis"
                                             className="summary-activacion-badge badge-activacion-yellow"
                                         >
-                                            <i className="fa-solid fa-clock"></i>
+                                            <IconClock />
                                             <div>
                                                 <b>En revisión</b>
                                                 <p>Aprobación en máximo 24 hrs hábiles.</p>
@@ -1712,7 +1754,7 @@ export default function PublicarPerdidaPage() {
 
                                     {selectedPlan === 'urgente' && (
                                         <p className="summary-upgrade-note">
-                                            <i className="fa-solid fa-circle-info"></i> Si tu mascota
+                                            <IconInfoCircle /> Si tu mascota
                                             aparece antes de finalizar el plan, solicita un reembolso.
                                         </p>
                                     )}
@@ -1742,11 +1784,11 @@ export default function PublicarPerdidaPage() {
                                         >
                                             {isFlyerMobileVisible ? (
                                                 <>
-                                                    <i className="ti ti-x"></i> Cerrar
+                                                    <IconX /> Cerrar
                                                 </>
                                             ) : (
                                                 <>
-                                                    <i className="ti ti-eye"></i> Ver el Flyer
+                                                    <IconEye /> Ver el Flyer
                                                 </>
                                             )}
                                         </button>
@@ -1772,7 +1814,7 @@ export default function PublicarPerdidaPage() {
                                             >
                                                 {validPhotos.length === 0 ? (
                                                     <div className="flyer-img-placeholder" id="flyer-main-img-view">
-                                                        <i className="ti ti-camera-plus"></i>
+                                                        <IconCameraPlus />
                                                     </div>
                                                 ) : (
                                                     validPhotos.map((imgSrc, idx) => (
@@ -1788,9 +1830,9 @@ export default function PublicarPerdidaPage() {
                                                     ))
                                                 )}
                                             </div>
-                                            {distrito && (
+                                            {(distrito || provincia) && (
                                                 <p className="flyer-txt-distrito" id="flyer-txt-distrito">
-                                                    <i className="fa-solid fa-location-dot"></i> {distrito}
+                                                    <IconMapPin /> {distrito || provincia}
                                                 </p>
                                             )}
                                             <div className="flyer-name-badge">
@@ -1822,7 +1864,7 @@ export default function PublicarPerdidaPage() {
                                                     Si me ves, por favor llama o escribe al
                                                 </span>
                                                 <div className="flyer-footer-number">
-                                                    <i className="ti ti-brand-whatsapp"></i>
+                                                    <IconBrandWhatsapp />
                                                     <span id="flyer-txt-tel">{telefono || '---------'}</span>
                                                 </div>
                                             </div>
@@ -1830,7 +1872,7 @@ export default function PublicarPerdidaPage() {
                                     </div>
 
                                     <p className="editor-canvas-caption">
-                                        <i className="ti ti-cut"></i> Podras imprimir este anuncio
+                                        <IconCut /> Podras imprimir este anuncio
                                     </p>
                                 </div>
                             </div>
@@ -1849,7 +1891,7 @@ export default function PublicarPerdidaPage() {
                 <div className="status-overlay-card">
                     <div className="overlay-content">
                         <span className="overlay-eyebrow">
-                            <i className="fa-solid fa-circle-check"></i> Publicación enviada
+                            <IconCircleCheckFilled /> Publicación enviada
                         </span>
                         <h3 id="overlay-title">Su publicación se envió a aprobación...</h3>
                         <p id="overlay-msg">
@@ -1858,7 +1900,7 @@ export default function PublicarPerdidaPage() {
                     </div>
 
                     <div className="overlay-redirect-row">
-                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                        <IconLoader className="animate-spin" />
                         <span>Redirigiendo en unos segundos...</span>
                     </div>
 

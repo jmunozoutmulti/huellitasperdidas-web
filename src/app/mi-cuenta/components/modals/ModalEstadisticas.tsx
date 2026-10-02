@@ -1,8 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { fetchReport, type ReportDetail } from '@/lib/api';
 import { getLocaleForCountry } from '@/lib/countries';
+import { IconX, IconLoader, IconInfoCircle } from '@tabler/icons-react';
 
 interface ModalEstadisticasProps {
     isOpen: boolean;
@@ -39,13 +39,13 @@ export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadist
                 <div className="app-modal-header">
                     <h3>Estadísticas del aviso</h3>
                     <button type="button" className="app-modal-close" onClick={onClose}>
-                        <i className="ti ti-x"></i>
+                        <IconX />
                     </button>
                 </div>
                 <div className="app-modal-body">
                     {!pub ? (
                         <div className="admin-info-box">
-                            <i className="ti ti-loader"></i>
+                            <IconLoader />
                             <p>Cargando estadísticas...</p>
                         </div>
                     ) : (
@@ -70,14 +70,14 @@ export default function ModalEstadisticas({ isOpen, id, onClose }: ModalEstadist
                                     </>
                                 ) : (
                                     <div className="admin-info-box" style={{ gridColumn: '1 / -1' }}>
-                                        <i className="ti ti-info-circle"></i>
+                                        <IconInfoCircle />
                                         <p>Las métricas de alcance publicitario todavía no están disponibles para este aviso.</p>
                                     </div>
                                 )}
                             </div>
 
                             <div className="admin-info-box">
-                                <i className="ti ti-info-circle"></i>
+                                <IconInfoCircle />
                                 <p>
                                     Las estadísticas se actualizan cada <b>6 horas</b> mientras tu aviso esté activo.
                                 </p>

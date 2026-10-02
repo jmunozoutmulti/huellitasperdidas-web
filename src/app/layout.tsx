@@ -5,8 +5,6 @@ import Script from 'next/script';
 import PopupPublicar from '@/components/global/PopupPublicar';
 import { AppProvider } from '@/context/AppContext';
 import 'swiper/css/bundle';
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import '@tabler/icons-webfont/dist/tabler-icons.css';
 import './globals.css';
 import '@/styles/dark-theme.css';
 import '@/styles/publicar.css';

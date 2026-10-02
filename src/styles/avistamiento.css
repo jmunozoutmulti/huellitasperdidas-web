@@ -53,8 +53,9 @@
     box-shadow: 0 6px 20px rgb(253 236 28 / 60%)
 }
 
-.slogan-reach-item i {
-    font-size: 1.3em;
+.btn-publish-avistamiento svg {
+    width: 1em;
+    height: 1em;
 }
 
 .sighting-upload-actions {
@@ -143,7 +144,8 @@
 }
 
 .sighting-icon-photo {
-    font-size: 2em;
+    width: 2em;
+    height: 2em;
     color: var(--text-main);
     z-index: 2;
     transition: color 0.3s ease;
@@ -219,6 +221,12 @@
     transition: all 0.3s ease;
 }
 
+.sighting-upload-badge svg {
+    width: 1em;
+    height: 1em;
+}
+
+
 .sighting-dropzone-modern:hover .sighting-upload-badge {
     background: var(--yellow-brand);
     color: var(--text-main);
@@ -255,6 +263,14 @@
     border-radius: 2em;
     cursor: pointer;
     z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-clear-photo-fast svg {
+    width: 1.1em;
+    height: 1.1em;
 }
 
 .btn-clear-photo-fast:hover {
@@ -291,9 +307,10 @@
     border-color: var(--brand-main);
 }
 
-.sighting-thumb i.icon {
-    font-size: 2em;
-    color: #4a55664d;
+.sighting-thumb svg.icon {
+    width: 2em;
+    height: 2em;
+    stroke: #4a55664d;
 }
 
 .sighting-thumb input[type="file"] {
@@ -375,7 +392,7 @@
 .sighting-location-row {
     display: flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.35em;
 }
 
 .sighting-location-row .form-input {
@@ -388,6 +405,14 @@
     color: var(--text-secondary);
     flex-shrink: 0;
     transition: color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sighting-gps-icon svg {
+    width: 1.175em;
+    height: 1.175em;
 }
 
 .sighting-gps-icon.gps-active {
@@ -410,7 +435,7 @@
 
 
 
-.pill-multi-btn {
+.pill-sighting-btn {
     background: var(--bg-input);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
@@ -425,15 +450,16 @@
     transition: all 0.2s ease;
 }
 
-.pill-multi-btn i {
-    font-size: 0.85em;
+.pill-sighting-btn svg {
+    width: 1.3em;
+    height: 1.3em;
 }
 
-.pill-multi-btn:hover {
+.pill-sighting-btn:hover {
     border-color: var(--bg-hover);
 }
 
-.pill-multi-btn.active {
+.pill-sighting-btn.active {
     background: var(--yellow-brand-alpha);
     color: #000;
     border-color: var(--yellow-brand);
@@ -542,7 +568,7 @@
 .sighting-overlay-eyebrow {
     display: flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.35em;
     font-size: 1em;
     font-weight: 700;
     background-color: var(--yellow-brand-alpha);
@@ -552,6 +578,11 @@
     justify-content: center;
     width: fit-content;
     margin: 0 auto;
+}
+
+.sighting-overlay-eyebrow svg {
+    width: 1.175em;
+    height: 1.175em;
 }
 
 .sighting-overlay-content {
@@ -607,8 +638,9 @@
     animation: shrinkBar 5s linear forwards;
 }
 
-.slogan-reach-item i {
-    font-size: 1.3em;
+.slogan-reach-item svg {
+    width: 1.8em;
+    height: 1.8em;
 }
 
 
@@ -633,8 +665,9 @@
         gap: 1em;
     }
 
-    .sighting-thumb i.icon {
-        font-size: 1.4em;
+    .sighting-thumb svg.icon {
+        width: 1.6em;
+        height: 1.6em;
     }
 
     .left-sighting {

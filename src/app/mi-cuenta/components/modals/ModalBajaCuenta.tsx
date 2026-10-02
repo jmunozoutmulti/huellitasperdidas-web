@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
 import { AuthApiError } from '@/lib/authApi';
+import { IconEye, IconEyeOff, IconTrash } from '@tabler/icons-react';
 
 interface ModalBajaCuentaProps {
     isOpen: boolean;
@@ -64,7 +65,7 @@ export default function ModalBajaCuenta({ isOpen, onClose }: ModalBajaCuentaProp
                             onClick={() => setShowPassword((v) => !v)}
                             aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                         >
-                            <i className={showPassword ? 'ti ti-eye-off' : 'ti ti-eye'}></i>
+                            {showPassword ? <IconEyeOff /> : <IconEye />}
                         </button>
                     </div>
                 </div>
@@ -78,7 +79,7 @@ export default function ModalBajaCuenta({ isOpen, onClose }: ModalBajaCuentaProp
                         disabled={password.length === 0 || isDeleting}
                         onClick={handleConfirm}
                     >
-                        <i className="ti ti-trash"></i> {isDeleting ? 'Eliminando...' : 'Sí, eliminar mi cuenta'}
+                        <IconTrash /> {isDeleting ? 'Eliminando...' : 'Sí, eliminar mi cuenta'}
                     </button>
                 </div>
             </div>
