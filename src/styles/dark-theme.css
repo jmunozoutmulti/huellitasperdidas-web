@@ -36,7 +36,7 @@
         background-color: var(--bg-alt) !important;
     }
 
-    .btn-add>button {
+    .btn-add>button svg {
         background: var(--bg-alt);
     }
 
@@ -237,7 +237,7 @@
         box-shadow: 0 0 0 rgb(0 0 0 / 15%) !important;
     }
 
-    .btn-add>button:hover {
+    .btn-add>button:hover svg {
         box-shadow: 0 0 0 rgb(0 0 0 / 15%) !important;
         background: #fff !important;
         color: #000 !important;

@@ -1163,8 +1163,7 @@ export default function PublicarPerdidaPage() {
 
                                         {/* DIRECCIÓN */}
                                         <div
-                                            className={`form-group grid-1col ${direccion ? 'has-value' : ''}`}
-                                            style={{ marginTop: '-0.25em' }}>
+                                            className={`form-group input-address grid-1col ${direccion ? 'has-value' : ''}`}>
                                             <input
                                                 type="text"
                                                 id="p-direccion"

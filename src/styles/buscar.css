@@ -1115,12 +1115,12 @@
 .pet-card-horizontal {
     display: flex;
     flex-direction: row;
-    max-height: 13em;
+    max-height: 15em;
     background-color: var(--bg-card);
     border-radius: 0.75em;
     position: relative;
     cursor: pointer;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: transform 0.25s, box-shadow 0.3s;
 }
 
 .pet-card-horizontal:hover {
@@ -1238,7 +1238,7 @@
 }
 
 .card-footer-horizontal {
-    padding: 0.5em 1em;
+    padding: 0.375em 1em;
     background-color: var(--bg-card);
     border-top: 1px solid var(--border-color);
     display: flex;
@@ -1264,7 +1264,6 @@
 .card-footer-horizontal span svg {
     width: 1.1em;
     height: 1.1em;
-    stroke: var(--text-secondary);
 }
 
 
@@ -1297,7 +1296,6 @@
     font-size: 0.95em;
     display: flex;
     gap: 5px;
-    margin-top: 0.5em;
     box-shadow: 0 6px 20px #ff4d4d4d;
     transition: all .3s ease-in-out;
 }

@@ -954,36 +954,48 @@ input:checked+.ui-slider-btn:before {
 
 .btn-add {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.btn-add>button {
+.btn-add button {
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  cursor: pointer;
+}
+
+.btn-add>button svg {
   background: var(--bg-card);
   color: var(--text-main);
-  padding: 0;
-  border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
+  stroke-width: 1.5px;
+  border: none;
+  border-radius: 50%;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 15px rgb(0 0 0 / 10%);
-  font-size: 1em;
-  width: 2.7em;
-  height: 2.7em;
-  border: none;
+  width: 2.75em;
+  height: 2.75em;
+  padding: .5em;
+  transition: all 0.3s;
+  display: flex;
+  box-shadow: 0 4px 15px #0000001a;
 }
 
-.btn-add>button:hover {
-  box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
-}
-
-.btn-add-icon {
-  font-size: 1.5em;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+.btn-add>button:hover svg {
+  box-shadow: 0 6px 20px #00000030;
 }
 
 .btn-add.open .btn-add-icon {
   transform: rotate(45deg);
+}
+
+.btn-add>button span {
+  color: var(--text-main);
+  font-size: 1.075em;
+  font-weight: 500;
+  margin-top: 3px;
 }
 
 .flex-dropdown {
@@ -2823,6 +2835,10 @@ h1 {
     font-size: 15px;
   }
 
+  .btn-add>button span {
+    display: none;
+  }
+
   .fab-publish-wrapper {
     display: block;
   }
@@ -2898,6 +2914,15 @@ h1 {
   .group-reactivar {
     flex-flow: column;
     align-items: center;
+  }
+
+  .custom-select-dropdown {
+    max-height: 15em;
+    font-size: 16px;
+  }
+
+  .custom-select-dropdown li {
+    padding: 0.85em .8em;
   }
 
   .otp-boxes {

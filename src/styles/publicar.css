@@ -512,13 +512,14 @@
 }
 
 #flyer-titulo-alerta {
+    font-family: var(--font-outfit);
     text-transform: uppercase;
     letter-spacing: -1px;
     font-size: 3.5em;
     font-weight: 800;
     line-height: 1;
     margin: 0 0 5px 0;
-    font-family: var(--font-outfit);
+    white-space: nowrap;
 }
 
 #flyer-titulo-alerta.title-small {
@@ -1926,6 +1927,11 @@
     color: var(--text-red);
 }
 
+.input-address {
+    margin-top: -0.25em;
+}
+
+
 
 @media screen and (max-width: 1030px) {
 
@@ -1975,8 +1981,17 @@
         gap: 3em;
     }
 
+    .slogan-paragraph .slogan-reach-item,
+    .slogan-paragraph .slogan-divider,
+    .slogan-paragraph .slogan-eyebrow,
+    .centinela-addon-bar {
+        display: none !important;
+    }
+
     .slogan-paragraph {
-        display: none;
+        max-width: 30em;
+        padding: 0.5em 1em;
+        margin-top: 1em;
     }
 
     .step-line {
@@ -2003,7 +2018,7 @@
             "left"
             "right"
             "center";
-        gap: 0.75em;
+        gap: 0.5em;
     }
 
     .collapsible-details-section {
@@ -2025,7 +2040,15 @@
     h1 {
         font-size: 1.6em;
         margin-top: 0.25em;
-        margin-bottom: 0.75em;
+        margin-bottom: 0.5em;
+    }
+
+    .input-address {
+        margin-top: 0;
+    }
+
+    .flyer-box {
+        padding: 0.35em .75em;
     }
 
     .wizard-vertical-steps {
@@ -2158,6 +2181,7 @@
     .centinela-addon-bar {
         max-width: 100%;
         padding: 0.5em 1em;
+        margin-top: 0.5em;
     }
 
     .centinela-addon-body p {

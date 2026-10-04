@@ -1004,9 +1004,8 @@ export default function PublicarAdoptarPage() {
 
                                         {/* DIRECCIÓN */}
                                         <div
-                                            className={`form-group  grid-1col ${direccion ? 'has-value' : ''
-                                                }`}
-                                            style={{ marginTop: '-0.25em' }}>
+                                            className={`form-group input-address grid-1col ${direccion ? 'has-value' : ''
+                                                }`}>
                                             <input
                                                 type="text"
                                                 id="e-direccion"
@@ -1294,7 +1293,7 @@ export default function PublicarAdoptarPage() {
                                     <div className="free-notice-box">
                                         <h3>¡Todo listo!</h3>
                                         <p>
-                                            Tu aviso aparecerá en el catálogo de adopciones de Huellitas.
+                                            Tu aviso aparecerá en el catálogo de adopciones de Huellas Perdidas.
                                         </p>
                                     </div>
 
@@ -1731,7 +1730,7 @@ export default function PublicarAdoptarPage() {
                         </span>
                         <h3 id="overlay-title">Procesando publicación...</h3>
                         <p id="overlay-msg">
-                            Tu aviso ingresará al catálogo público de adopciones de Huellitas.
+                            Tu aviso ingresará al catálogo público de adopciones de Huellas Perdidas.
                         </p>
                     </div>
 

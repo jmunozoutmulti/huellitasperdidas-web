@@ -124,15 +124,19 @@ function buildBioAttributeChips(result: AnalyzeImageResult): { id: string; label
     return chips;
 }
 
-// Distrito + provincia cuando hay distrito (p.ej. Perú: "Comas, Lima").
-// Si el país no tiene ese nivel (p.ej. México: Estado/Municipio), cae a
-// provincia + región, que es donde queda guardado ese dato para ese caso.
 function formatPetLocation(pet: PetData): string {
     if (pet.district) {
         return [pet.district, pet.province].filter(Boolean).join(', ');
     }
     return [pet.province, pet.region].filter(Boolean).join(', ') || '-';
 }
+
+function truncateText(text: string, maxLength: number): string {
+    const trimmed = text.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength).trimEnd()}...`;
+}
+
 
 export default function BuscarIAPage() {
     useRequireAuth();
@@ -852,7 +856,7 @@ export default function BuscarIAPage() {
                             </div>
                         )}
                         {pet.desc && (
-                            <div className="card-desc-horizontal">{pet.desc}</div>
+                            <div className="card-desc-horizontal">{truncateText(pet.desc, 120)}</div>
                         )}
                     </div>
 

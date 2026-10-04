@@ -2,6 +2,7 @@
 import PetDetailView from './home/PetDetailView';
 import PetCard from './home/PetCard';
 import SearchBox from './home/SearchBox';
+import LiveFeed from '@/components/global/LiveFeed';
 import '@/styles/page.css';
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
@@ -456,6 +457,8 @@ function HomeContent() {
           <IconPlus />
         </Link>
       </div>
+
+      <LiveFeed />
     </main >
   );
 }

@@ -38,6 +38,7 @@
     font-weight: 900;
     color: var(--text-main);
     margin: 0;
+    letter-spacing: -0.375px;
 }
 
 .cuenta-greeting-info span {
@@ -2679,6 +2680,14 @@ MODAL EDITAR ANUNCIO
     background: var(--bg-alt);
     padding: 0.15em 0.6em;
     border-radius: 3em;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.mensaje-hilo-badge-aviso svg {
+    width: 1.1em;
+    height: 1.1em;
 }
 
 .mensaje-hilo-preview {
@@ -3075,7 +3084,6 @@ MODAL EDITAR ANUNCIO
     visibility: visible;
 }
 
-
 @media screen and (max-width: 1030px) {
 
     .pub-accordion-body-inner {
@@ -3118,9 +3126,9 @@ MODAL EDITAR ANUNCIO
         background: var(--bg-card);
         border: none;
         border-radius: 0.75em;
-        padding: 0.9em 1em;
+        padding: 0.85em 1em;
         font-size: 1em;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-main);
         cursor: pointer;
         margin-bottom: 0.5em;
@@ -3139,18 +3147,28 @@ MODAL EDITAR ANUNCIO
     .cuenta-nav-mobile-trigger .cuenta-nav-mobile-current svg:first-child {
         width: 1.3em;
         height: 1.3em;
-        color: var(--text-secondary);
+        color: var(--text-main);
     }
 
     .cuenta-nav-mobile-trigger .toggle-chevron {
         transition: transform 0.25s ease;
-        color: var(--text-secondary);
-        width: 1.3em;
-        height: 1.3em;
+        color: var(--text-main);
+        width: 1.375em;
+        height: 1.375em;
     }
 
     .cuenta-nav-mobile-trigger.open .toggle-chevron {
         transform: rotate(180deg);
+    }
+
+    .cuenta-nav-item {
+        font-size: 1em;
+        font-weight: 300;
+        color: var(--text-main);
+    }
+
+    .cuenta-nav-item:not(:last-child) {
+        border-bottom: 1px solid var(--border-color);
     }
 
     .cuenta-nav-mobile-trigger {
@@ -3165,7 +3183,6 @@ MODAL EDITAR ANUNCIO
         right: 0;
         z-index: 50;
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-        border: 1px solid var(--border-color);
         margin-top: -0.5em;
     }
 
@@ -3174,23 +3191,7 @@ MODAL EDITAR ANUNCIO
     }
 
     .cuenta-nav-secondary {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 49;
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-top: none;
-        border-radius: 0 0 0.75em 0.75em;
-        margin-top: 0;
-        padding: 0.5em 0.75em 1em 0.75em;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-    }
-
-    .cuenta-nav.mobile-open~.cuenta-nav-secondary {
-        display: flex;
+        display: none !important;
     }
 
     .upgrade-map-pin svg {
@@ -3233,20 +3234,6 @@ MODAL EDITAR ANUNCIO
 
     .dashboard-recent-header {
         margin-top: 0;
-    }
-
-    .pub-tabs {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-    }
-
-    .pub-tabs::-webkit-scrollbar {
-        display: none;
-    }
-
-    .pub-tab {
-        flex-shrink: 0;
     }
 
     .pub-accordion-body-inner {
@@ -3307,7 +3294,7 @@ MODAL EDITAR ANUNCIO
 
     .grid-2col {
         grid-template-columns: 1fr;
-        gap: 0.75em;
+        gap: 1em;
     }
 
     .grid-1col {
@@ -3425,5 +3412,83 @@ MODAL EDITAR ANUNCIO
         width: 100%;
         justify-content: space-between;
     }
+
+
+
+    .pub-tabs-dropdown {
+        position: relative;
+        width: 100%;
+    }
+
+    .pub-tabs-dropdown-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg-card);
+        border-radius: 0.75em;
+        padding: 0.85em 1em;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text-main);
+    }
+
+    .pub-tabs-dropdown-trigger svg {
+        color: var(--text-main);
+        width: 1.375em;
+        height: 1.375em;
+        transition: transform .25s;
+    }
+
+    .pub-tabs-dropdown-trigger-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+    }
+
+    .pub-tabs-dropdown-trigger svg.rotated {
+        transform: rotate(180deg);
+    }
+
+    .pub-tabs-dropdown-list {
+        position: absolute;
+        top: calc(100% + 0.5em);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        background: var(--bg-card);
+        border-radius: 0.75em;
+        box-shadow: 0 0.5em 2em rgb(0 0 0 / 12%);
+        overflow: hidden;
+    }
+
+    .pub-tabs-dropdown-item {
+        width: 100%;
+        font-size: 1em;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        padding: 0.75em 1em;
+        background: none;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .pub-tabs-dropdown-item:not(:last-child) {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .pub-tabs-dropdown-item.active {
+        font-weight: 600;
+    }
+
+    .pub-tabs-dropdown-item svg {
+        width: 1.1em;
+        height: 1.1em;
+    }
+
 
 }

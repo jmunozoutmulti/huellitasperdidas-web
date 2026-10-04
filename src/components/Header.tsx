@@ -71,6 +71,12 @@ export default function Header() {
         return '/images/isotipo.png';
     };
 
+
+    useEffect(() => {
+        setIsUserDropdownOpen(false);
+        setIsAddDropdownOpen(false);
+    }, [pathname]);
+
     useEffect(() => {
         const faviconHref = `${getFavicon()}?v=${pathname}`;
         let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
@@ -96,8 +102,7 @@ export default function Header() {
         pathname.startsWith('/publicar') ||
         pathname.startsWith('/encontrado') ||
         pathname.startsWith('/adoptar') ||
-        pathname.startsWith('/avistamiento') ||
-        pathname.startsWith('/mi-cuenta');
+        pathname.startsWith('/avistamiento')
 
 
     // Escuchar clics en cualquier parte de la pantalla para cerrar los desplegables
@@ -147,12 +152,13 @@ export default function Header() {
                             onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
                         >
                             <IconPlus className="btn-add-icon" />
+                            <span>Publicar</span>
                         </button>
 
                         {isAddDropdownOpen && (
                             <div className="btn-add-dropdown open" id="btn-add-dropdown">
                                 <div className="dropdown-header">
-                                    <span>¿Qué quieres hacer?</span>
+                                    <span>¿Qué necesitas publicar?</span>
                                 </div>
                                 <div className="flex-dropdown">
                                     <Link
@@ -319,7 +325,11 @@ export default function Header() {
                                         </div>
 
                                         <div className="user-dropdown-divider"></div>
-                                        <Link href="/mi-cuenta" className="user-dropdown-item">
+                                        <Link
+                                            href="/mi-cuenta"
+                                            className="user-dropdown-item"
+                                            onClick={() => setIsUserDropdownOpen(false)}
+                                        >
                                             <IconUser /> Mi cuenta
                                         </Link>
                                         <div className="user-dropdown-divider"></div>

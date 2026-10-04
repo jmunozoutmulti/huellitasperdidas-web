@@ -273,6 +273,12 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
                                     placeholder="Respuesta"
                                     value={replyInput}
                                     onChange={(e) => setReplyInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && replyInput.trim()) {
+                                            e.preventDefault();
+                                            handleAddReplySubmit(comment.id);
+                                        }
+                                    }}
                                 />
                             </div>
                             <div className="reply-actions-row">
@@ -312,6 +318,12 @@ export default function CommentsWidget({ reportId }: CommentsWidgetProps) {
                                     className="edit-field"
                                     defaultValue={comment.text}
                                     id={`edit-field-${comment.id}`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                            e.preventDefault();
+                                            handleSaveEditComment(comment.id, e.currentTarget.value, isReply, parentId);
+                                        }
+                                    }}
                                 />
                             </div>
                             <div className="reply-actions-row">

@@ -62,6 +62,18 @@ export default function MiCuentaPage() {
         'dashboard' | 'guardados' | 'centinela' | 'mensajes' | 'datos' | 'ajustes'
     >('dashboard');
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const mobileNavRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!isMobileNavOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (mobileNavRef.current && !mobileNavRef.current.contains(e.target as Node)) {
+                setIsMobileNavOpen(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [isMobileNavOpen]);
 
     // Sub-tabs de avisos en Dashboard
     const [activePubTab, setActivePubTab] = useState<
@@ -586,97 +598,99 @@ export default function MiCuentaPage() {
                             </div>
 
                             {/* TRIGGER MOBILE NAV */}
-                            <button
-                                type="button"
-                                className={`cuenta-nav-mobile-trigger ${isMobileNavOpen ? 'open' : ''}`}
-                                id="btn-cuenta-nav-toggle"
-                                onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-                            >
-                                <span className="cuenta-nav-mobile-current">
-                                    <IconMenu3 /> Menú
-                                </span>
-                                <IconChevronDown className="toggle-chevron" />
-                            </button>
-
-                            <nav className={`cuenta-nav ${isMobileNavOpen ? 'mobile-open' : ''}`}>
+                            <div ref={mobileNavRef}>
                                 <button
                                     type="button"
-                                    className={`cuenta-nav-item ${activeSection === 'dashboard' ? 'active' : ''}`}
-                                    data-section="dashboard"
-                                    onClick={() => {
-                                        setActiveSection('dashboard');
-                                        setIsMobileNavOpen(false);
-                                    }}
+                                    className={`cuenta-nav-mobile-trigger ${isMobileNavOpen ? 'open' : ''}`}
+                                    id="btn-cuenta-nav-toggle"
+                                    onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
                                 >
-                                    <span className="cuenta-nav-icon-box">
-                                        <IconStack2 />
+                                    <span className="cuenta-nav-mobile-current">
+                                        <IconMenu3 /> Menú
                                     </span>
-                                    <span>Mis avisos</span>
+                                    <IconChevronDown className="toggle-chevron" />
                                 </button>
 
-                                <button
-                                    type="button"
-                                    className={`cuenta-nav-item ${activeSection === 'guardados' ? 'active' : ''}`}
-                                    data-section="guardados"
-                                    onClick={() => {
-                                        setActiveSection('guardados');
-                                        setIsMobileNavOpen(false);
-                                    }}
-                                >
-                                    <span className="cuenta-nav-icon-box">
-                                        <IconBookmark />
-                                    </span>
-                                    <span>Favoritos</span>
-                                </button>
+                                <nav className={`cuenta-nav ${isMobileNavOpen ? 'mobile-open' : ''}`}>
+                                    <button
+                                        type="button"
+                                        className={`cuenta-nav-item ${activeSection === 'dashboard' ? 'active' : ''}`}
+                                        data-section="dashboard"
+                                        onClick={() => {
+                                            setActiveSection('dashboard');
+                                            setIsMobileNavOpen(false);
+                                        }}
+                                    >
+                                        <span className="cuenta-nav-icon-box">
+                                            <IconStack2 />
+                                        </span>
+                                        <span>Mis avisos</span>
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    className={`cuenta-nav-item ${activeSection === 'mensajes' ? 'active' : ''}`}
-                                    data-section="mensajes"
-                                    onClick={() => {
-                                        setActiveSection('mensajes');
-                                        setIsMobileNavOpen(false);
-                                    }}
-                                >
-                                    <span className="cuenta-nav-icon-box">
-                                        <IconMessageCircle />
-                                    </span>
-                                    <span>Mis mensajes</span>
-                                    {unreadMessagesCount > 0 && (
-                                        <span className="cuenta-nav-badge">{unreadMessagesCount}</span>
-                                    )}
-                                </button>
+                                    <button
+                                        type="button"
+                                        className={`cuenta-nav-item ${activeSection === 'guardados' ? 'active' : ''}`}
+                                        data-section="guardados"
+                                        onClick={() => {
+                                            setActiveSection('guardados');
+                                            setIsMobileNavOpen(false);
+                                        }}
+                                    >
+                                        <span className="cuenta-nav-icon-box">
+                                            <IconBookmark />
+                                        </span>
+                                        <span>Favoritos</span>
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    className={`cuenta-nav-item ${activeSection === 'datos' ? 'active' : ''}`}
-                                    data-section="datos"
-                                    onClick={() => {
-                                        setActiveSection('datos');
-                                        setIsMobileNavOpen(false);
-                                    }}
-                                >
-                                    <span className="cuenta-nav-icon-box">
-                                        <IconUser />
-                                    </span>
-                                    <span>Mis datos</span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        className={`cuenta-nav-item ${activeSection === 'mensajes' ? 'active' : ''}`}
+                                        data-section="mensajes"
+                                        onClick={() => {
+                                            setActiveSection('mensajes');
+                                            setIsMobileNavOpen(false);
+                                        }}
+                                    >
+                                        <span className="cuenta-nav-icon-box">
+                                            <IconMessageCircle />
+                                        </span>
+                                        <span>Mis mensajes</span>
+                                        {unreadMessagesCount > 0 && (
+                                            <span className="cuenta-nav-badge">{unreadMessagesCount}</span>
+                                        )}
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    className={`cuenta-nav-item ${activeSection === 'ajustes' ? 'active' : ''}`}
-                                    data-section="ajustes"
-                                    onClick={() => {
-                                        setActiveSection('ajustes');
-                                        setIsMobileNavOpen(false);
-                                    }}
-                                >
-                                    <span className="cuenta-nav-icon-box">
-                                        <IconSettings />
-                                    </span>
-                                    <span>Ajustes</span>
-                                </button>
-                            </nav>
+                                    <button
+                                        type="button"
+                                        className={`cuenta-nav-item ${activeSection === 'datos' ? 'active' : ''}`}
+                                        data-section="datos"
+                                        onClick={() => {
+                                            setActiveSection('datos');
+                                            setIsMobileNavOpen(false);
+                                        }}
+                                    >
+                                        <span className="cuenta-nav-icon-box">
+                                            <IconUser />
+                                        </span>
+                                        <span>Mis datos</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className={`cuenta-nav-item ${activeSection === 'ajustes' ? 'active' : ''}`}
+                                        data-section="ajustes"
+                                        onClick={() => {
+                                            setActiveSection('ajustes');
+                                            setIsMobileNavOpen(false);
+                                        }}
+                                    >
+                                        <span className="cuenta-nav-icon-box">
+                                            <IconSettings />
+                                        </span>
+                                        <span>Ajustes</span>
+                                    </button>
+                                </nav>
+                            </div>
 
                             <nav className="cuenta-nav-secondary">
                                 <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target="_blank">

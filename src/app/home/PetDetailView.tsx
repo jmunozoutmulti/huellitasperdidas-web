@@ -154,14 +154,27 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
         return 'Día de la pérdida';
     };
 
-    // TODO: cuando pet.sourceType === 'users', usar el canal de contacto
-    // propio del usuario en vez de contact_phone — por ahora usamos el mismo
-    // dato como placeholder mientras se define ese flujo real (backend aún
-    // no expone un teléfono/canal distinto por usuario en el reporte).
-    // Prefijo +51 fijo por ahora — pendiente de usar el país real del aviso.
+
+    const getWhatsAppMessage = () => {
+        if (pet.badgeStyle === 'badge-adopt' || pet.badgeStyle === 'badge-adopt-premium') {
+            return 'Hola, me interesa adoptar a la mascota de la publicación.';
+        }
+        if (pet.badgeStyle === 'badge-urgent' || pet.badgeStyle === 'badge-max-priority') {
+            return 'Hola, me parece haber visto a la mascota de la publicación.';
+        }
+        if (pet.badgeStyle === 'badge-found') {
+            return 'Hola, vi tu publicación sobre la mascota que encontraste.';
+        }
+        if (pet.badgeStyle === 'badge-sight') {
+            return 'Hola, vi tu publicación sobre el avistamiento.';
+        }
+        return 'Hola, te escribo por tu publicación.';
+    };
+
     const buildWhatsAppLink = () => {
         const digits = (pet.contactPhone || '').replace(/\D/g, '');
-        return digits ? `https://wa.me/${digits}` : null;
+        if (!digits) return null;
+        return `https://wa.me/${digits}?text=${encodeURIComponent(getWhatsAppMessage())}`;
     };
 
     const renderContactButton = () => {

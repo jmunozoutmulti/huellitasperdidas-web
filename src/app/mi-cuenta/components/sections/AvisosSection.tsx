@@ -1,6 +1,5 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { fetchMyReports, type Report } from '@/lib/api';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
@@ -14,7 +13,7 @@ import {
     IconCreditCard,
     IconBan,
     IconX,
-    IconHistory,
+    IconHistory, IconChevronDown
 } from '@tabler/icons-react';
 
 type Tab = 'activas' | 'revision' | 'pago_pendiente' | 'rechazadas' | 'finalizadas';
@@ -100,6 +99,20 @@ export default function DashboardSection({
     const [packages, setPackages] = useState<PackageOption[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+    const tabDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (tabDropdownRef.current && !tabDropdownRef.current.contains(e.target as Node)) {
+                setIsTabDropdownOpen(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+
     useEffect(() => {
         if (!currentUser) return;
         let isCancelled = false;
@@ -134,6 +147,16 @@ export default function DashboardSection({
             onSetAccordionOpen(firstId, true);
         }
     }, [currentPubs[0]?.id]);
+
+
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkIsMobile = () => setIsMobile(window.innerWidth <= 760);
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
 
     return (
         <div className="cuenta-section active" id="section-dashboard">
@@ -171,24 +194,70 @@ export default function DashboardSection({
                 ))}
 
             <div className="dashboard-filters">
-                <div className="pub-tabs">
-                    {tabs.map((tab) => {
-                        const TabIcon = TAB_ICON[tab];
-                        return (
-                            <button
-                                key={tab}
-                                type="button"
-                                className={`pub-tab ${activePubTab === tab ? 'active' : ''}`}
-                                onClick={() => setActivePubTab(tab)}
-                            >
-                                <TabIcon /> {TAB_LABEL[tab]}{' '}
-                                <span className={`pub-tab-count ${countByTab(tab) > 9 ? 'pill' : ''}`}>
-                                    {countByTab(tab)}
+                {!isMobile ? (
+                    <div className="pub-tabs">
+                        {tabs.map((tab) => {
+                            const TabIcon = TAB_ICON[tab];
+                            return (
+                                <button
+                                    key={tab}
+                                    type="button"
+                                    className={`pub-tab ${activePubTab === tab ? 'active' : ''}`}
+                                    onClick={() => setActivePubTab(tab)}
+                                >
+                                    <TabIcon /> {TAB_LABEL[tab]}{' '}
+                                    <span className={`pub-tab-count ${countByTab(tab) > 9 ? 'pill' : ''}`}>
+                                        {countByTab(tab)}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="pub-tabs-dropdown" ref={tabDropdownRef}>
+                        <button
+                            type="button"
+                            className="pub-tabs-dropdown-trigger"
+                            onClick={() => setIsTabDropdownOpen((prev) => !prev)}
+                        >
+                            <span className="pub-tabs-dropdown-trigger-label">
+                                {(() => {
+                                    const ActiveIcon = TAB_ICON[activePubTab];
+                                    return <ActiveIcon />;
+                                })()}
+                                {TAB_LABEL[activePubTab]}
+                                <span className={`pub-tab-count ${countByTab(activePubTab) > 9 ? 'pill' : ''}`}>
+                                    {countByTab(activePubTab)}
                                 </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                            </span>
+                            <IconChevronDown className={isTabDropdownOpen ? 'rotated' : ''} />
+                        </button>
+
+                        {isTabDropdownOpen && (
+                            <div className="pub-tabs-dropdown-list">
+                                {tabs.map((tab) => {
+                                    const TabIcon = TAB_ICON[tab];
+                                    return (
+                                        <button
+                                            key={tab}
+                                            type="button"
+                                            className={`pub-tabs-dropdown-item ${activePubTab === tab ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setActivePubTab(tab);
+                                                setIsTabDropdownOpen(false);
+                                            }}
+                                        >
+                                            <TabIcon /> {TAB_LABEL[tab]}{' '}
+                                            <span className={`pub-tab-count ${countByTab(tab) > 9 ? 'pill' : ''}`}>
+                                                {countByTab(tab)}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="pub-tab-content active">
