@@ -40,7 +40,11 @@ function isExpired(pub: Report): boolean {
 }
 
 function getTab(pub: Report): Tab | null {
-    if (pub.payment_status === 'pending' || pub.payment_status === 'failed') {
+    const isPendingInitialPayment =
+        (pub.payment_status === 'pending' || pub.payment_status === 'failed') &&
+        pub.payment_flow_type === 'create';
+
+    if (isPendingInitialPayment) {
         return 'pago_pendiente';
     }
     if (pub.status === 'pending_approval') return 'revision';

@@ -73,6 +73,7 @@ export interface Report {
   extra_reach_purchased_at: string | null;
   pending_reason: string | null;
   payment_status: "paid" | "pending" | "failed" | "refunded" | null;
+  payment_flow_type: "create" | "reactivate" | "upgrade" | "extra_reach" | "extend" | null;
   statistics_ads: {
     reach_actual?: number;
     reach_projected?: number;

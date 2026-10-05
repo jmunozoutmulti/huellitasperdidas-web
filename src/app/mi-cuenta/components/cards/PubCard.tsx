@@ -75,6 +75,26 @@ function reportTypeLabel(reportType: string): string {
     return map[reportType] ?? reportType;
 }
 
+function getPendingPaymentBadgeText(pub: Report): string | null {
+    if (pub.payment_status !== 'pending' && pub.payment_status !== 'failed') return null;
+    if (pub.payment_flow_type === 'create') return null; // ese caso ya va a otro tab, no se muestra acá
+
+    const action = pub.payment_status === 'failed' ? 'Reintentar pago' : 'Pago en proceso';
+
+    switch (pub.payment_flow_type) {
+        case 'upgrade':
+            return `${action} de upgrade`;
+        case 'extra_reach':
+            return `${action} de alcance extra`;
+        case 'extend':
+            return `${action} de tiempo extra`;
+        case 'reactivate':
+            return `${action} de reactivación`;
+        default:
+            return action;
+    }
+}
+
 function sexLabel(sex: string | null): string {
     if (sex === 'macho') return 'Macho';
     if (sex === 'hembra') return 'Hembra';
@@ -564,6 +584,13 @@ export default function PubCard({
                                 {paid && tab === 'activas' && <span className="status-pulse"></span>} {planName}
                             </span>
                         )}
+                        {
+                            /*getPendingPaymentBadgeText(pub) && (
+                                <span className="badge-plan badge-pending-payment">
+                                    <span className="status-pulse"></span> {getPendingPaymentBadgeText(pub)}
+                                </span> )
+                            */
+                        }
                     </div>
                     <div className="pub-accordion-meta">
                         {pub.district && <span><IconPin /> {[pub.district, pub.province].filter(Boolean).join(', ')}</span>}

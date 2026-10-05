@@ -360,7 +360,7 @@
 /* RESUMEN DEL PLAN */
 .modal-summary {
     display: grid;
-    grid-template-columns: 0.5fr 1fr;
+    grid-template-columns: 0.375fr 1fr;
     gap: 1em;
     align-items: flex-start;
 }

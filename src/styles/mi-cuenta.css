@@ -3084,6 +3084,13 @@ MODAL EDITAR ANUNCIO
     visibility: visible;
 }
 
+.badge-pending-payment {
+    background-color: var(--brand-red-alpha, rgba(220, 38, 38, 0.08));
+    color: var(--brand-red);
+    border: 1px solid var(--brand-red-alpha, rgba(220, 38, 38, 0.15));
+}
+
+
 @media screen and (max-width: 1030px) {
 
     .pub-accordion-body-inner {
