@@ -479,7 +479,7 @@ export default function PubCard({
                 <div className="admin-info-box info-box-revision">
                     <IconClock />
                     <p>
-                        <b>Pago en revisión.</b> Mercado Pago está revisando tu pago. Tu aviso se actualizará cuando se confirme.
+                        <b>Pago en revisión.</b> Tu pago todavía se está procesando. Revisa en unos minutos. Si tarda más de 1 hora, contacta a soporte.
                     </p>
                 </div>
             );
