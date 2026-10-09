@@ -155,7 +155,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                     clearInterval(interval);
                     setIsPolling(false);
                     onCancelled();
-                    if (payment.gateway === 'mercadopago') await retryAttempt();
+                    await retryAttempt();
                     return;
                 }
                 // 'pending' o 'refunded' recién creado — sigue esperando
@@ -341,6 +341,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     return (
         <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!, currency: payment.currency }}>
             <PayPalButtons
+                key={payment.payment_id}
                 fundingSource="card"
                 style={{
                     //color: 'gold',
@@ -352,14 +353,20 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 createOrder={() => Promise.resolve(payment.order_id!)}
                 onApprove={async (data) => {
                     try {
-                        await capturePayment(payment.payment_id, data.orderID);
+                        const result = await capturePayment(payment.payment_id, data.orderID);
+                        if (result.status === 'paid') {
+                            onConfirmed();
+                            return;
+                        }
+                        if (result.status === 'failed') {
+                            onCancelled();
+                            await retryAttempt();
+                            return;
+                        }
                     } catch (err) {
                         console.error('Error capturando el pago de PayPal:', err);
-                        // Seguimos al polling de todas formas — si la captura
-                        // falló solo por red, el polling puede alcanzar a ver
-                        // el estado real igual; si de verdad falló, el
-                        // polling hará timeout y avisará al usuario.
                     }
+                    // 'pending' o error de red: el polling resuelve el estado real
                     startPolling();
                 }}
                 onCancel={() => onCancelled()}
