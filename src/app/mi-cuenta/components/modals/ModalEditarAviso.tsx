@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import Image from 'next/image';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
@@ -23,7 +24,11 @@ import {
     IconBrandWhatsapp,
     IconCheck,
     IconMapPin,
-    IconCircleDashedCheck
+    IconCircleDashedCheck,
+    IconPaw,
+    IconCalendarPin,
+    IconHeartPin,
+    IconHeart
 } from '@tabler/icons-react';
 interface ModalEditarAvisoProps {
     isOpen: boolean;
@@ -62,23 +67,35 @@ const flyerConfig = {
     lost: {
         stateClass: 'state-perdida',
         titulo: '¡BUSCAMOS!',
-        subtitulo: 'Ayúdame a volver a casa',
-        cta: 'Si me ves, por favor llama o escribe al',
         showNombre: true,
+        smallTitle: false,
+        whereKicker: 'Se perdió en:',
+        callKicker: 'Llama o escribe al:',
+        footerLine1: 'Ayúdame a',
+        footerLine2: 'volver a casa',
+        noteDefault: 'Cualquier información, por favor comunícate.',
     },
     adoption: {
         stateClass: 'state-adoptar',
         titulo: '¡ADÓPTAME!',
-        subtitulo: 'En busca de un hogar',
-        cta: 'Si quieres adoptarme, escribe al',
         showNombre: true,
+        smallTitle: false,
+        whereKicker: 'Entrega en:',
+        callKicker: 'Si quieres adoptarme, escribe al:',
+        footerLine1: 'En busca',
+        footerLine2: 'de un hogar',
+        noteDefault: 'Si quieres adoptarme, por favor comunícate.',
     },
     found: {
         stateClass: 'state-encontrado',
         titulo: '¿LO RECONOCES?',
-        subtitulo: 'Busco a mi familia',
-        cta: 'Si es tu mascota, llama o escribe al',
         showNombre: false,
+        smallTitle: true,
+        whereKicker: 'Se encontró en:',
+        callKicker: 'Si es tu mascota, llama o escribe al:',
+        footerLine1: 'Busco a mi',
+        footerLine2: 'familia',
+        noteDefault: 'Si es tu mascota, por favor comunícate.',
     },
 };
 
@@ -321,40 +338,6 @@ export default function ModalEditarAviso({
         });
     };
 
-    // Misma lógica narrativa que cada formulario de publicar, adaptada a los
-    // 3 tipos en un solo lugar (usando readOnlyAddressHint en vez de un
-    // campo de dirección editable, porque acá la ubicación es de solo lectura).
-    const getFlyerDescription = () => {
-        const rasgos: string[] = [];
-        if (editSexo) rasgos.push(editSexo.toLowerCase());
-        if (editRaza) rasgos.push(editRaza);
-        if (editCastrado) rasgos.push(editSexo === 'Hembra' ? 'esterilizada' : 'esterilizado');
-        if (editColor) rasgos.push(editColor);
-        if (tipo === 'adoption' && editEdad) rasgos.push(editEdad);
-        if (editObservaciones) rasgos.push(editObservaciones);
-
-        const fechaCorta = editFechaDia && editFechaMes ? `${editFechaDia}/${editFechaMes}` : null;
-
-        let frase1 = rasgos.join(', ');
-        if (tipo !== 'adoption' && fechaCorta) {
-            const verbo = tipo === 'lost' ? 'se perdió' : 'lo encontré';
-            frase1 = frase1 ? `${frase1}, ${verbo} el ${fechaCorta}.` : `${verbo.charAt(0).toUpperCase()}${verbo.slice(1)} el ${fechaCorta}.`;
-        } else if (frase1) {
-            frase1 += '.';
-        }
-
-        let frase2 = '';
-        if (readOnlyAddressHint) {
-            frase2 = tipo === 'adoption' ? `Entrega en: ${readOnlyAddressHint}.` : `En: ${readOnlyAddressHint}.`;
-        }
-
-        const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
-        if (!textoCompleto) {
-            return 'Completa los campos para autogenerar este flyer dinámicamente.';
-        }
-        return textoCompleto.charAt(0).toUpperCase() + textoCompleto.slice(1);
-    };
-
     const handleGuardar = async () => {
         const errors: Record<string, boolean> = {};
         let specificError = '';
@@ -527,6 +510,31 @@ export default function ModalEditarAviso({
     };
 
     if (!isOpen) return null;
+
+    const fechaCorta =
+        editFechaDia && editFechaMes
+            ? `${Number(editFechaDia)} de ${(mesesCompletos[editFechaMes.padStart(2, '0')] ?? '').toLowerCase()}`.trim()
+            : '';
+
+    const castradoCard = editCastrado ? (editSexo === 'Hembra' ? 'Esterilizada' : 'Esterilizado') : '';
+    const flyerCards = (
+        tipo === 'adoption'
+            ? [
+                { key: 'raza', value: editRaza },
+                { key: 'sexo', value: editSexo },
+                { key: 'edad', value: editEdad },
+                { key: 'color', value: editColor },
+                { key: 'tamano', value: editTamano },
+                { key: 'castrado', value: castradoCard },
+            ]
+            : [
+                { key: 'raza', value: editRaza },
+                { key: 'sexo', value: editSexo },
+                { key: 'color', value: editColor },
+                { key: 'castrado', value: castradoCard },
+            ]
+    ).filter((card) => card.value);
+
 
     const c = editarModalConfig[tipo];
     const fc = flyerConfig[tipo];
@@ -959,11 +967,17 @@ export default function ModalEditarAviso({
                             <div className="editor-stage">
                                 <div className="flyer-box">
                                     <div className={`flyer-canvas container-flyer-design ${fc.stateClass}`} id="edit-flyer-preview">
+
+                                        {/* 1. Cabecera */}
                                         <div className="flyer-alert-header">
-                                            <h3 id="flyer-titulo-alerta">{fc.titulo}</h3>
-                                            <p id="flyer-subtitulo-alerta">{fc.subtitulo}</p>
+                                            <div className="flyer-title-row">
+                                                <h3 id="flyer-titulo-alerta" className={fc.smallTitle ? 'title-small' : undefined}>
+                                                    {fc.titulo}
+                                                </h3>
+                                            </div>
                                         </div>
 
+                                        {/* 2. Fotos */}
                                         <div className="flyer-photo-stage">
                                             <div
                                                 className={`flyer-dynamic-grid ${flyerPhotoSrcs.length === 0 ? 'layout-empty' : `layout-${flyerPhotoSrcs.length}`
@@ -981,47 +995,89 @@ export default function ModalEditarAviso({
                                                     ))
                                                 )}
                                             </div>
-                                            {(readOnlyDistrict || readOnlyProvince) && (
-                                                <p className="flyer-txt-distrito">
-                                                    <IconMapPin /> {readOnlyDistrict || readOnlyProvince}
-                                                </p>
+
+                                            {tipo !== 'adoption' && fechaCorta && (
+                                                <span className="flyer-date">El {fechaCorta}</span>
                                             )}
                                             {fc.showNombre && (
-                                                <div className="flyer-name-badge">
-                                                    <span className="flyer-name-badge-label">Me llamo</span>
-                                                    <span id="flyer-txt-nombre">{editNombre || 'Nombre'}</span>
+                                                <div className="flyer-photo-tag">
+                                                    {tipo === 'adoption' ? (
+                                                        <span><IconHeart /> {editNombre || 'Nombre'}</span>
+                                                    ) : (
+                                                        <span><IconPaw /> {editNombre || 'Nombre'}</span>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="flyer-body">
-                                            <div className="flyer-body-info">
-                                                <p className="flyer-canvas-text">{getFlyerDescription()}</p>
+                                        {/* Recompensa (solo perdida) */}
+                                        {tipo === 'lost' && ((editRecompensa && Number(editRecompensa) > 0) || editOcultarMonto) && (
+                                            <div className="flyer-canvas-reward">
+                                                {!editOcultarMonto && <span id="flyer-reward-label">¡RECOMPENSA!</span>}
+                                                <span id="flyer-txt-recompensa">
+                                                    {editOcultarMonto ? '¡Se ofrece recompensa!' : `${currencySymbol} ${editRecompensa}!`}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Extras (solo adopción) */}
+                                        {tipo === 'adoption' && editExtras && (
+                                            <div className="flyer-canvas-reward">
+                                                <span id="flyer-txt-incluye">{editOcultarExtras ? 'Accesorios y más' : editExtras}</span>
+                                            </div>
+                                        )}
+
+                                        {/* 3. Franja de datos */}
+                                        <div className="flyer-info-band">
+                                            <div className="flyer-info-where">
+                                                {tipo === 'adoption' ? (
+                                                    <IconHeartPin className="flyer-info-bigicon" />
+                                                ) : (
+                                                    <IconCalendarPin className="flyer-info-bigicon" />
+                                                )}
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">{fc.whereKicker}</span>
+                                                    {(readOnlyDistrict || readOnlyProvince) && (
+                                                        <strong className="flyer-info-place">{readOnlyDistrict || readOnlyProvince}</strong>
+                                                    )}
+                                                    {readOnlyAddressHint && <span className="flyer-info">{readOnlyAddressHint}</span>}
+                                                </div>
                                             </div>
 
-                                            {tipo === 'lost' && ((editRecompensa && Number(editRecompensa) > 0) || editOcultarMonto) && (
-                                                <div className="flyer-canvas-reward">
-                                                    {!editOcultarMonto && <span id="flyer-reward-label">¡RECOMPENSA!</span>}
-                                                    <span id="flyer-txt-recompensa">
-                                                        {editOcultarMonto ? '¡Se ofrece recompensa!' : `${currencySymbol} ${editRecompensa}!`}
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <div className="flyer-info-divider" />
 
-                                            {tipo === 'adoption' && editExtras && (
-                                                <div className="flyer-canvas-reward">
-                                                    <span id="flyer-txt-incluye">{editOcultarExtras ? 'Accesorios y más' : editExtras}</span>
-                                                </div>
-                                            )}
-
-                                            <div className="flyer-footer-contact">
-                                                <span className="flyer-footer-call-to-action">{fc.cta}</span>
-                                                <div className="flyer-footer-number">
-                                                    <IconBrandWhatsapp />
-                                                    <span>{editTelefono || '---------'}</span>
+                                            <div className="flyer-info-call">
+                                                <IconBrandWhatsapp className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">{fc.callKicker}</span>
+                                                    <strong className="flyer-info-phone">{editTelefono || '---------'}</strong>
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {/* 4. Tarjetas */}
+                                        {flyerCards.length > 0 && (
+                                            <div className={`flyer-cards ${tipo === 'adoption' ? 'flyer-cards-wrap' : ''}`}>
+                                                {flyerCards.map((card) => (
+                                                    <div key={card.key} className="flyer-card">
+                                                        <span>{card.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* 5. Pie */}
+                                        <div className="flyer-thanks-band">
+                                            <p className="flyer-thanks-main">
+                                                {fc.footerLine1} <br />{fc.footerLine2}{' '}
+                                                <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} loading="eager" />
+                                            </p>
+                                            <p className="flyer-thanks-note">
+                                                {editObservaciones || fc.noteDefault}
+                                            </p>
+                                            <p className="flyer-thanks-gracias">¡Gracias!</p>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>

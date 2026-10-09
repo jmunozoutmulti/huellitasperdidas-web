@@ -409,44 +409,6 @@ export default function PubCard({
     // ============ BODY: editor-actions (activos / rechazados) ============
     const renderEditorActions = () => {
         if (tab === 'activas') {
-            if (pub.statistics_ads?.facebook_post_url) {
-                return (
-                    <div className="pub-editor-actions">
-                        <a
-                            href={pub.statistics_ads.facebook_post_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="tooltip"
-                            data-tooltip="Ver difusión"
-                        >
-                            <IconBrandMeta />
-                        </a>
-                        {reportType !== 'sighting' && (
-                            <>
-                                <button
-                                    type="button"
-                                    className="btn-editar-aviso tooltip"
-                                    data-tooltip="Editar"
-                                    onClick={() => onOpenEditarAviso(reportType as 'lost' | 'adoption' | 'found', displayName)}
-                                >
-                                    <IconPencil />
-                                </button>
-                                <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(flyerUrl)}>
-                                    <IconDownload />
-                                </button>
-                                <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
-                                    <IconExternalLink />
-                                </a>
-                            </>
-                        )}
-                        {reportType === 'sighting' && (
-                            <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
-                                <IconExternalLink />
-                            </a>
-                        )}
-                    </div>
-                );
-            }
             if (reportType === 'sighting') {
                 return (
                     <div className="pub-editor-actions">
@@ -569,6 +531,36 @@ export default function PubCard({
         );
     };
 
+    // ============ BANNER: campaña de difusión activa (solo activos de pago) ============
+    const renderAdsBanner = () => {
+        const adsUrl = pub.statistics_ads?.facebook_post_url;
+        if (tab !== 'activas' || !paid || !adsUrl) return null;
+        return (
+            <div className="pub-ads-banner">
+                <div className="pub-ads-banner-info">
+                    <div className="pub-ads-banner-text">
+                        <span className="pub-ads-banner-title">
+                            <span className="status-pulse"></span> Campaña de difusión activa
+                        </span>
+                        <span className="pub-ads-banner-desc">
+                            Tu aviso se está mostrando a personas cercanas a la zona de pérdida.
+                        </span>
+                    </div>
+                </div>
+                <a
+                    href={adsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pub-ads-banner-link"
+                >
+                    <IconBrandMeta />  Ver difusión
+                </a>
+            </div>
+        );
+    };
+
+
+
     return (
         <div className={`pub-accordion-item ${isOpen ? 'open' : ''}`} data-tipo={reportType}>
             <div className="pub-accordion-header" onClick={onToggle}>
@@ -642,7 +634,7 @@ export default function PubCard({
                                     </div>
                                     {plaBadge && pub.title && (
                                         <div className="flyer-account-name-badge">
-                                            <span className="flyer-account-name-badge-label">Me llamo <b>{pub.title}</b></span>
+                                            <span>{pub.title}</span>
                                         </div>
                                     )}
                                 </div>
@@ -658,6 +650,8 @@ export default function PubCard({
                         {renderFinalizadaAction()}
                         {renderStatsGrid()}
                     </div>
+
+                    {renderAdsBanner()}
                 </div>
             </div>
         </div>

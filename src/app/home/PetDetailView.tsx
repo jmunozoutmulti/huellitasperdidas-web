@@ -289,9 +289,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
             <div className="detail-info-side">
                 <div className="detail-up-actions">
                     <div className="detail-header-actions">
-                        <button type="button" className="action-icon-btn" id="btn-close-detail" onClick={onClose}>
-                            <IconX />
-                        </button>
+
                         <div className="header-right-actions">
                             <button
                                 type="button"
@@ -395,6 +393,9 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                 )}
                             </div>
                         </div>
+                        <button type="button" className="action-icon-btn" id="btn-close-detail" onClick={onClose}>
+                            <IconX />
+                        </button>
                     </div>
                     {!pet.isExternal && (
                         pet.sourceType === 'user' ? (

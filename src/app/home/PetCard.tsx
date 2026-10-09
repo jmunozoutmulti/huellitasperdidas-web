@@ -49,7 +49,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
 
                     <div className="card-img">
                         <a href="#" onClick={(e) => e.preventDefault()}>
-                            <img src={pet.imgSrc} alt={pet.title} />
+                            <img src={pet.imgSrc} alt={pet.title} loading="lazy" />
                         </a>
                     </div>
 
@@ -94,7 +94,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                     </div>
                     <div className="card-img">
                         <a href="#" onClick={(e) => e.preventDefault()}>
-                            <img src={pet.imgSrc} alt={pet.title} />
+                            <img src={pet.imgSrc} alt={pet.title} loading="lazy" />
                         </a>
                     </div>
 
@@ -135,7 +135,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                     </div>
                     <div className="card-img">
                         <a href="#" onClick={(e) => e.preventDefault()}>
-                            <img src={pet.imgSrc} alt={pet.title} />
+                            <img src={pet.imgSrc} alt={pet.title} loading="lazy" />
                         </a>
                     </div>
 
@@ -201,7 +201,7 @@ export default function PetCard({ pet, onOpenDetail }: PetCardProps) {
                     )}
                 </div>
                 <div className="card-img">
-                    <img src={pet.imgSrc} alt={pet.title} />
+                    <img src={pet.imgSrc} alt={pet.title} loading="lazy" />
                 </div>
 
                 {pet.badgeStyle !== 'badge-sight' && (

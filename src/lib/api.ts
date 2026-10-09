@@ -132,6 +132,7 @@ export async function fetchReports(params: {
   country_code?: string;
   status?: string;
   strict?: boolean;
+  is_paid?: boolean;
 }): Promise<PaginatedResponse<Report>> {
   const qs = new URLSearchParams();
   if (params.report_type) qs.set("report_type", params.report_type);
@@ -143,6 +144,7 @@ export async function fetchReports(params: {
   if (params.country_code) qs.set("country_code", params.country_code);
   if (params.status) qs.set("status", params.status);
   if (params.strict) qs.set("strict", "true");
+  if (params.is_paid !== undefined) qs.set("is_paid", String(params.is_paid));
 
   const res = await fetch(`${API_BASE}/v1/reports?${qs}`, {
     cache: "no-store",

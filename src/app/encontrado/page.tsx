@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/encontrado.css';
@@ -35,12 +36,27 @@ import {
     IconBrandWhatsapp,
     IconCut,
     IconPlus,
-    IconMapPin,
+    IconCalendarPin,
     IconClock,
     IconLoader,
     IconCircleCheckFilled,
     IconCircleDashedCheck
 } from '@tabler/icons-react';
+
+const mesesCompletos: Record<string, string> = {
+    '01': 'Enero',
+    '02': 'Febrero',
+    '03': 'Marzo',
+    '04': 'Abril',
+    '05': 'Mayo',
+    '06': 'Junio',
+    '07': 'Julio',
+    '08': 'Agosto',
+    '09': 'Septiembre',
+    '10': 'Octubre',
+    '11': 'Noviembre',
+    '12': 'Diciembre',
+};
 
 export default function PublicarEncontradoPage() {
 
@@ -203,21 +219,6 @@ export default function PublicarEncontradoPage() {
 
     // Formatear Fecha Display
     useEffect(() => {
-        const mesesCompletos: Record<string, string> = {
-            '01': 'Enero',
-            '02': 'Febrero',
-            '03': 'Marzo',
-            '04': 'Abril',
-            '05': 'Mayo',
-            '06': 'Junio',
-            '07': 'Julio',
-            '08': 'Agosto',
-            '09': 'Septiembre',
-            '10': 'Octubre',
-            '11': 'Noviembre',
-            '12': 'Diciembre',
-        };
-
         if (fechaDia && fechaMes && fechaAnio) {
             const mesNombre = mesesCompletos[fechaMes] || '';
             setFechaDisplay(`${fechaDia} ${mesNombre} ${fechaAnio}`);
@@ -469,36 +470,18 @@ export default function PublicarEncontradoPage() {
         }
     };
 
-    // Helper para generar la descripción narrativa del flyer
-    const getFlyerDescription = () => {
-        const rasgos: string[] = [];
-        if (sexo) rasgos.push(sexo.toLowerCase());
-        if (raza) rasgos.push(raza);
-        if (isCastrado) rasgos.push(sexo === 'Hembra' ? 'esterilizada' : 'esterilizado');
-        if (color) rasgos.push(color);
-        if (descripcion) rasgos.push(descripcion);
 
-        const fechaCorta = fechaDia && fechaMes ? `${fechaDia}/${fechaMes}` : null;
+    const fechaCorta =
+        fechaDia && fechaMes
+            ? `${Number(fechaDia)} de ${(mesesCompletos[String(fechaMes).padStart(2, '0')] ?? '').toLowerCase()}`.trim()
+            : '';
 
-        let frase1 = rasgos.join(', ');
-        if (fechaCorta) {
-            frase1 = frase1 ? `${frase1}, lo encontré el ${fechaCorta}.` : `Lo encontré el ${fechaCorta}.`;
-        } else if (frase1) {
-            frase1 += '.';
-        }
-
-        let frase2 = '';
-        if (direccion) {
-            frase2 = `En: ${direccion}.`;
-        }
-
-        const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
-
-        if (!textoCompleto) {
-            return 'Completa los campos para autogenerar este flyer dinámicamente.';
-        }
-        return textoCompleto.charAt(0).toUpperCase() + textoCompleto.slice(1);
-    };
+    const flyerCards = [
+        { key: 'raza', value: raza },
+        { key: 'sexo', value: sexo },
+        { key: 'color', value: color },
+        { key: 'castrado', value: isCastrado ? (sexo === 'Hembra' ? 'Esterilizada' : 'Esterilizado') : '' },
+    ].filter((card) => card.value);
 
     // Fecha actual formateada para el resumen del paso 2
     const getFechaHoy = () => {
@@ -1216,11 +1199,14 @@ export default function PublicarEncontradoPage() {
                                             }`}
                                         id="flyer-preview"
                                     >
+                                        {/* 1. Cabecera */}
                                         <div className="flyer-alert-header">
-                                            <h3 id="flyer-titulo-alerta" className="title-small">¿LO RECONOCES?</h3>
-                                            <p id="flyer-subtitulo-alerta">Busco a mi familia</p>
+                                            <div className="flyer-title-row">
+                                                <h3 id="flyer-titulo-alerta" className="title-small">¿LO RECONOCES?</h3>
+                                            </div>
                                         </div>
 
+                                        {/* 2. Fotos */}
                                         <div className="flyer-photo-stage">
                                             <div
                                                 className={`flyer-dynamic-grid ${validPhotos.length === 0
@@ -1247,29 +1233,54 @@ export default function PublicarEncontradoPage() {
                                                     ))
                                                 )}
                                             </div>
-                                            {(distrito || provincia) && (
-                                                <p className="flyer-txt-distrito" id="flyer-txt-distrito">
-                                                    <IconMapPin /> {distrito || provincia}
-                                                </p>
-                                            )}
+
+                                            {fechaCorta && <span className="flyer-date">El {fechaCorta}</span>}
                                         </div>
 
-                                        <div className="flyer-body">
-                                            <div className="flyer-body-info">
-                                                <p className="flyer-canvas-text" id="flyer-txt-descripcion">
-                                                    {getFlyerDescription()}
-                                                </p>
-                                            </div>
-
-                                            <div className="flyer-footer-contact">
-                                                <span className="flyer-footer-call-to-action">
-                                                    Si es tu mascota, llama o escribe al
-                                                </span>
-                                                <div className="flyer-footer-number">
-                                                    <IconBrandWhatsapp />
-                                                    <span id="flyer-txt-tel">{telefono || '---------'}</span>
+                                        {/* 3. Franja de datos */}
+                                        <div className="flyer-info-band">
+                                            <div className="flyer-info-where">
+                                                <IconCalendarPin className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Se encontró en:</span>
+                                                    {(distrito || provincia) && (
+                                                        <strong className="flyer-info-place">{distrito || provincia}</strong>
+                                                    )}
+                                                    {direccion && <span className="flyer-info">{direccion}</span>}
                                                 </div>
                                             </div>
+
+                                            <div className="flyer-info-divider" />
+
+                                            <div className="flyer-info-call">
+                                                <IconBrandWhatsapp className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Si es tu mascota, llama o escribe al:</span>
+                                                    <strong className="flyer-info-phone">{telefono || '---------'}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Tarjetas */}
+                                        {flyerCards.length > 0 && (
+                                            <div className="flyer-cards">
+                                                {flyerCards.map((card) => (
+                                                    <div key={card.key} className="flyer-card">
+                                                        <span>{card.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* 5. Pie */}
+                                        <div className="flyer-thanks-band">
+                                            <p className="flyer-thanks-main">
+                                                Busco a mi <br />familia <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
+                                            </p>
+                                            <p className="flyer-thanks-note">
+                                                {descripcion || 'Si es tu mascota, por favor comunícate.'}
+                                            </p>
+                                            <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>
                                     </div>
 

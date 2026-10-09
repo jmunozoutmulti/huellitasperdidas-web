@@ -16,20 +16,41 @@ import { useApp } from '@/context/AppContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import CustomSelect from '@/components/ui/CustomSelect';
 import Masonry from 'react-masonry-css';
-import { IconX, IconGridDots, IconPlus, IconHeartFilled } from '@tabler/icons-react';
+import { IconClockBolt, IconX, IconGridDots, IconPlus, IconHeartFilled, IconStarFilled } from '@tabler/icons-react';
+import PopupDestacados from './home/PopupDestacados';
 
 interface SearchItem {
   title: string;
   subtitle: string;
 }
 
+function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 function getPetCategory(badgeStyle: string): string {
   if (badgeStyle === 'badge-urgent' || badgeStyle === 'badge-max-priority') return 'perdido';
   if (badgeStyle === 'badge-found') return 'encontrado';
   if (badgeStyle === 'badge-sight') return 'avistamiento';
-  if (badgeStyle === 'badge-adopt') return 'adopcion';
+  if (badgeStyle === 'badge-adopt' || badgeStyle === 'badge-adopt-premium') return 'adopcion';
   if (badgeStyle.startsWith('badge-ext-')) return 'externo';
   return 'otro';
+}
+
+function getDestacadoBadge(badgeStyle: string) {
+  const category = getPetCategory(badgeStyle);
+  if (category === 'adopcion') {
+    return { label: 'Adopción', Icon: IconHeartFilled, className: 'premium-badge-adopcion' };
+  }
+  if (category === 'perdido') {
+    return { label: 'Perdido', Icon: null, className: 'premium-badge-perdido' };
+  }
+  return { label: 'Destacado', Icon: IconStarFilled, className: '' };
 }
 
 function HomeContent() {
@@ -50,6 +71,8 @@ function HomeContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [noResultsFor, setNoResultsFor] = useState<string | null>(null);
+
+  const [destacados, setDestacados] = useState<PetData[]>([]);
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -81,7 +104,7 @@ function HomeContent() {
         await getCountries();
         const response = await fetchReports({
           page: 1,
-          limit: 5,
+          limit: 10,
           search: searchQuery || undefined,
           country_code: countryCode,
           status: 'active',
@@ -90,7 +113,7 @@ function HomeContent() {
         let pagesForThisLoad = response.pages;
 
         if (transformed.length === 0 && searchQuery) {
-          const fallback = await fetchReports({ page: 1, limit: 5, country_code: countryCode, status: 'active' });
+          const fallback = await fetchReports({ page: 1, limit: 10, country_code: countryCode, status: 'active' });
           transformed = fallback.items.map(reportToPetData);
           pagesForThisLoad = fallback.pages;
           if (!isCancelled) {
@@ -123,6 +146,38 @@ function HomeContent() {
       isCancelled = true;
     };
   }, [searchQuery, countryCode, isResolvingCountry]);
+
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadDestacados() {
+      if (isResolvingCountry || !countryCode) {
+        setDestacados([]);
+        return;
+      }
+      try {
+        const response = await fetchReports({
+          page: 1,
+          limit: 10,
+          country_code: countryCode,
+          status: 'active',
+          is_paid: true,
+        });
+        const paid = response.items.map(reportToPetData);
+        if (!isCancelled) setDestacados(shuffleArray(paid));
+      } catch {
+        if (!isCancelled) setDestacados([]);
+      }
+    }
+
+    loadDestacados();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [countryCode, isResolvingCountry]);
+
 
   useEffect(() => {
     const id = searchParams.get('id');
@@ -182,7 +237,7 @@ function HomeContent() {
       const nextPage = page + 1;
       const response = await fetchReports({
         page: nextPage,
-        limit: 5,
+        limit: 10,
         search: searchQuery || undefined,
         country_code: countryCode,
         status: 'active',
@@ -280,6 +335,17 @@ function HomeContent() {
 
   const visiblePets = displayedPets.filter((pet) => isCardVisible(pet.badgeStyle));
 
+  const destacadosPopup = destacados.map((pet) => {
+    const badge = getDestacadoBadge(pet.badgeStyle);
+    const BadgeIcon = badge.Icon;
+    return {
+      pet,
+      badgeLabel: badge.label,
+      badgeClassName: badge.className,
+      badgeIcon: BadgeIcon ? <BadgeIcon width={12} height={12} /> : null,
+    };
+  });
+
   const breakpointColumns = {
     default: 5,
     1030: 4,
@@ -289,6 +355,9 @@ function HomeContent() {
   return (
     <main className="main-content">
       <section id="view-home" className="tab-view animate-fade-in">
+
+
+
         {/* ==========================================
             SEARCH BOX WRAPPER
            ========================================== */}
@@ -330,6 +399,7 @@ function HomeContent() {
 
           <SearchBox pets={pets} onSearch={handleSearch} />
         </div>
+
 
         {/* ==========================================
             VISTA DETALLE (PET DETAIL VIEW)
@@ -387,7 +457,6 @@ function HomeContent() {
           >
             <IconGridDots />
           </button>
-
         </div>
 
         {/* ==========================================
@@ -459,6 +528,7 @@ function HomeContent() {
       </div>
 
       <LiveFeed />
+      <PopupDestacados items={destacadosPopup} onOpenDetail={openDetail} />
     </main >
   );
 }

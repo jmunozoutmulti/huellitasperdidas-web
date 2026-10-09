@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/adoptar.css';
@@ -54,10 +55,12 @@ import {
     IconBrandInstagram,
     IconBrandTiktok,
     IconBrandMessenger,
-    IconMapPin,
+    IconCalendarPin,
     IconCircleCheckFilled,
     IconLoader,
-    IconClock
+    IconClock,
+    IconHeart,
+    IconHeartPin
 } from '@tabler/icons-react';
 
 const MapPicker = dynamic(() => import('@/components/global/MapPicker'), { ssr: false });
@@ -459,9 +462,9 @@ export default function PublicarAdoptarPage() {
     // MANEJADORES DE NAVEGACIÓN Y SUBMIT
     // ==========================================
     const handleNextStep = async () => {
-        //if (currentStep === 1 && !validateStep1()) {
-        //return;
-        //}
+        if (currentStep === 1 && !validateStep1()) {
+            return;
+        }
 
         if (currentStep === 1) {
             setIsGeneratingFlyer(true);
@@ -575,31 +578,15 @@ export default function PublicarAdoptarPage() {
         showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
     };
 
-    // Helper para generar la descripción narrativa del flyer
-    const getFlyerDescription = () => {
-        const rasgos: string[] = [];
-        if (sexo) rasgos.push(sexo.toLowerCase());
-        if (raza) rasgos.push(raza);
-        if (isCastrado) rasgos.push(sexo === 'Hembra' ? 'esterilizada' : 'esterilizado');
-        if (color) rasgos.push(color);
-        if (edad) rasgos.push(edad);
-        if (descripcion) rasgos.push(descripcion);
+    const flyerCards = [
+        { key: 'raza', value: raza },
+        { key: 'sexo', value: sexo },
+        { key: 'edad', value: edad },
+        { key: 'color', value: color },
+        { key: 'tamano', value: tamano },
+        { key: 'castrado', value: isCastrado ? (sexo === 'Hembra' ? 'Esterilizada' : 'Esterilizado') : '' },
+    ].filter((card) => card.value);
 
-        let frase1 = rasgos.join(', ');
-        if (frase1) frase1 += '.';
-
-        let frase2 = '';
-        if (direccion) {
-            frase2 = `Entrega en: ${direccion}.`;
-        }
-
-        const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
-
-        if (!textoCompleto) {
-            return 'Completa los campos para autogenerar este flyer dinámicamente.';
-        }
-        return textoCompleto.charAt(0).toUpperCase() + textoCompleto.slice(1);
-    };
 
     return (
         <main className="main-content">
@@ -1637,11 +1624,14 @@ export default function PublicarAdoptarPage() {
                                             }`}
                                         id="flyer-preview"
                                     >
+                                        {/* 1. Cabecera */}
                                         <div className="flyer-alert-header">
-                                            <h3 id="flyer-titulo-alerta">¡ADÓPTAME!</h3>
-                                            <p id="flyer-subtitulo-alerta">En busca de un hogar</p>
+                                            <div className="flyer-title-row">
+                                                <h3 id="flyer-titulo-alerta">¡ADÓPTAME!</h3>
+                                            </div>
                                         </div>
 
+                                        {/* 2. Fotos + etiqueta con el nombre */}
                                         <div className="flyer-photo-stage">
                                             <div
                                                 className={`flyer-dynamic-grid ${validPhotos.length === 0
@@ -1668,41 +1658,65 @@ export default function PublicarAdoptarPage() {
                                                     ))
                                                 )}
                                             </div>
-                                            {(distrito || provincia) && (
-                                                <p className="flyer-txt-distrito" id="flyer-txt-distrito">
-                                                    <IconMapPin /> {distrito || provincia}
-                                                </p>
-                                            )}
-                                            <div className="flyer-name-badge">
-                                                <span className="flyer-name-badge-label">Me llamo</span>
-                                                <span id="flyer-txt-nombre">{nombre || 'Nombre'}</span>
+
+                                            <div className="flyer-photo-tag">
+                                                <span><IconHeart /> {nombre || 'Nombre'}</span>
                                             </div>
                                         </div>
 
-                                        <div className="flyer-body">
-                                            <div className="flyer-body-info">
-                                                <p className="flyer-canvas-text" id="flyer-txt-descripcion">
-                                                    {getFlyerDescription()}
-                                                </p>
-                                            </div>
-                                            {extras && (
-                                                <div className="flyer-canvas-reward" id="flyer-includes-box">
-                                                    <span id="flyer-txt-incluye">
-                                                        {ocultarExtras ? 'Accesorios y más' : extras}
-                                                    </span>
-                                                </div>
-                                            )}
-
-
-                                            <div className="flyer-footer-contact">
-                                                <span className="flyer-footer-call-to-action">
-                                                    Si quieres adoptarme, escribe al
+                                        {/* Extras / accesorios (arriba de la franja de datos) */}
+                                        {extras && (
+                                            <div className="flyer-canvas-reward" id="flyer-includes-box">
+                                                <span id="flyer-txt-incluye">
+                                                    {ocultarExtras ? 'Accesorios y más' : extras}
                                                 </span>
-                                                <div className="flyer-footer-number">
-                                                    <IconBrandWhatsapp />
-                                                    <span id="flyer-txt-tel">{telefono || '---------'}</span>
+                                            </div>
+                                        )}
+
+                                        {/* 3. Franja de datos */}
+                                        <div className="flyer-info-band">
+                                            <div className="flyer-info-where">
+                                                <IconHeartPin className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Entrega en:</span>
+                                                    {(distrito || provincia) && (
+                                                        <strong className="flyer-info-place">{distrito || provincia}</strong>
+                                                    )}
+                                                    {direccion && <span className="flyer-info">{direccion}</span>}
                                                 </div>
                                             </div>
+
+                                            <div className="flyer-info-divider" />
+
+                                            <div className="flyer-info-call">
+                                                <IconBrandWhatsapp className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Si quieres adoptarme, escribe al:</span>
+                                                    <strong className="flyer-info-phone">{telefono || '---------'}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Tarjetas */}
+                                        {flyerCards.length > 0 && (
+                                            <div className="flyer-cards flyer-cards-wrap">
+                                                {flyerCards.map((card) => (
+                                                    <div key={card.key} className="flyer-card">
+                                                        <span>{card.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* 5. Pie */}
+                                        <div className="flyer-thanks-band">
+                                            <p className="flyer-thanks-main">
+                                                En busca <br />de un hogar <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
+                                            </p>
+                                            <p className="flyer-thanks-note">
+                                                {descripcion || 'Si quieres adoptarme, por favor comunícate.'}
+                                            </p>
+                                            <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>
                                     </div>
 

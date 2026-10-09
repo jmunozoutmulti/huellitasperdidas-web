@@ -65,6 +65,9 @@
     width: 100%;
     display: flex;
     align-items: center;
+    background: var(--bg-alt);
+    border-radius: 3em;
+    padding: 0 1em;
 }
 
 .search-box-wrapper .custom-select-trigger {
@@ -187,7 +190,7 @@
 }
 
 .badge {
-    font-size: 0.95em;
+    font-size: 0.925em;
     line-height: 1;
     padding: 0.375em 0.75em;
     border-radius: 3em;
@@ -244,7 +247,7 @@
 }
 
 .card-body {
-    padding: 0.5em 0.75em;
+    padding: 0.35em 0.75em;
 }
 
 .card-title {
@@ -295,8 +298,6 @@
     color: var(--text-main);
     margin-top: 0.25em;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
@@ -637,6 +638,7 @@
 .action-icon-btn svg {
     height: 1.175em;
     width: 1.175em;
+    stroke-width: 2px;
 }
 
 .action-icon-btn:hover {
@@ -1688,6 +1690,207 @@ a.pet-card.external-direct:hover {
 
 
 
+/* ==========================================
+   SECCIÓN DESTACADOS PREMIUM 
+   ========================================== */
+.premium-card {
+    width: 17em;
+    background: var(--bg-card);
+    border: 1px solid transparent;
+    border-radius: 0.75em;
+    padding: 0.25em;
+    display: flex;
+    gap: 0.75em;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.premium-card:hover {
+    border-color: rgba(220, 38, 38, 0.3);
+}
+
+.premium-badge-adopcion {
+    color: var(--purple-brand) !important;
+    background: var(--purple-brand-alpha) !important;
+}
+
+.premium-img-box {
+    background-color: var(--bg-alt);
+    border-radius: 0.75em;
+    width: 5em;
+    min-width: 5em;
+    height: 5em;
+    overflow: hidden;
+    box-shadow: 0 0px 15px #ff4d4d40;
+}
+
+.premium-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.premium-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-grow: 1;
+    min-width: 0;
+    position: relative;
+}
+
+.premium-badge {
+    background-color: var(--brand-red-alpha);
+    color: var(--text-red);
+    border-radius: 3em;
+    align-items: center;
+    gap: .15em;
+    width: max-content;
+    padding: .375em .75em;
+    font-size: .85em;
+    line-height: 1;
+    display: flex;
+    position: absolute;
+    right: 0.35em;
+    top: 0.35em;
+}
+
+.premium-badge svg {
+    width: 1em;
+    height: 1em;
+}
+
+.premium-title {
+    font-family: var(--font-outfit);
+    font-size: 1em;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 1.5em 0 0.15em 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+}
+
+.premium-location {
+    font-size: 0.85em;
+    line-height: 1.1em;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.premium-location svg {
+    width: 1em;
+    height: 1em;
+    margin-bottom: -1px;
+}
+
+
+.popup-destacados {
+    position: fixed;
+    right: 1.5em;
+    bottom: 1.5em;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(1em);
+    pointer-events: none;
+    transition: opacity 0.5s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.5s ease;
+}
+
+.popup-destacados-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.popup-destacados:not(.popup-destacados-visible) {
+    animation-play-state: paused;
+}
+
+body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
+    bottom: 7.5em;
+}
+
+@property --premium-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: true;
+}
+
+@keyframes premiumBorderSpin {
+    to {
+        --premium-angle: 360deg;
+    }
+}
+
+.popup-destacados {
+    animation: premiumBorderSpin 4s linear infinite;
+}
+
+.popup-destacados .premium-card,
+.popup-destacados .premium-card:hover {
+    border: 2px solid transparent;
+    background:
+        linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+        conic-gradient(from var(--premium-angle), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%) border-box,
+        linear-gradient(var(--brand-red-alpha), var(--brand-red-alpha)) border-box;
+}
+
+.popup-destacados::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 0.75em;
+    background: conic-gradient(from var(--premium-angle), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%);
+    filter: blur(12px);
+    opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .popup-destacados {
+        animation: none;
+    }
+}
+
+.popup-destacados-close {
+    cursor: pointer;
+    width: 2em;
+    height: 2em;
+    color: var(--text-main);
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8em;
+    display: flex;
+    position: absolute;
+    top: -0.75em;
+    right: -0.75em;
+    background: var(--bg-card);
+    border-width: medium;
+    border-style: none;
+    border-color: currentcolor;
+    border-image: none;
+    border-radius: 50%;
+    transition: 0.25s;
+}
+
+.popup-destacados-close svg {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+.popup-destacados-close:hover {
+    background: var(--brand-red-alpha);
+    color: var(--brand-red);
+}
+
+
+
+
+
 @media screen and (min-width: 1900px) {
     .main-content {
         max-width: 100%;
@@ -1705,6 +1908,12 @@ a.pet-card.external-direct:hover {
 
 
 @media screen and (max-width: 760px) {
+
+
+    .search-box-container {
+        background: none;
+        padding: 0;
+    }
 
     .detail-swiper .swiper-slide img {
         max-height: 20em;
@@ -1751,6 +1960,10 @@ a.pet-card.external-direct:hover {
         margin-bottom: 1em;
     }
 
+    .compact-view .source-tag {
+        display: none !important;
+    }
+
     .masonry-grid {
         gap: 0.75em;
         font-size: 16.25px;
@@ -1758,6 +1971,10 @@ a.pet-card.external-direct:hover {
 
     .masonry-grid.compact-view {
         font-size: 15.25px;
+    }
+
+    .card-img {
+        min-height: 5em;
     }
 
     .buttonmobilegrid svg {
@@ -1776,8 +1993,6 @@ a.pet-card.external-direct:hover {
     .masonry-grid.compact-view .card-footer span b {
         display: none;
     }
-
-
 
     .card-meta {
         font-size: 17px;
@@ -1820,6 +2035,7 @@ a.pet-card.external-direct:hover {
 
     .search-box-wrapper input {
         font-size: 1em;
+        padding: .55em 1em .55em .75em;
     }
 
     .detail-img-stats span {
@@ -1829,4 +2045,17 @@ a.pet-card.external-direct:hover {
     .author-inline-popover {
         width: 15em;
     }
+
+    body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
+        bottom: 1.5em;
+    }
+
+    .premium-img-box {
+        width: 4em;
+        min-width: 4em;
+        height: 4em;
+    }
+
+
+
 }

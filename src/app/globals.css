@@ -994,7 +994,7 @@ input:checked+.ui-slider-btn:before {
 .btn-add>button span {
   color: var(--text-main);
   font-size: 1.075em;
-  font-weight: 500;
+  font-weight: 700;
   margin-top: 3px;
 }
 
@@ -1078,7 +1078,7 @@ input:checked+.ui-slider-btn:before {
 
 .btn-add-option-label {
   font-size: 1em;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
   line-height: 1.3;
 }
@@ -1521,7 +1521,7 @@ h1 {
 }
 
 .custom-select-dropdown::-webkit-scrollbar {
-  width: 5px;
+  width: 7px;
   height: 5px;
 }
 
@@ -1551,7 +1551,7 @@ h1 {
   border-top: none;
   border-radius: 0 0 8px 8px;
   z-index: 99;
-  max-height: 9em;
+  max-height: 11.5em;
   overflow-y: auto;
   list-style: none;
   margin: 0;
@@ -2620,9 +2620,9 @@ h1 {
 
 
 .clear-search-btn {
-  background: var(--bg-alt);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  background: var(--brand-secondary);
+  border: none;
+  color: var(--text-white);
   font-size: 0.9em;
   line-height: 1;
   width: 1.6em;
@@ -2645,7 +2645,6 @@ h1 {
 
 .clear-search-btn:hover {
   background-color: var(--brand-red-alpha);
-  border-color: var(--brand-red);
   color: var(--brand-red);
 }
 
@@ -2657,7 +2656,7 @@ h1 {
   position: fixed;
   bottom: 1.5em;
   right: 1.5em;
-  width: 15em;
+  width: 17em;
   border-radius: 1em;
   padding: 1.25em;
   z-index: 999;
@@ -2679,21 +2678,21 @@ h1 {
 }
 
 .popup-publicar-close {
-  position: absolute;
-  top: 0.75em;
-  right: 0.75em;
-  background: var(--bg-alt);
-  border: none;
+  background: var(--bg-card);
+  cursor: pointer;
   width: 2em;
   height: 2em;
+  color: var(--text-main);
+  border: none;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 0.8em;
-  transition: all 0.25s ease;
+  align-items: center;
+  font-size: .8em;
+  transition: all .25s;
+  display: flex;
+  position: absolute;
+  top: -0.75em;
+  right: -0.75em;
 }
 
 .popup-publicar-close svg {
@@ -2706,20 +2705,20 @@ h1 {
   color: var(--brand-red);
 }
 
-.popup-publicar-body h5 {
-  font-size: 1.1em;
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 1.25em 0 0.25em 0;
+.popup-publicar-body {
+  display: flex;
+  align-items: center;
 }
 
-.popup-publicar-body p {
-  font-size: 0.9em;
-  font-weight: 300;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin: 0 0 1em 0;
+.popup-publicar-body h5 {
+  font-size: 1.1em;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 0.25em 0;
+  padding-right: 1em;
 }
+
 
 .popup-publicar-btn {
   display: block;
@@ -2727,8 +2726,8 @@ h1 {
   background: var(--brand-red);
   color: var(--text-white);
   font-weight: 500;
-  font-size: 0.95em;
-  padding: 0.5em;
+  font-size: 0.9em;
+  padding: 0.5em 1em;
   border-radius: 3em;
   text-decoration: none;
   box-shadow: 0 6px 20px rgba(255, 77, 77, 0.3);
@@ -2888,6 +2887,10 @@ h1 {
     height: 2.5em;
   }
 
+  .popup-publicar-flotante {
+    display: none;
+  }
+
   .main-content {
     width: 90% !important;
     padding: 1em 0;
@@ -2953,7 +2956,7 @@ h1 {
   .btn-add-option-label {
     font-size: 0.975em;
     line-height: 1;
-    font-weight: 500;
+    font-weight: 700;
   }
 
   .btn-add-option {

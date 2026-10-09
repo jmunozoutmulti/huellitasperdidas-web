@@ -60,6 +60,9 @@ export default function SearchBox({ pets, onSearch }: SearchBoxProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchOpen(true)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') executeSearch(searchQuery);
+                }}
             />
 
             <div

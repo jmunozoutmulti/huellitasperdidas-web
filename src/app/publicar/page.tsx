@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import { useApp } from '@/context/AppContext';
@@ -56,14 +57,30 @@ import {
     IconBrandMessenger,
     IconShieldCheck,
     IconCurrentLocation,
-    IconMapPin,
+    IconCalendarPin,
     IconLoader,
     IconPlus,
     IconCircleCheckFilled,
-    IconClock
+    IconClock,
+    IconPaw
 } from '@tabler/icons-react';
 
 const MapPicker = dynamic(() => import('@/components/global/MapPicker'), { ssr: false });
+
+const mesesCompletos: Record<string, string> = {
+    '01': 'Enero',
+    '02': 'Febrero',
+    '03': 'Marzo',
+    '04': 'Abril',
+    '05': 'Mayo',
+    '06': 'Junio',
+    '07': 'Julio',
+    '08': 'Agosto',
+    '09': 'Septiembre',
+    '10': 'Octubre',
+    '11': 'Noviembre',
+    '12': 'Diciembre',
+};
 
 export default function PublicarPerdidaPage() {
 
@@ -160,21 +177,6 @@ export default function PublicarPerdidaPage() {
 
     // Formatear Fecha Display
     useEffect(() => {
-        const mesesCompletos: Record<string, string> = {
-            '01': 'Enero',
-            '02': 'Febrero',
-            '03': 'Marzo',
-            '04': 'Abril',
-            '05': 'Mayo',
-            '06': 'Junio',
-            '07': 'Julio',
-            '08': 'Agosto',
-            '09': 'Septiembre',
-            '10': 'Octubre',
-            '11': 'Noviembre',
-            '12': 'Diciembre',
-        };
-
         if (fechaDia && fechaMes && fechaAnio) {
             const mesNombre = mesesCompletos[fechaMes] || '';
             setFechaDisplay(`${fechaDia} ${mesNombre} ${fechaAnio}`);
@@ -588,35 +590,18 @@ export default function PublicarPerdidaPage() {
     };
 
     // Helper para generar las descripciones acumuladas del flyer
-    const getFlyerDescription = () => {
-        const rasgos: string[] = [];
-        if (sexo) rasgos.push(sexo.toLowerCase());
-        if (raza) rasgos.push(raza);
-        if (isCastrado) rasgos.push(sexo === 'Hembra' ? 'esterilizada' : 'esterilizado');
-        if (color) rasgos.push(color);
-        if (observaciones) rasgos.push(observaciones);
+    const fechaCorta =
+        fechaDia && fechaMes
+            ? `${Number(fechaDia)} de ${(mesesCompletos[String(fechaMes).padStart(2, '0')] ?? '').toLowerCase()}`.trim()
+            : '';
+    const hasReward = Boolean((recompensa && Number(recompensa) > 0) || ocultarMonto);
 
-        const fechaCorta = fechaDia && fechaMes ? `${fechaDia}/${fechaMes}` : null;
-
-        let frase1 = rasgos.join(', ');
-        if (fechaCorta) {
-            frase1 = frase1 ? `${frase1}, se perdió el ${fechaCorta}.` : `Se perdió el ${fechaCorta}.`;
-        } else if (frase1) {
-            frase1 += '.';
-        }
-
-        let frase2 = '';
-        if (direccion) {
-            frase2 = `En: ${direccion}.`;
-        }
-
-        const textoCompleto = [frase1, frase2].filter(Boolean).join(' ');
-
-        if (!textoCompleto) {
-            return 'Completa los campos para autogenerar este flyer dinámicamente.';
-        }
-        return textoCompleto.charAt(0).toUpperCase() + textoCompleto.slice(1);
-    };
+    const flyerCards = [
+        { key: 'raza', value: raza },
+        { key: 'sexo', value: sexo },
+        { key: 'color', value: color },
+        { key: 'castrado', value: isCastrado ? 'Esterilizado' : '' },
+    ].filter((card) => card.value);
 
     const lastGeocodedQueryRef = useRef<string | null>(null);
 
@@ -1798,11 +1783,14 @@ export default function PublicarPerdidaPage() {
                                             }`}
                                         id="flyer-preview"
                                     >
+                                        {/* 1. Cabecera */}
                                         <div className="flyer-alert-header">
-                                            <h3 id="flyer-titulo-alerta">¡BUSCAMOS!</h3>
-                                            <p id="flyer-subtitulo-alerta">Ayúdame a volver a casa</p>
+                                            <div className="flyer-title-row">
+                                                <h3 id="flyer-titulo-alerta">¡BUSCAMOS!</h3>
+                                            </div>
                                         </div>
 
+                                        {/* 2. Fotos + etiqueta */}
                                         <div className="flyer-photo-stage">
                                             <div
                                                 className={`flyer-dynamic-grid ${validPhotos.length === 0
@@ -1829,44 +1817,66 @@ export default function PublicarPerdidaPage() {
                                                     ))
                                                 )}
                                             </div>
-                                            {(distrito || provincia) && (
-                                                <p className="flyer-txt-distrito" id="flyer-txt-distrito">
-                                                    <IconMapPin /> {distrito || provincia}
-                                                </p>
-                                            )}
-                                            <div className="flyer-name-badge">
-                                                <span className="flyer-name-badge-label">Me llamo</span>
-                                                <span id="flyer-txt-nombre">{nombre || 'Nombre'}</span>
-                                            </div>
 
+                                            {fechaCorta && <span className="flyer-date">El {fechaCorta}</span>}
+                                            <div className="flyer-photo-tag">
+                                                <span><IconPaw /> {nombre || 'Nombre'}</span>
+                                            </div>
                                         </div>
 
-
-                                        <div className="flyer-body">
-                                            <div className="flyer-body-info">
-                                                <p className="flyer-canvas-text" id="flyer-txt-descripcion">
-                                                    {getFlyerDescription()}
-                                                </p>
-                                            </div>
-
-                                            {((recompensa && Number(recompensa) > 0) || ocultarMonto) && (
-                                                <div className="flyer-canvas-reward" id="flyer-reward-box" style={{ display: 'block' }}>
-                                                    {!ocultarMonto && <span id="flyer-reward-label">¡RECOMPENSA!</span>}
-                                                    <span id="flyer-txt-recompensa">
-                                                        {ocultarMonto ? '¡Se ofrece recompensa!' : `${currencySymbol} ${recompensa}!`}
-                                                    </span>
-                                                </div>
-                                            )}
-
-                                            <div className="flyer-footer-contact">
-                                                <span className="flyer-footer-call-to-action">
-                                                    Si me ves, por favor llama o escribe al
+                                        {hasReward && (
+                                            <div className="flyer-canvas-reward" id="flyer-reward-box" style={{ display: 'block' }}>
+                                                {!ocultarMonto && <span id="flyer-reward-label">¡RECOMPENSA!</span>}
+                                                <span id="flyer-txt-recompensa">
+                                                    {ocultarMonto ? '¡Se ofrece recompensa!' : `${currencySymbol} ${recompensa}!`}
                                                 </span>
-                                                <div className="flyer-footer-number">
-                                                    <IconBrandWhatsapp />
-                                                    <span id="flyer-txt-tel">{telefono || '---------'}</span>
+                                            </div>
+                                        )}
+
+                                        {/* 3. Franja de datos: dónde se perdió + teléfono */}
+                                        <div className="flyer-info-band">
+                                            <div className="flyer-info-where">
+                                                <IconCalendarPin className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Se perdió en:</span>
+                                                    {(distrito || provincia) && (
+                                                        <strong className="flyer-info-place">{distrito || provincia}</strong>
+                                                    )}
+                                                    {direccion && <span className="flyer-info">{direccion}</span>}
                                                 </div>
                                             </div>
+
+                                            <div className="flyer-info-divider" />
+
+                                            <div className="flyer-info-call">
+                                                <IconBrandWhatsapp className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Llama o escribe al:</span>
+                                                    <strong className="flyer-info-phone">{telefono || '---------'}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Tarjetas */}
+                                        {flyerCards.length > 0 && (
+                                            <div className="flyer-cards">
+                                                {flyerCards.map((card) => (
+                                                    <div key={card.key} className="flyer-card">
+                                                        <span>{card.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* 5. Pie */}
+                                        <div className="flyer-thanks-band">
+                                            <p className="flyer-thanks-main">
+                                                Ayúdame a  <br />volver a casa  <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
+                                            </p>
+                                            <p className="flyer-thanks-note">
+                                                {observaciones || 'Cualquier información, por favor comunícate.'}
+                                            </p>
+                                            <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>
                                     </div>
 
@@ -1906,6 +1916,6 @@ export default function PublicarPerdidaPage() {
                     <div className="countdown-bar"></div>
                 </div>
             </div>
-        </main>
+        </main >
     );
 }

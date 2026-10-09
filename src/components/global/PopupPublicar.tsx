@@ -53,10 +53,7 @@ export default function PopupPublicar() {
 
             <div className="popup-publicar-body">
                 <h5>¿Perdiste a tu mascota?</h5>
-                <p>Publica tu aviso y hazlo más fácil de encontrar.</p>
-                <Link href="/publicar" className="popup-publicar-btn">
-                    Publicar ahora
-                </Link>
+                <Link href="/publicar" className="popup-publicar-btn">Publicar </Link>
             </div>
         </div>
     );
