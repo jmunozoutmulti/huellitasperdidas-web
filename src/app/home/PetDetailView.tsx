@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { buildReportPath } from '@/lib/slug';
 import Swiper from 'swiper';
 import { Navigation, Pagination } from 'swiper/modules';
 import { showToast } from '@/components/global/Toast';
@@ -111,8 +112,8 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
     useClickOutside(authorMenuRef, () => setIsAuthorEllipsisOpen(false), isAuthorEllipsisOpen);
 
     const shareUrl = useMemo(
-        () => (typeof window !== 'undefined' ? `${window.location.origin}/?id=${pet.id}` : ''),
-        [pet.id]
+        () => (typeof window !== 'undefined' ? `${window.location.origin}${buildReportPath(pet.id, pet.title)}` : ''),
+        [pet.id, pet.title]
     );
 
     useEffect(() => {
@@ -329,7 +330,7 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                             className="share-grid-item item-link"
                                             id="btn-copy-link"
                                             onClick={() => {
-                                                navigator.clipboard.writeText(window.location.href);
+                                                navigator.clipboard.writeText(shareUrl);
                                                 registerReportShare(pet.id);
                                                 showToast('Enlace copiado al portapapeles', 'success');
                                                 setIsShareOpen(false);

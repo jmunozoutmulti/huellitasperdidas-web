@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { buildReportPath } from '@/lib/slug';
 import { showToast } from '@/components/global/Toast';
 import type { Report } from '@/lib/api';
 import type { PackageOption } from '@/lib/packagesApi';
@@ -415,7 +416,7 @@ export default function PubCard({
                         <button type="button" className="btn-eliminar-anuncio tooltip" data-tooltip="Eliminar" onClick={onOpenEliminarAviso}>
                             <IconTrash />
                         </button>
-                        <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
+                        <a href={buildReportPath(pub.id, pub.title)} className="tooltip" data-tooltip="Ir al aviso">
                             <IconExternalLink />
                         </a>
                     </div>
@@ -434,7 +435,7 @@ export default function PubCard({
                     <button type="button" className="tooltip" data-tooltip="Descargar" onClick={() => downloadFlyer(flyerUrl)}>
                         <IconDownload />
                     </button>
-                    <a href={`/?id=${pub.id}`} className="tooltip" data-tooltip="Ir al aviso">
+                    <a href={buildReportPath(pub.id, pub.title)} className="tooltip" data-tooltip="Ir al aviso">
                         <IconExternalLink />
                     </a>
                 </div>

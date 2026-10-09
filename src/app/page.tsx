@@ -13,7 +13,8 @@ import { reportToPetData } from '@/lib/transformers';
 import { getCountries } from '@/lib/countries';
 import { saveDetectedCountry } from '@/lib/auth';
 import { useApp } from '@/context/AppContext';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { buildReportPath, extractReportId } from '@/lib/slug';
 import CustomSelect from '@/components/ui/CustomSelect';
 import Masonry from 'react-masonry-css';
 import { IconClockBolt, IconX, IconGridDots, IconPlus, IconHeartFilled, IconStarFilled } from '@tabler/icons-react';
@@ -59,6 +60,7 @@ function HomeContent() {
   const { currentUser, isAuthChecked, detectedCountry, isCountryDetectionDone } = useApp();
 
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const [manualCountry, setManualCountry] = useState<string | null>(null);
   const countryCode = currentUser?.country || detectedCountry || manualCountry;
@@ -180,7 +182,9 @@ function HomeContent() {
 
 
   useEffect(() => {
-    const id = searchParams.get('id');
+    const pathId = pathname.startsWith('/aviso/') ? extractReportId(pathname) : null;
+    const legacyId = searchParams.get('id');
+    const id = pathId ?? legacyId;
     if (!id) {
       setSelectedPet(null);
       setIsDetailActive(false);
@@ -201,6 +205,9 @@ function HomeContent() {
           }
           setSelectedPet(reportToPetData(report));
           setIsDetailActive(true);
+          if (!pathId) {
+            window.history.replaceState(null, '', buildReportPath(report.id, report.title));
+          }
         }
       } catch (err) {
         if (!isCancelled) {
@@ -215,7 +222,7 @@ function HomeContent() {
     return () => {
       isCancelled = true;
     };
-  }, [searchParams]);
+  }, [pathname, searchParams]);
 
 
   // ==========================================
@@ -268,11 +275,14 @@ function HomeContent() {
   }, [page, totalPages, countryCode, searchQuery, isLoadingMore]);
 
   const openDetail = (pet: PetData) => {
-    router.push(`/?id=${pet.id}`);
+    setSelectedPet(pet);
+    setIsDetailActive(true);
+    window.history.pushState(null, '', buildReportPath(pet.id, pet.title));
+    window.scrollTo(0, 0);
   };
 
   const closeDetail = () => {
-    router.push('/');
+    window.history.pushState(null, '', '/');
   };
 
   // ==========================================

@@ -1761,7 +1761,6 @@ a.pet-card.external-direct:hover {
 }
 
 .premium-title {
-    font-family: var(--font-outfit);
     font-size: 1em;
     font-weight: 700;
     color: var(--text-main);

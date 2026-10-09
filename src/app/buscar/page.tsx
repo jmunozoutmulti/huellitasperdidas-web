@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { buildReportPath } from '@/lib/slug';
 import Link from 'next/link';
 import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/buscar.css';
@@ -777,7 +778,7 @@ export default function BuscarIAPage() {
             window.open(pet.externalUrl, '_blank');
             return;
         }
-        window.open(`/?id=${pet.id}`, '_blank');
+        window.open(buildReportPath(pet.id, pet.title), '_blank');
     };
 
 
