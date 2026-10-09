@@ -74,23 +74,47 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
             return;
         }
         setIsYapeSubmitting(true);
+        let yapeTokenId: string;
         try {
             const yapeMp = new MP(payment.public_key, { locale: 'es-PE' });
             const yape = yapeMp.yape({ otp: yapeOtp, phoneNumber: yapePhone });
             const yapeToken = await yape.create();
-            const result = await confirmYapePayment(payment.payment_id, yapeToken.id, yapeEmail);
+            yapeTokenId = yapeToken.id;
+        } catch (err) {
+            console.error('Error generando el token de Yape:', err);
+            setIsYapeSubmitting(false);
+            onCancelled();
+            return;
+        }
+        try {
+            const result = await confirmYapePayment(payment.payment_id, yapeTokenId, yapeEmail);
             if (result.status === 'paid') {
                 onConfirmed();
                 return;
             }
             if (result.status === 'failed') {
                 onCancelled();
+                await retryAttempt();
                 return;
             }
             startPolling();
         } catch (err) {
-            console.error('Error procesando el pago con Yape:', err);
-            onCancelled();
+            console.error('Error confirmando el pago con Yape:', err);
+            try {
+                const current = await getPaymentStatus(payment.payment_id);
+                if (current.status === 'paid') {
+                    onConfirmed();
+                    return;
+                }
+                if (current.status === 'failed') {
+                    onCancelled();
+                    await retryAttempt();
+                    return;
+                }
+            } catch {
+                // Sin poder verificar el estado no reintentamos: decide el polling
+            }
+            startPolling();
         } finally {
             setIsYapeSubmitting(false);
         }
@@ -131,6 +155,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                     clearInterval(interval);
                     setIsPolling(false);
                     onCancelled();
+                    if (payment.gateway === 'mercadopago') await retryAttempt();
                     return;
                 }
                 // 'pending' o 'refunded' recién creado — sigue esperando
@@ -231,8 +256,21 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                                     startPolling();
                                 } catch (err) {
                                     console.error('Error confirmando el pago con Mercado Pago:', err);
-                                    onCancelled();
-                                    await retryAttempt();
+                                    try {
+                                        const current = await getPaymentStatus(payment.payment_id);
+                                        if (current.status === 'paid') {
+                                            onConfirmed();
+                                            return;
+                                        }
+                                        if (current.status === 'failed') {
+                                            onCancelled();
+                                            await retryAttempt();
+                                            return;
+                                        }
+                                    } catch {
+                                        // Sin poder verificar el estado no reintentamos: decide el polling
+                                    }
+                                    startPolling();
                                 }
                             }}
                             onError={(err: any) => {
