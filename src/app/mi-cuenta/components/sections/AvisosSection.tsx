@@ -39,7 +39,7 @@ function isExpired(pub: Report): boolean {
     return new Date(pub.expires_at).getTime() < Date.now();
 }
 
-function getTab(pub: Report): Tab | null {
+export function getTab(pub: Report): Tab | null {
     const isPendingInitialPayment =
         (pub.payment_status === 'pending' || pub.payment_status === 'failed') &&
         pub.payment_flow_type === 'create';

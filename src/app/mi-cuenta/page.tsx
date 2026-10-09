@@ -9,7 +9,7 @@ import GuardadosSection from './components/sections/GuardadosSection';
 import MensajesSection from './components/sections/MensajesSection';
 import DatosSection from './components/sections/DatosSection';
 import AjustesSection from './components/sections/AjustesSection';
-import DashboardSection from './components/sections/AvisosSection';
+import DashboardSection, { getTab } from './components/sections/AvisosSection';
 import { fetchMyReports, type Report } from '@/lib/api';
 import { getMySettings, updateMySettings, type UserSettings } from '@/lib/authApi';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -466,7 +466,7 @@ export default function MiCuentaPage() {
         }
     }, [currentUser, avisosRefreshKey]);
 
-    const pendingCount = myPublications.filter((p) => p.status === 'pending_approval').length;
+    const pendingCount = myPublications.filter((p) => getTab(p) === 'revision').length;
 
     const [modalCambiarNumero, setModalCambiarNumero] = useState(false);
     const [modalCambiarClave, setModalCambiarClave] = useState(false);
