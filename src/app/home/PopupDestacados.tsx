@@ -5,8 +5,9 @@ import { PetData } from '@/lib/pets';
 
 const INITIAL_DELAY_MS = 5000;
 const VISIBLE_MS = 4000;
-const FADE_MS = 1000;
+const FADE_MS = 2000;
 const PAUSE_MS = 50000;
+const MOBILE_QUERY = '(max-width: 760px)';
 
 export interface PopupDestacadoItem {
     pet: PetData;
@@ -25,6 +26,15 @@ export default function PopupDestacados({ items, onOpenDetail }: PopupDestacados
     const [isVisible, setIsVisible] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const pauseTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [visibleCount, setVisibleCount] = useState(1);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia(MOBILE_QUERY);
+        const update = () => setVisibleCount(mediaQuery.matches ? 1 : 2);
+        update();
+        mediaQuery.addEventListener('change', update);
+        return () => mediaQuery.removeEventListener('change', update);
+    }, []);
 
     useEffect(() => {
         if (items.length === 0 || isPaused) return;
@@ -33,13 +43,14 @@ export default function PopupDestacados({ items, onOpenDetail }: PopupDestacados
 
         const show = () => {
             setIsVisible(true);
+            if (items.length <= visibleCount) return;
             timer = setTimeout(hide, VISIBLE_MS);
         };
 
         const hide = () => {
             setIsVisible(false);
             timer = setTimeout(() => {
-                setIndex((current) => (current + 1) % items.length);
+                setIndex((current) => (current + visibleCount) % items.length);
                 show();
             }, FADE_MS);
         };
@@ -47,7 +58,7 @@ export default function PopupDestacados({ items, onOpenDetail }: PopupDestacados
         timer = setTimeout(show, INITIAL_DELAY_MS);
 
         return () => clearTimeout(timer);
-    }, [items.length, isPaused]);
+    }, [items.length, isPaused, visibleCount]);
 
 
     useEffect(() => {
@@ -64,8 +75,10 @@ export default function PopupDestacados({ items, onOpenDetail }: PopupDestacados
 
     if (items.length === 0) return null;
 
-    const { pet, badgeLabel, badgeClassName, badgeIcon } = items[index % items.length];
-    const location = [pet.district, pet.province, pet.region].filter(Boolean).join(', ');
+    const visibleItems = Array.from(
+        { length: Math.min(visibleCount, items.length) },
+        (_, i) => items[(index + i) % items.length]
+    );
 
     return (
         <div className={`popup-destacados ${isVisible ? 'popup-destacados-visible' : ''}`}>
@@ -78,23 +91,28 @@ export default function PopupDestacados({ items, onOpenDetail }: PopupDestacados
                 <IconX />
             </button>
 
-            <div className="premium-card" onClick={() => onOpenDetail(pet)}>
-                <div className="premium-img-box">
-                    <img src={pet.imgSrc || '/images/placeholder.jpg'} alt={pet.title || 'Mascota destacada'} />
-                </div>
+            {visibleItems.map(({ pet, badgeLabel, badgeClassName, badgeIcon }) => {
+                const location = [pet.district, pet.province, pet.region].filter(Boolean).join(', ');
+                return (
+                    <div key={pet.id} className="premium-card" onClick={() => onOpenDetail(pet)}>
+                        <div className="premium-img-box">
+                            <img src={pet.imgSrc || '/images/placeholder.jpg'} alt={pet.title || 'Mascota destacada'} />
+                        </div>
 
-                <div className="premium-body">
-                    <div className={`premium-badge ${badgeClassName}`}>
-                        {badgeIcon} {badgeLabel}
+                        <div className="premium-body">
+                            <div className={`premium-badge ${badgeClassName}`}>
+                                {badgeIcon} {badgeLabel}
+                            </div>
+                            {pet.title && <h3 className="premium-title">{pet.title}</h3>}
+                            {location && (
+                                <p className="premium-location">
+                                    <IconPin /> {location}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    {pet.title && <h3 className="premium-title">{pet.title}</h3>}
-                    {location && (
-                        <p className="premium-location">
-                            <IconPin /> {location}
-                        </p>
-                    )}
-                </div>
-            </div>
+                );
+            })}
         </div>
     );
 }

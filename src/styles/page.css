@@ -1798,6 +1798,9 @@ a.pet-card.external-direct:hover {
     transform: translateY(1em);
     pointer-events: none;
     transition: opacity 0.5s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.5s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
 }
 
 .popup-destacados-visible {
@@ -1832,20 +1835,21 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
 
 .popup-destacados .premium-card,
 .popup-destacados .premium-card:hover {
+    position: relative;
     border: 2px solid transparent;
     background:
         linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
-        conic-gradient(from var(--premium-angle), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%) border-box,
+        conic-gradient(from var(--premium-angle, 0deg), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%) border-box,
         linear-gradient(var(--brand-red-alpha), var(--brand-red-alpha)) border-box;
 }
 
-.popup-destacados::before {
+.popup-destacados .premium-card::before {
     content: '';
     position: absolute;
-    inset: 0;
+    inset: -2px;
     z-index: -1;
     border-radius: 0.75em;
-    background: conic-gradient(from var(--premium-angle), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%);
+    background: conic-gradient(from var(--premium-angle, 0deg), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%);
     filter: blur(12px);
     opacity: 0.6;
 }
@@ -1872,9 +1876,9 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
     border-width: medium;
     border-style: none;
     border-color: currentcolor;
-    border-image: none;
     border-radius: 50%;
     transition: 0.25s;
+    z-index: 9;
 }
 
 .popup-destacados-close svg {
