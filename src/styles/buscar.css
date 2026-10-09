@@ -569,6 +569,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5em;
+    margin-bottom: 0.35em;
 }
 
 .pill-multi-btn {

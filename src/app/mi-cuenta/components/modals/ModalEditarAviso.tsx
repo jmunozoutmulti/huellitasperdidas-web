@@ -270,7 +270,7 @@ export default function ModalEditarAviso({
                 setEditOcultarExtras(!pub.meta.adoption_extras_visible);
                 setEditEdad(pub.meta.age || '');
                 setEditTelefono(pub.contact_phone?.replace(/^\+\d+\s*/, '') || '');
-                setRejectionReason(pub.rejection_reason);
+                setRejectionReason(pub.rejection_reason ?? null);
 
                 setReadOnlyDistrict(pub.district || '');
                 setReadOnlyProvince(pub.province || '');

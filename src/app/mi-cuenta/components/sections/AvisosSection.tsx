@@ -177,7 +177,7 @@ export default function DashboardSection({
                     if (p.payment_status === 'pending' || p.payment_status === 'failed') return false;
                     if (!p.package_slug || p.package_slug === 'gratis') return false;
                     if (dismissedBannerIds.has(p.id)) return false;
-                    const dias = getDiasRestantes(p.expires_at);
+                    const dias = getDiasRestantes(p.expires_at ?? null);
                     return dias > 0 && dias <= 1;
                 })
                 .map((p) => (

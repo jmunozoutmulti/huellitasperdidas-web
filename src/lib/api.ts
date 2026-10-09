@@ -51,30 +51,31 @@ export interface Report {
   images: Image[];
   contact_name: string | null;
   contact_phone: string | null;
-  contact_email: string | null;
+  contact_email?: string | null;
   contact_url: string | null;
   likes_count: number;
   has_liked: boolean;
   is_favorited: boolean;
   views_count: number;
   shares_count: number;
-  user_id: string | null;
+  // Los campos opcionales solo llegan al dueño (detalle con token o /users/me/reports)
+  user_id?: string | null;
   author_name: string | null;
   author_avatar: string | null;
-  rejection_reason: string | null;
-  stopped_by_user: boolean | null;
-  expires_at: string | null;
-  amount_paid: number | null;
-  extra_reach: string | null;
-  refund_amount: number | null;
-  refund_status: string | null; // 'pending' | 'processed' | null
-  stopped_at: string | null;
-  reactivated_at: string | null;
-  extra_reach_purchased_at: string | null;
-  pending_reason: string | null;
-  payment_status: "paid" | "pending" | "failed" | "refunded" | null;
-  payment_flow_type: "create" | "reactivate" | "upgrade" | "extra_reach" | "extend" | null;
-  statistics_ads: {
+  rejection_reason?: string | null;
+  stopped_by_user?: boolean | null;
+  expires_at?: string | null;
+  amount_paid?: number | null;
+  extra_reach?: string | null;
+  refund_amount?: number | null;
+  refund_status?: string | null; // 'pending' | 'processed' | null
+  stopped_at?: string | null;
+  reactivated_at?: string | null;
+  extra_reach_purchased_at?: string | null;
+  pending_reason?: string | null;
+  payment_status?: "paid" | "pending" | "failed" | "refunded" | null;
+  payment_flow_type?: "create" | "reactivate" | "upgrade" | "extra_reach" | "extend" | null;
+  statistics_ads?: {
     reach_actual?: number;
     reach_projected?: number;
     impressions?: number;
@@ -85,11 +86,11 @@ export interface Report {
 }
 
 export interface ReportDetail extends Omit<Report, "meta"> {
-  normalized_text: string | null;
-  confidence_score: number | null;
-  extracted_features: Record<string, unknown>;
+  normalized_text?: string | null;
+  confidence_score?: number | null;
+  extracted_features?: Record<string, unknown>;
   meta: ReportMetaDetail;
-  package_name: string | null;
+  package_name?: string | null;
 }
 
 export interface FavoriteReportOut {

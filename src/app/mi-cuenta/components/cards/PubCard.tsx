@@ -190,7 +190,7 @@ export default function PubCard({
     const plaBadge = hasPlan(reportType);
     const suffix = typeSuffix(reportType);
     const statusBadge = STATUS_BADGE[pub.status] ?? STATUS_BADGE.pending_approval;
-    const diasRestantes = getDiasRestantes(pub.expires_at);
+    const diasRestantes = getDiasRestantes(pub.expires_at ?? null);
     const displayName = reportType === 'found' ? buildFoundTitle(pub) : pub.title || reportTypeLabel(reportType);
     const planName = packages.find((p) => p.slug === pub.package_slug)?.name ?? pub.package_slug ?? '';
     const canReactivate = isReallyExpired(pub);
