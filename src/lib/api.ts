@@ -75,6 +75,7 @@ export interface Report {
   pending_reason?: string | null;
   payment_status?: "paid" | "pending" | "failed" | "refunded" | null;
   payment_flow_type?: "create" | "reactivate" | "upgrade" | "extra_reach" | "extend" | null;
+  payment_in_review?: boolean;
   statistics_ads?: {
     reach_actual?: number;
     reach_projected?: number;

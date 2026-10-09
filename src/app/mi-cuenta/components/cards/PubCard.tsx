@@ -474,6 +474,16 @@ export default function PubCard({
     // ============ BODY: acción de pago pendiente (terminar de pagar) ============
     const renderPagoPendienteAction = () => {
         if (tab !== 'pago_pendiente') return null;
+        if (pub.payment_in_review) {
+            return (
+                <div className="admin-info-box info-box-revision">
+                    <IconClock />
+                    <p>
+                        <b>Pago en revisión.</b> Mercado Pago está revisando tu pago. Tu aviso se actualizará cuando se confirme.
+                    </p>
+                </div>
+            );
+        }
         return (
             <div className="pub-editor-actions">
                 <button type="button" className="btn-reactivar-pago" onClick={onOpenRetryPago}>
