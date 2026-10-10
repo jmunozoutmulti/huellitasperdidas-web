@@ -1043,7 +1043,7 @@ export default function ModalEditarAviso({
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">{fc.whereKicker}</span>
                                                     {(readOnlyDistrict || readOnlyProvince) && (
-                                                        <strong className="flyer-info-place">{readOnlyDistrict || readOnlyProvince}</strong>
+                                                        <strong className={`flyer-info-place ${(readOnlyDistrict || readOnlyProvince).length > 18 ? 'is-long' : ''}`}>{readOnlyDistrict || readOnlyProvince}</strong>
                                                     )}
                                                     {readOnlyAddressHint && <span className="flyer-info">{readOnlyAddressHint}</span>}
                                                 </div>
@@ -1055,7 +1055,7 @@ export default function ModalEditarAviso({
                                                 <IconBrandWhatsapp className="flyer-info-bigicon" />
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">{fc.callKicker}</span>
-                                                    <strong className="flyer-info-phone">{editTelefono || '---------'}</strong>
+                                                    <strong className={`flyer-info-phone ${editTelefono.replace(/\D/g, '').length > 9 ? 'is-long' : ''}`}>{editTelefono || '---------'}</strong>
                                                 </div>
                                             </div>
                                         </div>

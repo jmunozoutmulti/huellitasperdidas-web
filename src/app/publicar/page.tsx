@@ -1844,7 +1844,7 @@ export default function PublicarPerdidaPage() {
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">Se perdió en:</span>
                                                     {(distrito || provincia) && (
-                                                        <strong className="flyer-info-place">{distrito || provincia}</strong>
+                                                        <strong className={`flyer-info-place ${(distrito || provincia).length > 18 ? 'is-long' : ''}`}>{distrito || provincia}</strong>
                                                     )}
                                                     {direccion && <span className="flyer-info">{direccion}</span>}
                                                 </div>
@@ -1856,7 +1856,7 @@ export default function PublicarPerdidaPage() {
                                                 <IconBrandWhatsapp className="flyer-info-bigicon" />
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">Llama o escribe al:</span>
-                                                    <strong className="flyer-info-phone">{telefono || '---------'}</strong>
+                                                    <strong className={`flyer-info-phone ${telefono.replace(/\D/g, '').length > 9 ? 'is-long' : ''}`}>{telefono || '---------'}</strong>
                                                 </div>
                                             </div>
                                         </div>

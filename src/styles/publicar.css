@@ -705,6 +705,7 @@
 .flyer-photo-tag span svg {
     width: 0.9em;
     height: 0.9em;
+    margin-bottom: -1px;
 }
 
 .flyer-info-band {
@@ -783,7 +784,7 @@
 .flyer-info-place {
     font-family: var(--font-outfit);
     color: var(--brand-red);
-    font-size: 0.9em;
+    font-size: 0.85em;
     line-height: 1;
     font-weight: 900;
     text-transform: uppercase;
@@ -799,6 +800,15 @@
     line-height: 1;
     letter-spacing: -1px;
 
+}
+
+.flyer-info-phone.is-long {
+    font-size: 1.675em;
+    padding-right: 0.375em;
+}
+
+.flyer-info-place.is-long {
+    font-size: 0.75em;
 }
 
 .flyer-cards {
