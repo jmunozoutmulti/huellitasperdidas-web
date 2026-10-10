@@ -96,10 +96,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 setIsLoggedIn(true);
                 backfillDetectedCountry(apiUser.country);
                 refreshCentinelaStatus();
-            } catch {
-                // Token inválido o vencido — cerramos sesión en silencio,
-                // sin mostrar ningún error (es un estado normal, no una falla).
-                clearAccessToken();
+            } catch (err) {
+                if (err instanceof AuthApiError && err.status === 401) {
+                    clearAccessToken();
+                }
             } finally {
                 setIsAuthChecked(true);
             }
