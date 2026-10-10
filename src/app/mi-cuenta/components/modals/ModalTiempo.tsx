@@ -39,6 +39,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
 
     useEffect(() => {
         if (!isOpen || !id) return;
+        let isCancelled = false;
         setStep(1);
         setExtraDays(null);
         setPendingPayment(null);
@@ -48,12 +49,14 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
         setIsLoading(true);
 
         fetchReport(id).then(async (report) => {
+            if (isCancelled) return;
             setPub(report);
             if (report.package_slug && report.country) {
                 const [pkgs, country] = await Promise.all([
                     getPackages(report.country),
                     getCountryByAbbr(report.country),
                 ]);
+                if (isCancelled) return;
                 const foundPkg = pkgs.find((p) => p.slug === report.package_slug) ?? null;
                 setPkg(foundPkg);
                 setCurrencySymbol(country?.currencySymbol ?? '');
@@ -62,9 +65,14 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
             }
             setIsLoading(false);
         }).catch((err) => {
+            if (isCancelled) return;
             console.error('Error cargando datos para extender tiempo:', err);
             setIsLoading(false);
         });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [isOpen, id]);
 
     const handlePaymentConfirmed = useCallback(() => {

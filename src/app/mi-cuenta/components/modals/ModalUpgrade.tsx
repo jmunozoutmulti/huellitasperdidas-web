@@ -49,6 +49,7 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
 
     useEffect(() => {
         if (!isOpen || !id) return;
+        let isCancelled = false;
         setStep(1);
         setVal('');
         setPendingPayment(null);
@@ -58,12 +59,14 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
         setIsLoading(true);
 
         fetchReport(id).then(async (report) => {
+            if (isCancelled) return;
             setPub(report);
             if (report.country) {
                 const [pkgs, country] = await Promise.all([
                     getPackages(report.country),
                     getCountryByAbbr(report.country),
                 ]);
+                if (isCancelled) return;
                 const paidPackages = pkgs.filter((p) => p.price > 0);
                 setPackages(paidPackages);
                 setCurrencySymbol(country?.currencySymbol ?? '');
@@ -72,9 +75,14 @@ export default function ModalUpgrade({ isOpen, id, onClose, onUpgraded }: ModalU
             }
             setIsLoading(false);
         }).catch((err) => {
+            if (isCancelled) return;
             console.error('Error cargando datos para upgrade:', err);
             setIsLoading(false);
         });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [isOpen, id]);
 
     const handlePaymentConfirmed = useCallback(() => {

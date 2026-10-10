@@ -22,6 +22,7 @@ export default function ModalRetryPago({ isOpen, id, onClose, onPaid }: ModalRet
 
     useEffect(() => {
         if (!isOpen || !id) return;
+        let isCancelled = false;
         setPub(null);
         setPendingPayment(null);
         setIsLoading(true);
@@ -32,15 +33,23 @@ export default function ModalRetryPago({ isOpen, id, onClose, onPaid }: ModalRet
             retryPayment(id, idempotencyKeyRef.current),
         ])
             .then(([report, { payment }]) => {
+                if (isCancelled) return;
                 setPub(report);
                 setPendingPayment(payment);
             })
             .catch((err) => {
+                if (isCancelled) return;
                 const message = err instanceof ReportsApiError ? err.message : 'No pudimos generar un nuevo intento de pago.';
                 showToast(message, 'error');
                 onClose();
             })
-            .finally(() => setIsLoading(false));
+            .finally(() => {
+                if (!isCancelled) setIsLoading(false);
+            });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [isOpen, id]);
 
     const handlePaymentConfirmed = useCallback(() => {
