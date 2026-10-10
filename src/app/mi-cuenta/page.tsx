@@ -948,8 +948,6 @@ export default function MiCuentaPage() {
                     setModalUpgrade({ isOpen: true, id });
                 }}
             />
-
-            <PlanesModal />
         </main >
     );
 }
