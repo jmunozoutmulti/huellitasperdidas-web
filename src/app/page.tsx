@@ -78,6 +78,8 @@ function HomeContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const listSearchRef = useRef('');
+  const listVersionRef = useRef(0);
 
   const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([]);
   useEffect(() => {
@@ -98,6 +100,7 @@ function HomeContent() {
         setIsFirstLoad(false);
         return;
       }
+      listVersionRef.current += 1;
       setIsLoadingPets(true);
       setLoadError(null);
       try {
@@ -111,11 +114,13 @@ function HomeContent() {
         });
         let transformed = response.items.map(reportToPetData);
         let pagesForThisLoad = response.pages;
+        let listSearch = searchQuery;
 
         if (transformed.length === 0 && searchQuery) {
           const fallback = await fetchReports({ page: 1, limit: 10, country_code: countryCode, status: 'active' });
           transformed = fallback.items.map(reportToPetData);
           pagesForThisLoad = fallback.pages;
+          listSearch = '';
           if (!isCancelled) {
             setNoResultsFor(searchQuery);
           }
@@ -124,6 +129,7 @@ function HomeContent() {
         }
 
         if (!isCancelled) {
+          listSearchRef.current = listSearch;
           setPets(transformed);
           setPage(1);
           setTotalPages(pagesForThisLoad);
@@ -233,15 +239,17 @@ function HomeContent() {
   const loadMorePets = async () => {
     if (isLoadingMore || page >= totalPages || !countryCode) return;
     setIsLoadingMore(true);
+    const listVersion = listVersionRef.current;
     try {
       const nextPage = page + 1;
       const response = await fetchReports({
         page: nextPage,
         limit: 10,
-        search: searchQuery || undefined,
+        search: listSearchRef.current || undefined,
         country_code: countryCode,
         status: 'active',
       });
+      if (listVersion !== listVersionRef.current) return;
       setPets((prev) => [...prev, ...response.items.map(reportToPetData)]);
       setPage(nextPage);
       setTotalPages(response.pages);
@@ -260,12 +268,12 @@ function HomeContent() {
       (entries) => {
         if (entries[0].isIntersecting) loadMorePets();
       },
-      { rootMargin: '600px' }
+      { rootMargin: '1500px' }
     );
     observer.observe(el);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, totalPages, countryCode, searchQuery, isLoadingMore]);
+  }, [page, totalPages, countryCode, searchQuery, isLoadingMore, isLoadingPets, loadError]);
 
   const openDetail = (pet: PetData) => {
     router.push(`/?id=${pet.id}`);
