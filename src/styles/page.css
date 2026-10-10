@@ -1693,102 +1693,9 @@ a.pet-card.external-direct:hover {
 /* ==========================================
    SECCIÓN DESTACADOS PREMIUM 
    ========================================== */
-.premium-card {
-    width: 17em;
-    background: var(--bg-card);
-    border: 1px solid transparent;
-    border-radius: 0.75em;
-    padding: 0.25em;
-    display: flex;
-    gap: 0.75em;
-    cursor: pointer;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.premium-card:hover {
-    border-color: rgba(220, 38, 38, 0.3);
-}
-
-.premium-badge-adopcion {
-    color: var(--purple-brand) !important;
-    background: var(--purple-brand-alpha) !important;
-}
-
-.premium-img-box {
-    background-color: var(--bg-alt);
-    border-radius: 0.75em;
-    width: 5em;
-    min-width: 5em;
-    height: 5em;
-    overflow: hidden;
-    box-shadow: 0 0px 15px #ff4d4d40;
-}
-
-.premium-img-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.premium-body {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex-grow: 1;
-    min-width: 0;
-    position: relative;
-}
-
-.premium-badge {
-    background-color: var(--brand-red-alpha);
-    color: var(--text-red);
-    border-radius: 3em;
-    align-items: center;
-    gap: .15em;
-    width: max-content;
-    padding: .375em .75em;
-    font-size: .85em;
-    line-height: 1;
-    display: flex;
-    position: absolute;
-    right: 0.35em;
-    top: 0.35em;
-}
-
-.premium-badge svg {
-    width: 1em;
-    height: 1em;
-}
-
-.premium-title {
-    font-family: var(--font-outfit);
-    font-size: 1em;
-    font-weight: 700;
-    color: var(--text-main);
-    margin: 1.5em 0 0.15em 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1;
-}
-
-.premium-location {
-    font-size: 0.85em;
-    line-height: 1.1em;
-    color: var(--text-secondary);
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.premium-location svg {
-    width: 1em;
-    height: 1em;
-    margin-bottom: -1px;
-}
-
-
+/* ==========================================
+   POPUP DE DESTACADOS
+   ========================================== */
 .popup-destacados {
     position: fixed;
     right: 1.5em;
@@ -1798,9 +1705,7 @@ a.pet-card.external-direct:hover {
     transform: translateY(1em);
     pointer-events: none;
     transition: opacity 0.5s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.5s ease;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75em;
+    animation: premiumBorderSpin 4s linear infinite;
 }
 
 .popup-destacados-visible {
@@ -1829,21 +1734,23 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
     }
 }
 
-.popup-destacados {
-    animation: premiumBorderSpin 4s linear infinite;
-}
-
-.popup-destacados .premium-card,
-.popup-destacados .premium-card:hover {
+.premium-card {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    width: 12em;
+    padding: 0.4em;
     border: 2px solid transparent;
+    border-radius: 0.75em;
+    cursor: pointer;
     background:
         linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
         conic-gradient(from var(--premium-angle, 0deg), transparent 0%, var(--brand-red) 12%, transparent 25%, transparent 50%, var(--brand-red) 62%, transparent 75%) border-box,
         linear-gradient(var(--brand-red-alpha), var(--brand-red-alpha)) border-box;
 }
 
-.popup-destacados .premium-card::before {
+.premium-card::before {
     content: '';
     position: absolute;
     inset: -2px;
@@ -1854,31 +1761,101 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
     opacity: 0.6;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .popup-destacados {
-        animation: none;
-    }
+.premium-img-box {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 0.75em;
+    overflow: hidden;
+    background-color: var(--bg-alt);
+    box-shadow: 0 0px 15px #ff4d4d40;
+    position: relative;
+}
+
+.premium-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.premium-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0 0.35em 0.35em;
+}
+
+.premium-badge {
+    display: flex;
+    align-items: center;
+    gap: .15em;
+    width: max-content;
+    margin-bottom: 0.4em;
+    padding: .375em .75em;
+    border-radius: 3em;
+    font-size: .85em;
+    line-height: 1;
+    background-color: var(--brand-red-alpha);
+    color: var(--text-red);
+    position: absolute;
+    top: 0.5em;
+    right: 0.5em;
+}
+
+.premium-badge-adopcion {
+    color: var(--purple-brand) !important;
+    background: var(--purple-brand-alpha) !important;
+}
+
+.premium-badge svg {
+    width: 1em;
+    height: 1em;
+}
+
+.premium-title {
+    font-family: var(--font-outfit);
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-main);
+    margin: 0 0 0.2em 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.premium-location {
+    font-size: 0.85em;
+    line-height: 1.1em;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.premium-location svg {
+    width: 1em;
+    height: 1em;
+    margin-bottom: -1px;
 }
 
 .popup-destacados-close {
-    cursor: pointer;
-    width: 2em;
-    height: 2em;
-    color: var(--text-main);
-    justify-content: center;
-    align-items: center;
-    font-size: 0.8em;
-    display: flex;
     position: absolute;
     top: -0.75em;
     right: -0.75em;
-    background: var(--bg-card);
-    border-width: medium;
-    border-style: none;
-    border-color: currentcolor;
-    border-radius: 50%;
-    transition: 0.25s;
     z-index: 9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 2em;
+    height: 2em;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.8em;
+    color: var(--text-main);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: 0.25s;
 }
 
 .popup-destacados-close svg {
@@ -1890,6 +1867,14 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
     background: var(--brand-red-alpha);
     color: var(--brand-red);
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .popup-destacados {
+        animation: none;
+    }
+}
+
+
 
 
 
@@ -2054,12 +2039,11 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
         bottom: 1.5em;
     }
 
-    .premium-img-box {
-        width: 4em;
-        min-width: 4em;
-        height: 4em;
+    .premium-card {
+        width: 9em;
     }
 
-
-
+    .premium-badge {
+        font-size: .75em;
+    }
 }

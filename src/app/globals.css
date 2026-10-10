@@ -1387,8 +1387,8 @@ input:checked+.ui-slider-btn:before {
 }
 
 .fab-publish-btn {
-  width: 3em;
-  height: 3em;
+  width: 3.5em;
+  height: 3.5em;
   border-radius: 50%;
   background: var(--brand-red);
   border: none;
@@ -1402,17 +1402,9 @@ input:checked+.ui-slider-btn:before {
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.fab-publish-btn i {
-  color: var(--text-white);
-  font-size: 1.6em;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2;
-  position: relative;
-}
-
 .fab-publish-btn svg {
   color: var(--text-white);
-  font-size: 1.6em;
+  width: 3em;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 2;
   position: relative;
