@@ -15,7 +15,7 @@ import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE 
 import dynamic from 'next/dynamic';
 import { geocodeAddress } from '@/lib/geocoding';
 import { getPackages, type PackageOption } from '@/lib/packagesApi';
-import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { createReport, uploadReportImageWithRetry, ReportsApiError } from '@/lib/reportsApi';
 import type { PaymentInfo } from '@/lib/paymentsApi';
 import CheckoutPago from '@/components/checkout/CheckoutPago';
 import { useRouter } from 'next/navigation';
@@ -549,20 +549,23 @@ export default function PublicarPerdidaPage() {
             }, idempotencyKeyRef.current);
 
 
-            await Promise.allSettled([
-                ...validPhotos.map((foto, index) =>
-                    uploadReportImage(report.id, foto, false, index === 0).catch((err) => {
-                        console.error('No se pudo subir una foto', err);
-                    })
+            const [photoResults, flyerUploaded] = await Promise.all([
+                Promise.all(
+                    validPhotos.map((foto, index) =>
+                        uploadReportImageWithRetry(report.id, foto, false, index === 0)
+                    )
                 ),
-                ...(flyerImageBase64
-                    ? [
-                        uploadReportImage(report.id, flyerImageBase64, true).catch((err) => {
-                            console.error('No se pudo subir el flyer', err);
-                        }),
-                    ]
-                    : []),
+                flyerImageBase64
+                    ? uploadReportImageWithRetry(report.id, flyerImageBase64, true)
+                    : Promise.resolve(true),
             ]);
+            const failedPhotos = photoResults.filter((ok) => !ok).length;
+            if (failedPhotos > 0 || !flyerUploaded) {
+                const faltantes: string[] = [];
+                if (failedPhotos > 0) faltantes.push(`${failedPhotos} foto${failedPhotos === 1 ? '' : 's'}`);
+                if (!flyerUploaded) faltantes.push('el anuncio');
+                showToast(`No pudimos subir ${faltantes.join(' y ')}. Puedes corregirlo editando tu aviso.`, 'error');
+            }
 
             if (payment) {
                 setCreatedReportId(report.id);

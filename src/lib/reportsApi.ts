@@ -108,6 +108,28 @@ export async function uploadReportImage(
     return res.json().catch(() => ({}));
 }
 
+// Reintenta una vez si falla (cortes de red pasajeros). Devuelve false si
+// falló las dos veces, para que el formulario avise al usuario.
+export async function uploadReportImageWithRetry(
+    reportId: string,
+    imageDataUrl: string,
+    isFlyer: boolean = false,
+    isCover?: boolean
+): Promise<boolean> {
+    try {
+        await uploadReportImage(reportId, imageDataUrl, isFlyer, isCover);
+        return true;
+    } catch {
+        try {
+            await uploadReportImage(reportId, imageDataUrl, isFlyer, isCover);
+            return true;
+        } catch (err) {
+            console.error(isFlyer ? 'No se pudo subir el flyer' : 'No se pudo subir una foto', err);
+            return false;
+        }
+    }
+}
+
 // Igual que CreateReportPayload, pero sin los campos de ubicación — el
 // backend ya confirmó que la ubicación es inmutable tras publicar. No
 // incluir estos campos evita depender de que el backend los rechace.

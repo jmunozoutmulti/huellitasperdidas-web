@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import dynamic from 'next/dynamic';
 import '@/styles/avistamiento.css';
 import { useApp } from '@/context/AppContext';
-import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { createReport, uploadReportImageWithRetry, ReportsApiError } from '@/lib/reportsApi';
 import { useRouter } from 'next/navigation';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { resizePetImage } from '@/lib/resizeImage';
@@ -275,13 +275,15 @@ export default function AvistamientoPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            await Promise.allSettled(
+            const photoResults = await Promise.all(
                 allPhotos.map((foto, index) =>
-                    uploadReportImage(report.id, foto, false, index === 0).catch((err) => {
-                        console.error('No se pudo subir una foto', err);
-                    })
+                    uploadReportImageWithRetry(report.id, foto, false, index === 0)
                 )
             );
+            const failedPhotos = photoResults.filter((ok) => !ok).length;
+            if (failedPhotos > 0) {
+                showToast(`No pudimos subir ${failedPhotos} foto${failedPhotos === 1 ? '' : 's'} de tu alerta.`, 'error');
+            }
 
             setShowStatusOverlay(true);
             setTimeout(() => {
