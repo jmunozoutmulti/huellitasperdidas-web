@@ -799,11 +799,11 @@
     font-weight: 900;
     line-height: 1;
     letter-spacing: -0.75px;
+    padding-right: 0.375em;
 }
 
 .flyer-info-phone.is-long {
     font-size: 1.675em;
-    padding-right: 0.375em;
 }
 
 .flyer-info-place.is-long {

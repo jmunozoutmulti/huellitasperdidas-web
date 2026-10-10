@@ -1792,7 +1792,7 @@ export default function PublicarPerdidaPage() {
                                     <div
                                         className={`flyer-canvas container-flyer-design state-perdida ${isFlyerMobileVisible ? 'mobile-visible' : ''
                                             }`}
-                                        id="flyer-preview-"
+                                        id="flyer-preview"
                                     >
                                         {/* 1. Cabecera */}
                                         <div className="flyer-alert-header">

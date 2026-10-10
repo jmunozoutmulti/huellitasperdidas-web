@@ -121,15 +121,11 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     };
 
     useEffect(() => {
-        // Mercado Pago solo se usa para Perú en este proyecto — el locale
-        // de Bricks es siempre es-PE, no depende del país dinámicamente.
-        // Se reinicializa también si cambia el preference_id (reintento
-        // tras un pago fallido), aunque public_key/gateway sean los mismos.
         if (payment.gateway === 'mercadopago' && payment.public_key) {
             initMercadoPago(payment.public_key, { locale: 'es-PE' });
             setIsMpReady(true);
         }
-    }, [payment.public_key, payment.gateway, payment.preference_id]);
+    }, [payment.public_key, payment.gateway, payment.preference_id, payment.payment_id]);
 
     const startPolling = () => {
         pollStartRef.current = Date.now();
