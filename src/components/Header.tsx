@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import AuthModal from './AuthModal';
 import ConfirmLogoutModal from '@/components/global/ConfirmLogoutModal';
 import { useApp } from '@/context/AppContext';
+import { fetchMyReports } from '@/lib/api';
 import { useLayoutEffect } from 'react';
 import {
     IconPlus,
@@ -65,6 +66,36 @@ export default function Header() {
         centinelaEstaActivo
     } = useApp();
 
+    const [broadcastCount, setBroadcastCount] = useState(0);
+
+    // Avisos activos, sin vencer y con plan de pago (con difusión), de cualquier tipo.
+    // Se vuelve a consultar al cambiar de página, porque el Header no se vuelve a montar.
+    useEffect(() => {
+        if (!isLoggedIn) {
+            setBroadcastCount(0);
+            return;
+        }
+        let isCancelled = false;
+        fetchMyReports()
+            .then((reports) => {
+                if (isCancelled) return;
+                const now = Date.now();
+                const count = reports.filter((r) =>
+                    r.status === 'active' &&
+                    (!r.expires_at || new Date(r.expires_at).getTime() > now) &&
+                    !!r.package_slug &&
+                    r.package_slug !== 'gratis' &&
+                    !((r.payment_status === 'pending' || r.payment_status === 'failed') && r.payment_flow_type === 'create')
+                ).length;
+                setBroadcastCount(count);
+            })
+            .catch(() => {
+                // silencioso: si falla, se muestra el botón de siempre
+            });
+        return () => {
+            isCancelled = true;
+        };
+    }, [isLoggedIn, pathname]);
 
     const getFavicon = () => {
         if (pathname.startsWith('/encontrado')) return '/images/isotipo-emerald.png';
@@ -258,7 +289,19 @@ export default function Header() {
 
                 {/* Acciones del lado derecho */}
                 <div className="right-navbar">
-                    {!isWizardRoute && (
+                    {!isWizardRoute && broadcastCount > 0 && (
+                        <Link href="/mi-cuenta" className="header-broadcast" id="header-broadcast">
+                            <span className="header-broadcast-live">
+                                <span className="header-broadcast-dot"></span>
+                                EN DIFUSIÓN
+                            </span>
+                            <span className="header-broadcast-text">
+                                {broadcastCount === 1 ? '1 aviso' : `${broadcastCount} avisos`}
+                            </span>
+                        </Link>
+                    )}
+
+                    {!isWizardRoute && broadcastCount === 0 && (
                         <Link href="/publicar" className="btn-ads" id="btn-ads-publish">
                             <svg viewBox="0 0 640 640"><path d="M197.1 96C214.4 96 231.3 99.4 247 105.7L301.8 190.9L226.4 266.3C224.9 267.8 224 269.9 224.1 272.1C224.2 274.3 225.1 276.3 226.7 277.8L338.7 381.8C341.6 384.5 346.1 384.7 349.2 382.1C352.3 379.5 353 375.1 350.9 371.7L290.5 273.6L381.2 198C383.8 195.9 384.7 192.3 383.6 189.2L360.4 124.6C383.6 106.3 412.6 96 442.9 96C516.4 96 576 155.6 576 229.1L576 231.7C576 343.9 436.1 474.2 363.1 529.9C350.7 539.3 335.5 544 320 544C304.5 544 289.2 539.4 276.9 529.9C203.9 474.2 64 343.9 64 231.7L64 229.1C64 155.6 123.6 96 197.1 96z" /></svg>
                             <span>Perdí mi mascota</span>

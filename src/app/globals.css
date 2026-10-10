@@ -952,6 +952,55 @@ input:checked+.ui-slider-btn:before {
   box-shadow: 0 6px 20px rgba(255, 77, 77, 0.60);
 }
 
+.header-broadcast {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 0.975em;
+  text-decoration: none;
+  margin-right: 0.25em;
+}
+
+.header-broadcast-live {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.25em 0.65em;
+  border-radius: 3em;
+  background: var(--brand-red-alpha);
+  color: var(--text-red);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.header-broadcast-text {
+  font-size: 1em;
+  color: var(--text-main);
+}
+
+.header-broadcast-dot {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--brand-red);
+  animation: headerBroadcastPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes headerBroadcastPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .btn-add {
   position: relative;
   display: flex;
@@ -2880,12 +2929,22 @@ h1 {
     padding: 0.75em;
   }
 
-  .btn-ads {
+  .btn-ads,
+  .header-broadcast {
     display: none;
   }
 
   .navbar {
     padding: 0.5em 2.5%;
+  }
+
+  .user-profile {
+    gap: 0;
+  }
+
+  .user-info svg {
+    width: 1.175em;
+    height: 1.175em;
   }
 
   .user-avatar {
