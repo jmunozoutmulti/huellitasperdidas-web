@@ -85,14 +85,18 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 export async function uploadReportImage(
     reportId: string,
     imageDataUrl: string,
-    isFlyer: boolean = false
+    isFlyer: boolean = false,
+    isCover?: boolean
 ): Promise<any> {
     const blob = dataUrlToBlob(imageDataUrl);
     const form = new FormData();
     const ext = blob.type.split('/')[1] || 'jpg';
     form.append('file', blob, `photo.${ext}`);
 
-    const qs = isFlyer ? '?is_flyer=true' : '';
+    const params = new URLSearchParams();
+    if (isFlyer) params.set('is_flyer', 'true');
+    if (isCover !== undefined) params.set('is_cover', String(isCover));
+    const qs = params.toString() ? `?${params}` : '';
     const res = await authFetch(`/v1/reports/${reportId}/images${qs}`, {
         method: 'POST',
         body: form,

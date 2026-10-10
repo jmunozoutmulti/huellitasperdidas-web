@@ -238,7 +238,9 @@ export default function AvistamientoPage() {
 
         const parsedLat = lat ? parseFloat(lat) : null;
         const parsedLng = lng ? parseFloat(lng) : null;
-        const allPhotos = [mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[];
+        const allPhotos = Array.from(
+            new Set([mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[])
+        );
 
         if (!idempotencyKeyRef.current) {
             idempotencyKeyRef.current = crypto.randomUUID();
@@ -273,8 +275,8 @@ export default function AvistamientoPage() {
             }, idempotencyKeyRef.current);
 
             await Promise.allSettled(
-                allPhotos.map((foto) =>
-                    uploadReportImage(report.id, foto, false).catch((err) => {
+                allPhotos.map((foto, index) =>
+                    uploadReportImage(report.id, foto, false, index === 0).catch((err) => {
                         console.error('No se pudo subir una foto', err);
                     })
                 )

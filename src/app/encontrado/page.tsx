@@ -444,8 +444,8 @@ export default function PublicarEncontradoPage() {
             }, idempotencyKeyRef.current);
 
             await Promise.allSettled([
-                ...validPhotos.map((foto) =>
-                    uploadReportImage(report.id, foto, false).catch((err) => {
+                ...validPhotos.map((foto, index) =>
+                    uploadReportImage(report.id, foto, false, index === 0).catch((err) => {
                         console.error('No se pudo subir una foto', err);
                     })
                 ),
