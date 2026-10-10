@@ -560,7 +560,6 @@ export default function PublicarAdoptarPage() {
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
             showToast(message, 'error');
-        } finally {
             setIsSubmitting(false);
         }
     };

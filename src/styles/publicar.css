@@ -795,11 +795,10 @@
     font-family: var(--font-outfit);
     color: #000;
     white-space: nowrap;
-    font-size: 2em;
+    font-size: 1.875em;
     font-weight: 900;
     line-height: 1;
-    letter-spacing: -1px;
-
+    letter-spacing: -0.75px;
 }
 
 .flyer-info-phone.is-long {

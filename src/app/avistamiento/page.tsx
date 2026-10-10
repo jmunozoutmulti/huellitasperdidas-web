@@ -290,7 +290,6 @@ export default function AvistamientoPage() {
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos enviar tu alerta. Intenta de nuevo.';
             showToast(message, 'error');
-        } finally {
             setIsSubmitting(false);
         }
     };
