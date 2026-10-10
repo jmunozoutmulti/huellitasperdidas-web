@@ -265,11 +265,15 @@ export default function MiCuentaPage() {
         }
     };
 
+    const sendingHilosRef = useRef<Set<string>>(new Set());
+
     const handleSendReply = async (hiloId: string, imagenFile?: File | null) => {
+        if (sendingHilosRef.current.has(hiloId)) return;
         const hilo = hilos.find((h) => h.id === hiloId);
         if (!hilo || (!hilo.replyInput.trim() && !imagenFile)) return;
         const texto = hilo.replyInput.trim();
 
+        sendingHilosRef.current.add(hiloId);
         try {
             let nuevo = await replyToConversation(hiloId, texto);
             if (imagenFile) {
@@ -303,6 +307,8 @@ export default function MiCuentaPage() {
             showToast('Mensaje enviado', 'success');
         } catch {
             showToast('No pudimos enviar tu mensaje. Intenta de nuevo.', 'error');
+        } finally {
+            sendingHilosRef.current.delete(hiloId);
         }
     };
 
