@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import AuthModal from './AuthModal';
+import ConfirmLogoutModal from '@/components/global/ConfirmLogoutModal';
 import { useApp } from '@/context/AppContext';
 import { useLayoutEffect } from 'react';
 import {
@@ -42,6 +43,7 @@ export default function Header() {
 
     const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
     // Referencias para detectar clics fuera de los menús
     const addDropdownRef = useRef<HTMLDivElement>(null);
@@ -337,7 +339,7 @@ export default function Header() {
                                             className="user-dropdown-item dropdown-item-danger"
                                             onClick={() => {
                                                 setIsUserDropdownOpen(false);
-                                                logout();
+                                                setIsLogoutConfirmOpen(true);
                                             }}
                                         >
                                             <IconLogout /> Cerrar sesión
@@ -354,6 +356,15 @@ export default function Header() {
             {isAuthModalOpen && (
                 <AuthModal onClose={closeAuthModal} initialMode={authModalInitialMode} resetToken={authModalResetToken} />
             )}
+
+            <ConfirmLogoutModal
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={() => {
+                    setIsLogoutConfirmOpen(false);
+                    logout();
+                }}
+            />
         </>
     );
 }

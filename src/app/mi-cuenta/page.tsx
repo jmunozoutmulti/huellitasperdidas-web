@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { showToast } from '@/components/global/Toast';
+import ConfirmLogoutModal from '@/components/global/ConfirmLogoutModal';
 import { getMyConversations, getConversationMessages, replyToConversation, uploadMessageImage, getMyFiledReports, getUnreadMessagesCount, markMessagesSeen, type ConversationSummary, type ConversationMessage } from '@/lib/messagesApi';
 import { useApp } from '@/context/AppContext';
 import AlertBanner from '@/components/global/AlertBanner';
@@ -51,6 +52,7 @@ export default function MiCuentaPage() {
     useRequireAuth();
 
     const { isDarkMode, toggleTheme, currentUser, updateCurrentUser, updateProfile, updateAvatar, logout } = useApp();
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
@@ -707,7 +709,7 @@ export default function MiCuentaPage() {
                                     href="#"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        logout();
+                                        setIsLogoutConfirmOpen(true);
                                     }}
                                 >
                                     <span>
@@ -889,6 +891,15 @@ export default function MiCuentaPage() {
                 id={modalDetener.id}
                 onClose={() => setModalDetener({ isOpen: false, id: '' })}
                 onStopped={() => setAvisosRefreshKey((k) => k + 1)}
+            />
+
+            <ConfirmLogoutModal
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={() => {
+                    setIsLogoutConfirmOpen(false);
+                    logout();
+                }}
             />
 
             <ModalEliminarAviso
