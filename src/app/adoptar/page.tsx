@@ -469,9 +469,17 @@ export default function PublicarAdoptarPage() {
 
         if (currentStep === 1) {
             setIsGeneratingFlyer(true);
-            const flyerImage = await generateFlyerImage('flyer-preview');
-            setFlyerImageBase64(flyerImage);
-            setIsGeneratingFlyer(false);
+            try {
+                const flyerImage = await generateFlyerImage('flyer-preview');
+                if (!flyerImage) throw new Error('El flyer se generó vacío');
+                setFlyerImageBase64(flyerImage);
+            } catch (err) {
+                console.error('Error generando el flyer:', err);
+                showToast('No pudimos generar el anuncio. Intenta de nuevo.', 'error');
+                return;
+            } finally {
+                setIsGeneratingFlyer(false);
+            }
         }
 
         if (currentStep === 2 && selectedPlan !== 'gratis') {
