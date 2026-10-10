@@ -104,24 +104,22 @@ const PET_TYPE_OPTIONS = [
     { value: 'ave', label: 'Ave', icon: IconCanary },
 ];
 
-// Convierte el AnalyzeImageResult en una lista plana de chips mostrables.
-function buildBioAttributeChips(result: AnalyzeImageResult): { id: string; label: string }[] {
-    const chips: { id: string; label: string }[] = [];
-    if (result.pet_type) chips.push({ id: 'pet_type', label: result.pet_type });
-    if (result.size) chips.push({ id: 'size', label: result.size });
-    if (result.sex) chips.push({ id: 'sex', label: result.sex });
-    (result.colors || []).forEach((c, i) => chips.push({ id: `color-${i}`, label: c }));
-    if (result.has_collar) {
-        chips.push({
-            id: 'collar',
-            label: result.collar_color ? `Collar ${result.collar_color}` : 'Con collar',
+// Descarga una imagen ya guardada y la devuelve como data URL (base64), para
+// poder reenviarla en la búsqueda por foto. Si falla, devuelve null.
+async function imageUrlToDataUrl(url: string): Promise<string | null> {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return await new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
         });
+    } catch {
+        return null;
     }
-    (result.distinctive_marks || []).forEach((m, i) => chips.push({ id: `mark-${i}`, label: m }));
-    Object.entries(result.physical_traits || {}).forEach(([k, v], i) =>
-        chips.push({ id: `trait-${i}`, label: `${k}: ${v}` })
-    );
-    return chips;
 }
 
 function formatPetLocation(pet: PetData): string {
@@ -197,19 +195,44 @@ export default function BuscarIAPage() {
 
     const hasToolsAccess = myReports.some((r) => {
         if (r.payment_status !== 'paid') return false;
-        if (r.status !== 'active' && r.status !== 'pending') return false;
+        if (r.status !== 'active' && r.status !== 'pending_approval') return false;
         if (r.expires_at && new Date(r.expires_at).getTime() < Date.now()) return false;
         const pkg = packages.find((p) => p.slug === r.package_slug);
         return pkg?.centinela === true;
     });
 
-    type SearchMode = 'mascota' | 'abierta';
+    // Tres tipos de búsqueda excluyentes: por aviso propio, manual (buscador
+    // y filtros) y por foto. Cada uno reinicia a los otros.
+    type SearchMode = 'mascota' | 'abierta' | 'foto';
     const [searchMode, setSearchMode] = useState<SearchMode>('abierta');
     const isMascotaMode = searchMode === 'mascota';
+    const isFotoMode = searchMode === 'foto';
+    const isManualLocked = isMascotaMode || isFotoMode;
 
     const [selectedPetReport, setSelectedPetReport] = useState<Report | null>(null);
 
+    const resetManualCriteria = () => {
+        setGlobalQuery('');
+        setFilterReportType('');
+        setFilterTiempo('');
+        setFilterDepartamento('');
+        setFilterProvincia('');
+        setFilterDistrito('');
+        setPetTypeFilter('');
+    };
+
+    const clearResults = () => {
+        invalidateSearch();
+        setResults([]);
+        setHasSearched(false);
+        setSearchError(null);
+        setResultsSearchMeta(null);
+    };
+
     const handleSelectPetPill = (report: Report) => {
+        clearResults();
+        resetBioScanner();
+        resetManualCriteria();
         setActivePetPill(report.id);
         setSelectedPetReport(report);
         setSearchMode('mascota');
@@ -219,18 +242,9 @@ export default function BuscarIAPage() {
         setActivePetPill('nuevo');
         setSelectedPetReport(null);
         setSearchMode('abierta');
-        setResults([]);
-        setHasSearched(false);
-        setSearchError(null);
-        setResultsSearchMeta(null);
+        clearResults();
         resetBioScanner();
-        setGlobalQuery('');
-        setFilterReportType('');
-        setFilterTiempo('');
-        setFilterDepartamento('');
-        setFilterProvincia('');
-        setFilterDistrito('');
-        setPetTypeFilter('');
+        resetManualCriteria();
     };
 
     const getCurrentSearchCriteria = () => {
@@ -244,12 +258,22 @@ export default function BuscarIAPage() {
                     petType: null as string | null,
                 };
             }
+            // Nunca se busca por el nombre de la mascota: quien la encuentra no lo conoce.
             const breed = selectedPetReport.meta?.breed;
             const color = selectedPetReport.meta?.color;
             return {
-                queryText: [breed, color].filter(Boolean).join(' ') || selectedPetReport.title || '',
-                district: selectedPetReport.district || '',
+                queryText: [breed, color].filter(Boolean).join(' '),
+                district: selectedPetReport.district || selectedPetReport.province || '',
                 reportId: selectedPetReport.id,
+                reportType: null as string | null,
+                petType: selectedPetReport.pet_type || null,
+            };
+        }
+        if (isFotoMode) {
+            return {
+                queryText: '',
+                district: photoZone,
+                reportId: null as string | null,
                 reportType: null as string | null,
                 petType: null as string | null,
             };
@@ -373,16 +397,32 @@ export default function BuscarIAPage() {
     const [isAnalyzingBio, setIsAnalyzingBio] = useState(false);
     const [bioAnalysisError, setBioAnalysisError] = useState<string | null>(null);
     const [bioAnalysisResult, setBioAnalysisResult] = useState<AnalyzeImageResult | null>(null);
-    const [bioAttributes, setBioAttributes] = useState<{ id: string; label: string }[]>([]);
-    const [isBioConfirmed, setIsBioConfirmed] = useState(false);
+    const [photoZone, setPhotoZone] = useState('');
     const isBioLocked = !hasToolsAccess;
 
     const resetBioScanner = () => {
         setBioImagePreview(null);
         setBioAnalysisError(null);
         setBioAnalysisResult(null);
-        setBioAttributes([]);
-        setIsBioConfirmed(false);
+        setPhotoZone('');
+    };
+
+    // Zona para la búsqueda por foto: el departamento del aviso más reciente del
+    // usuario que tenga ubicación (los avistamientos se publican sin ella). Con
+    // foto, el backend busca en todo el departamento, y enviarlo evita confundir
+    // distritos con el mismo nombre en departamentos distintos.
+    const getLatestReportZone = () => {
+        const withLocation = myReports
+            .filter((r) => r.region || r.province || r.district)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const latest = withLocation[0];
+        return latest ? latest.region || latest.province || latest.district || '' : '';
+    };
+
+    const resetPhotoSearch = () => {
+        clearResults();
+        resetBioScanner();
+        setSearchMode('abierta');
     };
 
     const handleBioFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -391,6 +431,10 @@ export default function BuscarIAPage() {
 
         if (!file) return;
 
+        if (!isGatingReady && countryCode) {
+            showToast('Estamos cargando tus datos. Intenta de nuevo en un momento.', 'info');
+            return;
+        }
         if (isBioLocked) {
             showToast('Publica un aviso para desbloquear la búsqueda por foto.', 'info');
             return;
@@ -404,10 +448,11 @@ export default function BuscarIAPage() {
             return;
         }
 
+        clearResults();
+        resetManualCriteria();
+        setSearchMode('abierta');
         setBioAnalysisError(null);
         setBioAnalysisResult(null);
-        setBioAttributes([]);
-        setIsBioConfirmed(false);
         setIsAnalyzingBio(true);
 
         try {
@@ -424,24 +469,15 @@ export default function BuscarIAPage() {
                 return;
             }
 
+            // La búsqueda se lanza sola (efecto de más abajo) al entrar en modo foto.
             setBioAnalysisResult(result);
-            setBioAttributes(buildBioAttributeChips(result));
-            // No se confirma sola: queda editable (chips con x) hasta que el
-            // usuario pulse "Usar en búsqueda" a propósito.
-            setIsBioConfirmed(false);
+            setPhotoZone(getLatestReportZone());
+            setSearchMode('foto');
         } catch (err) {
             setBioAnalysisError('No pudimos analizar la foto. Intenta de nuevo.');
         } finally {
             setIsAnalyzingBio(false);
         }
-    };
-
-    const handleRemoveBioAttribute = (id: string) => {
-        setBioAttributes((prev) => prev.filter((c) => c.id !== id));
-    };
-
-    const handleConfirmBioAttributes = () => {
-        if (bioAttributes.length > 0) setIsBioConfirmed(true);
     };
 
 
@@ -450,11 +486,17 @@ export default function BuscarIAPage() {
     const [searchError, setSearchError] = useState<string | null>(null);
     const [results, setResults] = useState<PetData[]>([]);
     const [resultsSearchMeta, setResultsSearchMeta] = useState<SearchMeta | null>(null);
+    const searchVersionRef = useRef(0);
+
+    const invalidateSearch = () => {
+        searchVersionRef.current += 1;
+        setIsSearching(false);
+    };
 
     const applyClientSideFilters = (
         reports: (Report | SearchResult)[]
     ): (Report | SearchResult)[] => {
-        if (isMascotaMode) return reports;
+        if (isManualLocked) return reports;
 
         let filtered = reports;
 
@@ -480,6 +522,7 @@ export default function BuscarIAPage() {
 
     const hasAnyCriteria = () => {
         if (isMascotaMode) return !!selectedPetReport;
+        if (isFotoMode) return !!bioAnalysisResult;
         return !!(
             globalQuery.trim() ||
             filterReportType ||
@@ -487,17 +530,17 @@ export default function BuscarIAPage() {
             filterDepartamento ||
             filterProvincia ||
             filterDistrito ||
-            petTypeFilter ||
-            (isBioConfirmed && bioAttributes.length > 0)
+            petTypeFilter
         );
     };
 
-    const hasConfirmedPhoto = !isMascotaMode && isBioConfirmed && !!bioAnalysisResult;
+    const isPhotoSearchReady = isFotoMode && !!bioAnalysisResult;
     const [centinela, setCentinela] = useState<CentinelaWatch | null>(null);
     const [isCentinelaToggling, setIsCentinelaToggling] = useState(false);
     const [centinelaMatches, setCentinelaMatches] = useState<CentinelaMatch[]>([]);
     const [centinelaMatchPets, setCentinelaMatchPets] = useState<Record<string, PetData>>({});
     const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+    const isPhotoScanning = isFotoMode && (isSearching || !!centinela?.activo);
 
     useEffect(() => {
         if (!hasToolsAccess) return;
@@ -524,43 +567,60 @@ export default function BuscarIAPage() {
                     return;
                 }
 
-                setCentinela(data);
+                if (data?.activo && data.image_features) {
+                    // Si no se puede descargar la foto, se muestra la URL y la
+                    // búsqueda usa solo las características.
+                    const preview = data.image_url
+                        ? (await imageUrlToDataUrl(data.image_url)) ?? data.image_url
+                        : null;
+                    if (isCancelled) return;
+                    setSearchMode('foto');
+                    setBioAnalysisResult(data.image_features);
+                    setBioImagePreview(preview);
+                    setPhotoZone(data.district || '');
+                    setCentinela(data);
+                    return;
+                }
 
                 if (data?.activo) {
                     setSearchMode('abierta');
                     if (data.query_text) setGlobalQuery(data.query_text);
-                    if (data.district) {
-                        setFilterDistrito(data.district);
-                        if (countryCode) {
-                            getTerritoryTree(countryCode).then((tree) => {
-                                if (isCancelled) return;
-                                for (const dep of tree) {
-                                    for (const prov of dep.children ?? []) {
-                                        if (prov.name === data.district) {
-                                            setFilterDepartamento(dep.name);
-                                            setFilterProvincia(prov.name);
-                                            return;
-                                        }
-                                        if ((prov.children ?? []).some((d) => d.name === data.district)) {
-                                            setFilterDepartamento(dep.name);
-                                            setFilterProvincia(prov.name);
-                                            return;
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    }
-                    if (data.image_features) {
-                        setBioAnalysisResult(data.image_features);
-                        setBioAttributes(buildBioAttributeChips(data.image_features));
-                        setIsBioConfirmed(true);
-                    }
-                    if (data.image_url) setBioImagePreview(data.image_url);
-
                     if (data.report_type) setFilterReportType(data.report_type);
                     if (data.pet_type) setPetTypeFilter(data.pet_type);
+
+                    // La zona guardada es el distrito o, en países sin distrito,
+                    // la provincia. Se resuelve antes de activar el Centinela para
+                    // que la búsqueda automática salga ya con la zona completa.
+                    if (data.district && countryCode) {
+                        const [tree, level3] = await Promise.all([
+                            getTerritoryTree(countryCode),
+                            countryHasLevel3(countryCode),
+                        ]);
+                        if (isCancelled) return;
+                        setHasLevel3(level3);
+                        let found = false;
+                        for (const dep of tree) {
+                            for (const prov of dep.children ?? []) {
+                                if (prov.name === data.district) {
+                                    setFilterDepartamento(dep.name);
+                                    setFilterProvincia(prov.name);
+                                    found = true;
+                                    break;
+                                }
+                                if ((prov.children ?? []).some((d) => d.name === data.district)) {
+                                    setFilterDepartamento(dep.name);
+                                    setFilterProvincia(prov.name);
+                                    setFilterDistrito(data.district);
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (found) break;
+                        }
+                    }
                 }
+
+                setCentinela(data);
             } catch {
             }
         })();
@@ -615,7 +675,7 @@ export default function BuscarIAPage() {
                     showToast('Ingresa un criterio de búsqueda antes de activar el Centinela.', 'info');
                     return;
                 }
-                if (!isMascotaMode && hasIncompleteLocation()) {
+                if (searchMode === 'abierta' && hasIncompleteLocation()) {
                     showToast(
                         `Completa la zona de búsqueda hasta ${deepestLocationLabel} o quítala, para poder guardarla en el Centinela.`,
                         'info'
@@ -628,9 +688,9 @@ export default function BuscarIAPage() {
                 const created = await createOrReplaceCentinela({
                     query_text: criteria.queryText || null,
                     district: criteria.district || null,
-                    image_features: hasConfirmedPhoto ? bioAnalysisResult : null,
+                    image_features: isPhotoSearchReady ? bioAnalysisResult : null,
                     image_base64:
-                        hasConfirmedPhoto && bioImagePreview?.startsWith('data:')
+                        isPhotoSearchReady && bioImagePreview?.startsWith('data:')
                             ? bioImagePreview.split(',')[1] ?? bioImagePreview
                             : null,
                     report_type: criteria.reportType,
@@ -675,7 +735,7 @@ export default function BuscarIAPage() {
             showToast('Ingresa una característica o elige un filtro antes de buscar.', 'info');
             return;
         }
-        if (!isMascotaMode && hasIncompleteLocation()) {
+        if (searchMode === 'abierta' && hasIncompleteLocation()) {
             showToast(
                 `Completa la zona de búsqueda hasta ${deepestLocationLabel} o quítala para buscar sin filtrar por ubicación.`,
                 'info'
@@ -685,20 +745,19 @@ export default function BuscarIAPage() {
 
         const criteria = getCurrentSearchCriteria();
 
-        if (hasConfirmedPhoto && !criteria.district) {
-            showToast('Selecciona una zona de búsqueda.', 'info');
-            setIsAdvancedOpen(true);
-            setIsZoneHighlighted(true);
+        if (isPhotoSearchReady && !criteria.district) {
+            showToast('No encontramos la ubicación de tus avisos para buscar por foto.', 'info');
             return;
         }
 
+        const version = ++searchVersionRef.current;
         setIsSearching(true);
         setSearchError(null);
 
         try {
             let items: (Report | SearchResult)[];
 
-            if (hasConfirmedPhoto) {
+            if (isPhotoSearchReady) {
                 const base64 = bioImagePreview?.startsWith('data:')
                     ? bioImagePreview.split(',')[1] ?? bioImagePreview
                     : undefined;
@@ -709,6 +768,7 @@ export default function BuscarIAPage() {
                     image_features: bioAnalysisResult!,
                     country_code: countryCode,
                 });
+                if (version !== searchVersionRef.current) return;
                 items = response.results;
                 setResultsSearchMeta(response.meta ?? null);
             } else {
@@ -722,6 +782,7 @@ export default function BuscarIAPage() {
                     strict: true,
                     limit: 100,
                 });
+                if (version !== searchVersionRef.current) return;
                 items = response.items;
                 setResultsSearchMeta(null);
             }
@@ -737,16 +798,19 @@ export default function BuscarIAPage() {
             const filteredReports = applyClientSideFilters(deduped);
             setResults(filteredReports.map(reportToPetData));
 
-            if (!isMascotaMode && globalQuery.trim()) {
+            if (searchMode === 'abierta' && globalQuery.trim()) {
                 addRecentSearch(globalQuery.trim());
                 setRecentSearches(getRecentSearches());
             }
         } catch (err) {
+            if (version !== searchVersionRef.current) return;
             setSearchError('No pudimos completar la búsqueda. Intenta de nuevo en unos minutos.');
             setResults([]);
         } finally {
-            setIsSearching(false);
-            setHasSearched(true);
+            if (version === searchVersionRef.current) {
+                setIsSearching(false);
+                setHasSearched(true);
+            }
         }
     };
 
@@ -764,9 +828,17 @@ export default function BuscarIAPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchMode, selectedPetReport?.id]);
 
+    useEffect(() => {
+        if (isFotoMode && bioAnalysisResult && !centinela?.activo) {
+            handleTriggerSearch();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchMode, bioAnalysisResult]);
+
     const handleSearchInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            if (isSearching || isManualLocked) return;
             setIsSearchDropdownOpen(false);
             handleTriggerSearch();
         }
@@ -926,12 +998,13 @@ export default function BuscarIAPage() {
 
     const activeTagsCount = isMascotaMode
         ? (activePetPill !== 'nuevo' ? 1 : 0)
-        : (globalQuery.trim() ? 1 : 0) +
-        (filterReportType ? 1 : 0) +
-        (filterTiempo ? 1 : 0) +
-        (filterDepartamento || filterProvincia || filterDistrito ? 1 : 0) +
-        (petTypeFilter ? 1 : 0) +
-        (isBioConfirmed && bioAttributes.length > 0 ? 1 : 0);
+        : isFotoMode
+            ? 1
+            : (globalQuery.trim() ? 1 : 0) +
+            (filterReportType ? 1 : 0) +
+            (filterTiempo ? 1 : 0) +
+            (filterDepartamento || filterProvincia || filterDistrito ? 1 : 0) +
+            (petTypeFilter ? 1 : 0);
 
     return (
         <main className="main-content">
@@ -982,7 +1055,7 @@ export default function BuscarIAPage() {
                                     className="input-group-custom global-search-group"
                                     ref={searchContainerRef}
                                     style={
-                                        isMascotaMode
+                                        isManualLocked
                                             ? { opacity: 0.5, pointerEvents: 'none' }
                                             : undefined
                                     }
@@ -994,7 +1067,7 @@ export default function BuscarIAPage() {
                                         autoComplete="off"
                                         placeholder="Raza, color, características..."
                                         value={globalQuery}
-                                        disabled={isMascotaMode}
+                                        disabled={isManualLocked}
                                         onChange={(e) => setGlobalQuery(e.target.value)}
                                         onFocus={() => setIsSearchDropdownOpen(true)}
                                         onKeyDown={handleSearchInputKeyDown}
@@ -1078,7 +1151,7 @@ export default function BuscarIAPage() {
                                         id="btn-trigger-search"
                                         className="btn-primary-search"
                                         onClick={handleTriggerSearch}
-                                        disabled={isSearching || !countryCode || isMascotaMode}
+                                        disabled={isSearching || !countryCode || isManualLocked}
                                     >
                                         Buscar
                                     </button>
@@ -1088,7 +1161,7 @@ export default function BuscarIAPage() {
                                 para dejar el buscador más libre. */}
 
                                 <div className="sources-checklist-container-modern" style={
-                                    isMascotaMode
+                                    isManualLocked
                                         ? { opacity: 0.5, pointerEvents: 'none' }
                                         : undefined
                                 }>
@@ -1104,7 +1177,7 @@ export default function BuscarIAPage() {
                                     id="btn-toggle-advanced"
                                     onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
                                     style={
-                                        isMascotaMode
+                                        isManualLocked
                                             ? { opacity: 0.5, pointerEvents: 'none' }
                                             : undefined
                                     }
@@ -1120,8 +1193,8 @@ export default function BuscarIAPage() {
                                     id="advanced-filters-panel"
                                     style={{
                                         display: isAdvancedOpen ? 'flex' : 'none',
-                                        opacity: isMascotaMode ? 0.5 : 1,
-                                        pointerEvents: isMascotaMode ? 'none' : undefined,
+                                        opacity: isManualLocked ? 0.5 : 1,
+                                        pointerEvents: isManualLocked ? 'none' : undefined,
                                     }}
                                 >
                                     <div className="grid-2col-filters">
@@ -1283,7 +1356,13 @@ export default function BuscarIAPage() {
 
                         {isMascotaMode && (
                             <p className="empty-criteria-message" style={{ 'margin': '0.5em 0' }}>
-                                <IconInfoCircle /> Quita el aviso seleccionado, para búsqueda manual.
+                                <IconInfoCircle /> Buscamos con los datos de tu aviso: tipo de mascota, raza, color y zona.
+                            </p>
+                        )}
+
+                        {isFotoMode && (
+                            <p className="empty-criteria-message" style={{ 'margin': '0.5em 0' }}>
+                                <IconInfoCircle /> Buscamos con tu foto en todo el departamento de tu aviso.
                             </p>
                         )}
 
@@ -1339,15 +1418,12 @@ export default function BuscarIAPage() {
                                 </span>
                             )}
 
-                            {!isMascotaMode && isBioConfirmed && bioAttributes.length > 0 && (
+                            {isFotoMode && (
                                 <span className="badge-active-attribute badge-photo-attached">
-                                    <IconCamera /> Datos de IA{' '}
+                                    <IconCamera /> Búsqueda por foto{' '}
                                     <IconX
                                         className="remove-tag-btn"
-                                        onClick={() => {
-                                            setIsBioConfirmed(false);
-                                            setIsZoneHighlighted(false);
-                                        }}
+                                        onClick={resetPhotoSearch}
                                     />
                                 </span>
                             )}
@@ -1365,7 +1441,7 @@ export default function BuscarIAPage() {
                             id="container-active-tags-avanced"
                             className="active-tags-flex-avanced"
                             style={{
-                                display: isMascotaMode ? 'none' : undefined,
+                                display: isManualLocked ? 'none' : undefined,
                                 opacity: centinela?.activo ? 0.5 : 1,
                                 pointerEvents: centinela?.activo ? 'none' : undefined,
                             }}
@@ -1474,7 +1550,7 @@ export default function BuscarIAPage() {
                                         </div>
                                         <h5 className="no-results-title">Sin coincidencias</h5>
                                         <p className="no-results-desc">
-                                            <b>&quot;{isMascotaMode ? (selectedPetReport?.title || 'tu mascota') : (globalQuery || 'tu búsqueda')}&quot;</b>.
+                                            <b>&quot;{isMascotaMode ? (selectedPetReport?.title || 'tu mascota') : isFotoMode ? 'tu foto' : (globalQuery || 'tu búsqueda')}&quot;</b>.
                                             <br />
                                             Intenta con otros términos o filtros.
                                         </p>
@@ -1495,7 +1571,7 @@ export default function BuscarIAPage() {
              ========================================== */}
                     <div className="ia-col-right">
                         <div
-                            className={`ia-box premium-scanner-box ${isBioLocked ? 'premium-locked' : ''}`}
+                            className={`ia-box premium-scanner-box ${isBioLocked ? 'premium-locked' : ''} ${bioImagePreview ? 'has-photo' : ''}`}
                             id="scanner-biometrico-box"
                         >
                             {centinela?.activo && (
@@ -1558,14 +1634,8 @@ export default function BuscarIAPage() {
                                     </div>
                                 )}
 
-                                {isAnalyzingBio && (
+                                {(isAnalyzingBio || isPhotoScanning) && (
                                     <div className="dropzone-biometric-modern" id="ia-dropzone-scanning">
-                                        <div className="scanner-corners">
-                                            <span className="corner tl"></span>
-                                            <span className="corner tr"></span>
-                                            <span className="corner bl"></span>
-                                            <span className="corner br"></span>
-                                        </div>
                                         {bioImagePreview && (
                                             <div className="preview-img-container" id="ia-preview-wrapper">
                                                 <img
@@ -1580,7 +1650,7 @@ export default function BuscarIAPage() {
                                     </div>
                                 )}
 
-                                {(bioImagePreview || bioAnalysisResult) && !isAnalyzingBio && (
+                                {(bioImagePreview || bioAnalysisResult) && !isAnalyzingBio && !isPhotoScanning && (
                                     <div className="bio-result-wrapper">
                                         {bioImagePreview && (
                                             <div className="divBioImagePreview">
@@ -1591,7 +1661,7 @@ export default function BuscarIAPage() {
                                                 />
                                                 <button
                                                     type="button"
-                                                    onClick={resetBioScanner}
+                                                    onClick={resetPhotoSearch}
                                                     aria-label="Quitar foto"
                                                     className="buttonRemoveBioImagePreview"
                                                 >
@@ -1607,31 +1677,6 @@ export default function BuscarIAPage() {
                                             </div>
                                         )}
 
-                                        {!bioAnalysisError && bioAttributes.length > 0 && (
-                                            <div className={`resultScannerImage ${isBioConfirmed ? 'disabled' : ''}`}>
-                                                <div className="pill-multi-group">
-                                                    {bioAttributes.map((chip) => (
-                                                        <span key={chip.id} className="badge-custom-tag">
-                                                            {chip.label}
-                                                            {!isBioConfirmed && (
-                                                                <IconX
-                                                                    className="remove-tag-btn"
-                                                                    onClick={() => handleRemoveBioAttribute(chip.id)}
-                                                                />
-                                                            )}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn-primary-mini"
-                                                    onClick={handleConfirmBioAttributes}
-                                                    disabled={isBioConfirmed || bioAttributes.length === 0}
-                                                >
-                                                    {isBioConfirmed ? 'Aplicado a la búsqueda' : 'Usar en búsqueda'}
-                                                </button>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>

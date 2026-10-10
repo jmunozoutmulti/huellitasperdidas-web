@@ -402,6 +402,23 @@
     object-fit: cover;
 }
 
+#scanner-biometrico-box.has-photo {
+    border-color: transparent;
+    padding: 0;
+    overflow: hidden;
+}
+
+#ia-dropzone-scanning {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    cursor: default;
+}
+
+#ia-dropzone-scanning:hover {
+    box-shadow: none;
+}
+
 .biometric-laser-line {
     position: absolute;
     left: 0;
