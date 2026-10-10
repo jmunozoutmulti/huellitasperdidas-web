@@ -205,6 +205,7 @@ export default function AvistamientoPage() {
     }
 
     const hasAnyPhoto = mainImage !== null || uploadedThumbs.some((img) => img !== null);
+    const coverThumbIndex = mainImage ? -1 : uploadedThumbs.findIndex((img) => img !== null);
 
     function validateForm(): boolean {
         const errors: Record<string, boolean> = {};
@@ -423,6 +424,7 @@ export default function AvistamientoPage() {
                                 >
                                     <IconX /> Cambiar
                                 </button>
+                                {mainImage && <span className="photo-cover-badge">Portada</span>}
                             </div>
                         </div>
 
@@ -468,6 +470,9 @@ export default function AvistamientoPage() {
                                             >
                                                 <IconX />
                                             </button>
+                                            {idx === coverThumbIndex && (
+                                                <span className="photo-cover-badge">Portada</span>
+                                            )}
                                         </>
                                     )}
                                 </div>

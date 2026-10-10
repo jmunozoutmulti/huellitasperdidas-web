@@ -239,6 +239,7 @@ export default function PublicarAdoptarPage() {
     };
 
     const validPhotos = uploadedImages.filter((img) => img !== null) as string[];
+    const coverIndex = uploadedImages.findIndex((img) => img !== null);
 
     useEffect(() => {
         setPhotoOffsets({});
@@ -762,6 +763,9 @@ export default function PublicarAdoptarPage() {
                                                         >
                                                             <IconX />
                                                         </button>
+                                                    )}
+                                                    {idx === coverIndex && (
+                                                        <span className="photo-cover-badge">Portada</span>
                                                     )}
                                                 </div>
                                             ))}

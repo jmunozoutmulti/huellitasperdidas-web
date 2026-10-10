@@ -2312,6 +2312,20 @@ h1 {
   stroke: var(--text-white);
 }
 
+.photo-cover-badge {
+  position: absolute;
+  left: 0.5em;
+  bottom: 0.5em;
+  z-index: 10;
+  padding: 0.25em 0.6em;
+  border-radius: 3em;
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
 
 .date-picker-group {
   position: relative;

@@ -469,11 +469,12 @@ export default function ModalEditarAviso({
                 )
             );
 
+            const coverSlot = editFotos.find((slot) => slot !== null);
             await Promise.allSettled(
                 editFotos
                     .filter((slot) => slot?.type === 'new')
                     .map((slot) =>
-                        uploadReportImage(id, slot!.dataUrl, false).catch((err) => {
+                        uploadReportImage(id, slot!.dataUrl, false, slot === coverSlot).catch((err) => {
                             console.warn('No se pudo subir una foto nueva:', err instanceof Error ? err.message : err);
                         })
                     )
@@ -539,6 +540,7 @@ export default function ModalEditarAviso({
     const c = editarModalConfig[tipo];
     const fc = flyerConfig[tipo];
     const ubicacionCompleta = [readOnlyDistrict, readOnlyProvince, readOnlyRegion].filter(Boolean).join(', ');
+    const editCoverIndex = editFotos.findIndex((slot) => slot !== null);
     const flyerPhotoSrcs = editFotos
         .map((slot) => (slot?.type === 'existing' ? slot.url : slot?.type === 'new' ? slot.dataUrl : null))
         .filter((src): src is string => !!src);
@@ -658,6 +660,9 @@ export default function ModalEditarAviso({
                                                         >
                                                             <IconX />
                                                         </button>
+                                                    )}
+                                                    {idx === editCoverIndex && (
+                                                        <span className="photo-cover-badge">Portada</span>
                                                     )}
                                                 </div>
                                             );
