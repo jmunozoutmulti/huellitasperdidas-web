@@ -327,11 +327,11 @@ export default function ModalEditarAviso({
     };
 
     const handleRemoveEditFoto = (idx: number) => {
+        const slot = editFotos[idx];
+        if (slot?.type === 'existing') {
+            setRemovedImageIds((ids) => (ids.includes(slot.id) ? ids : [...ids, slot.id]));
+        }
         setEditFotos((prev) => {
-            const slot = prev[idx];
-            if (slot?.type === 'existing') {
-                setRemovedImageIds((ids) => [...ids, slot.id]);
-            }
             const next = [...prev];
             next[idx] = null;
             return next;
