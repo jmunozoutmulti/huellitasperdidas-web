@@ -313,6 +313,10 @@ function HomeContent() {
       return activeFilter === 'perdido';
     }
 
+    if (badgeStyle === 'badge-adopt-premium') {
+      return activeFilter === 'adoptar';
+    }
+
     return badgeStyle === badgeStyleByType[activeFilter];
   };
 
