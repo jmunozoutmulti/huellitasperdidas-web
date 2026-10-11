@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { showToast } from '@/components/global/Toast';
-import PlanesModal from '@/components/global/PlanesModal';
+import ConfirmLogoutModal from '@/components/global/ConfirmLogoutModal';
 import { getMyConversations, getConversationMessages, replyToConversation, uploadMessageImage, getMyFiledReports, getUnreadMessagesCount, markMessagesSeen, type ConversationSummary, type ConversationMessage } from '@/lib/messagesApi';
 import { useApp } from '@/context/AppContext';
 import AlertBanner from '@/components/global/AlertBanner';
@@ -9,7 +9,7 @@ import GuardadosSection from './components/sections/GuardadosSection';
 import MensajesSection from './components/sections/MensajesSection';
 import DatosSection from './components/sections/DatosSection';
 import AjustesSection from './components/sections/AjustesSection';
-import DashboardSection from './components/sections/AvisosSection';
+import DashboardSection, { getTab } from './components/sections/AvisosSection';
 import { fetchMyReports, type Report } from '@/lib/api';
 import { getMySettings, updateMySettings, type UserSettings } from '@/lib/authApi';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -52,6 +52,7 @@ export default function MiCuentaPage() {
     useRequireAuth();
 
     const { isDarkMode, toggleTheme, currentUser, updateCurrentUser, updateProfile, updateAvatar, logout } = useApp();
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
     const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
@@ -265,11 +266,15 @@ export default function MiCuentaPage() {
         }
     };
 
+    const sendingHilosRef = useRef<Set<string>>(new Set());
+
     const handleSendReply = async (hiloId: string, imagenFile?: File | null) => {
+        if (sendingHilosRef.current.has(hiloId)) return;
         const hilo = hilos.find((h) => h.id === hiloId);
         if (!hilo || (!hilo.replyInput.trim() && !imagenFile)) return;
         const texto = hilo.replyInput.trim();
 
+        sendingHilosRef.current.add(hiloId);
         try {
             let nuevo = await replyToConversation(hiloId, texto);
             if (imagenFile) {
@@ -303,6 +308,8 @@ export default function MiCuentaPage() {
             showToast('Mensaje enviado', 'success');
         } catch {
             showToast('No pudimos enviar tu mensaje. Intenta de nuevo.', 'error');
+        } finally {
+            sendingHilosRef.current.delete(hiloId);
         }
     };
 
@@ -466,7 +473,7 @@ export default function MiCuentaPage() {
         }
     }, [currentUser, avisosRefreshKey]);
 
-    const pendingCount = myPublications.filter((p) => p.status === 'pending_approval').length;
+    const pendingCount = myPublications.filter((p) => getTab(p) === 'revision').length;
 
     const [modalCambiarNumero, setModalCambiarNumero] = useState(false);
     const [modalCambiarClave, setModalCambiarClave] = useState(false);
@@ -702,7 +709,7 @@ export default function MiCuentaPage() {
                                     href="#"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        logout();
+                                        setIsLogoutConfirmOpen(true);
                                     }}
                                 >
                                     <span>
@@ -886,6 +893,15 @@ export default function MiCuentaPage() {
                 onStopped={() => setAvisosRefreshKey((k) => k + 1)}
             />
 
+            <ConfirmLogoutModal
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={() => {
+                    setIsLogoutConfirmOpen(false);
+                    logout();
+                }}
+            />
+
             <ModalEliminarAviso
                 isOpen={modalEliminarAviso.isOpen}
                 onClose={() => setModalEliminarAviso({ isOpen: false, id: '' })}
@@ -942,8 +958,6 @@ export default function MiCuentaPage() {
                     setModalUpgrade({ isOpen: true, id });
                 }}
             />
-
-            <PlanesModal />
         </main >
     );
 }

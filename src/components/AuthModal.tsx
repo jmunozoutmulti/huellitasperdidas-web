@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
@@ -83,6 +83,12 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const submitOnEnter = (canSubmit: boolean, action: () => void) => (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== 'Enter' || !(e.target instanceof HTMLInputElement) || !canSubmit) return;
+        e.preventDefault();
+        action();
+    };
 
     const handleLogin = async () => {
         setIsSubmitting(true);
@@ -186,7 +192,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                             y nuestra{' '}
                             <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.
                         </p>
-                        <div className="form-auth ">
+                        <div className="form-auth " onKeyDown={submitOnEnter(canSubmitLogin && !isSubmitting, handleLogin)}>
                             <div className="field-auth">
                                 <input
                                     type="email"
@@ -266,7 +272,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                             <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.
                         </p>
 
-                        <div className="form-auth">
+                        <div className="form-auth" onKeyDown={submitOnEnter(canSubmitRegister && !isSubmitting, handleRegister)}>
                             <div className="field-auth">
                                 <input
                                     type="text"
@@ -331,7 +337,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                             de verificación a tu correo.
                         </p>
 
-                        <div className="form-group">
+                        <div className="form-group" onKeyDown={submitOnEnter(recoverEmail.includes('@') && !isSubmittingRecover, handleResendVerification)}>
                             <input
                                 type="email"
                                 className="form-input auth-input"
@@ -371,7 +377,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                             Ingresa tu correo y te enviaremos un enlace para crear una contraseña nueva.
                         </p>
 
-                        <div className="form-group">
+                        <div className="form-group" onKeyDown={submitOnEnter(forgotEmail.includes('@') && !isSubmittingForgot, handleForgotPassword)}>
                             <input
                                 type="email"
                                 className="form-input auth-input"
@@ -475,7 +481,7 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                                 <h3 className="auth-modal-title">Crea tu nueva contraseña</h3>
                                 <p className="auth-modal-desc">Este enlace vence en 1 hora desde que lo recibiste.</p>
 
-                                <div className="form-auth">
+                                <div className="form-auth" onKeyDown={submitOnEnter(canSubmitReset && !isSubmittingReset, handleResetPassword)}>
                                     <div className="field-auth auth-password-group">
                                         <input
                                             type={showNewPassword ? 'text' : 'password'}

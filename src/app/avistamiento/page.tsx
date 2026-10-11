@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import dynamic from 'next/dynamic';
 import '@/styles/avistamiento.css';
 import { useApp } from '@/context/AppContext';
-import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { createReport, uploadReportImageWithRetry, ReportsApiError } from '@/lib/reportsApi';
 import { useRouter } from 'next/navigation';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
 import { resizePetImage } from '@/lib/resizeImage';
@@ -205,6 +205,7 @@ export default function AvistamientoPage() {
     }
 
     const hasAnyPhoto = mainImage !== null || uploadedThumbs.some((img) => img !== null);
+    const coverThumbIndex = mainImage ? -1 : uploadedThumbs.findIndex((img) => img !== null);
 
     function validateForm(): boolean {
         const errors: Record<string, boolean> = {};
@@ -238,7 +239,9 @@ export default function AvistamientoPage() {
 
         const parsedLat = lat ? parseFloat(lat) : null;
         const parsedLng = lng ? parseFloat(lng) : null;
-        const allPhotos = [mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[];
+        const allPhotos = Array.from(
+            new Set([mainImage, ...uploadedThumbs].filter((img) => img !== null) as string[])
+        );
 
         if (!idempotencyKeyRef.current) {
             idempotencyKeyRef.current = crypto.randomUUID();
@@ -272,13 +275,15 @@ export default function AvistamientoPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            await Promise.allSettled(
-                allPhotos.map((foto) =>
-                    uploadReportImage(report.id, foto, false).catch((err) => {
-                        console.error('No se pudo subir una foto', err);
-                    })
+            const photoResults = await Promise.all(
+                allPhotos.map((foto, index) =>
+                    uploadReportImageWithRetry(report.id, foto, false, index === 0)
                 )
             );
+            const failedPhotos = photoResults.filter((ok) => !ok).length;
+            if (failedPhotos > 0) {
+                showToast(`No pudimos subir ${failedPhotos} foto${failedPhotos === 1 ? '' : 's'} de tu alerta.`, 'error');
+            }
 
             setShowStatusOverlay(true);
             setTimeout(() => {
@@ -287,7 +292,6 @@ export default function AvistamientoPage() {
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos enviar tu alerta. Intenta de nuevo.';
             showToast(message, 'error');
-        } finally {
             setIsSubmitting(false);
         }
     };
@@ -421,6 +425,7 @@ export default function AvistamientoPage() {
                                 >
                                     <IconX /> Cambiar
                                 </button>
+                                {mainImage && <span className="photo-cover-badge">Portada</span>}
                             </div>
                         </div>
 
@@ -466,6 +471,9 @@ export default function AvistamientoPage() {
                                             >
                                                 <IconX />
                                             </button>
+                                            {idx === coverThumbIndex && (
+                                                <span className="photo-cover-badge">Portada</span>
+                                            )}
                                         </>
                                     )}
                                 </div>

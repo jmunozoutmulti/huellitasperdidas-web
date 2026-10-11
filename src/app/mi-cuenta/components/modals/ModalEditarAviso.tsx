@@ -270,7 +270,7 @@ export default function ModalEditarAviso({
                 setEditOcultarExtras(!pub.meta.adoption_extras_visible);
                 setEditEdad(pub.meta.age || '');
                 setEditTelefono(pub.contact_phone?.replace(/^\+\d+\s*/, '') || '');
-                setRejectionReason(pub.rejection_reason);
+                setRejectionReason(pub.rejection_reason ?? null);
 
                 setReadOnlyDistrict(pub.district || '');
                 setReadOnlyProvince(pub.province || '');
@@ -327,11 +327,11 @@ export default function ModalEditarAviso({
     };
 
     const handleRemoveEditFoto = (idx: number) => {
+        const slot = editFotos[idx];
+        if (slot?.type === 'existing') {
+            setRemovedImageIds((ids) => (ids.includes(slot.id) ? ids : [...ids, slot.id]));
+        }
         setEditFotos((prev) => {
-            const slot = prev[idx];
-            if (slot?.type === 'existing') {
-                setRemovedImageIds((ids) => [...ids, slot.id]);
-            }
             const next = [...prev];
             next[idx] = null;
             return next;
@@ -469,11 +469,12 @@ export default function ModalEditarAviso({
                 )
             );
 
+            const coverSlot = editFotos.find((slot) => slot !== null);
             await Promise.allSettled(
                 editFotos
                     .filter((slot) => slot?.type === 'new')
                     .map((slot) =>
-                        uploadReportImage(id, slot!.dataUrl, false).catch((err) => {
+                        uploadReportImage(id, slot!.dataUrl, false, slot === coverSlot).catch((err) => {
                             console.warn('No se pudo subir una foto nueva:', err instanceof Error ? err.message : err);
                         })
                     )
@@ -539,6 +540,7 @@ export default function ModalEditarAviso({
     const c = editarModalConfig[tipo];
     const fc = flyerConfig[tipo];
     const ubicacionCompleta = [readOnlyDistrict, readOnlyProvince, readOnlyRegion].filter(Boolean).join(', ');
+    const editCoverIndex = editFotos.findIndex((slot) => slot !== null);
     const flyerPhotoSrcs = editFotos
         .map((slot) => (slot?.type === 'existing' ? slot.url : slot?.type === 'new' ? slot.dataUrl : null))
         .filter((src): src is string => !!src);
@@ -658,6 +660,9 @@ export default function ModalEditarAviso({
                                                         >
                                                             <IconX />
                                                         </button>
+                                                    )}
+                                                    {idx === editCoverIndex && (
+                                                        <span className="photo-cover-badge">Portada</span>
                                                     )}
                                                 </div>
                                             );
@@ -1038,7 +1043,7 @@ export default function ModalEditarAviso({
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">{fc.whereKicker}</span>
                                                     {(readOnlyDistrict || readOnlyProvince) && (
-                                                        <strong className="flyer-info-place">{readOnlyDistrict || readOnlyProvince}</strong>
+                                                        <strong className={`flyer-info-place ${(readOnlyDistrict || readOnlyProvince).length > 18 ? 'is-long' : ''}`}>{readOnlyDistrict || readOnlyProvince}</strong>
                                                     )}
                                                     {readOnlyAddressHint && <span className="flyer-info">{readOnlyAddressHint}</span>}
                                                 </div>
@@ -1050,7 +1055,7 @@ export default function ModalEditarAviso({
                                                 <IconBrandWhatsapp className="flyer-info-bigicon" />
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">{fc.callKicker}</span>
-                                                    <strong className="flyer-info-phone">{editTelefono || '---------'}</strong>
+                                                    <strong className={`flyer-info-phone ${editTelefono.replace(/\D/g, '').length > 9 ? 'is-long' : ''}`}>{editTelefono || '---------'}</strong>
                                                 </div>
                                             </div>
                                         </div>

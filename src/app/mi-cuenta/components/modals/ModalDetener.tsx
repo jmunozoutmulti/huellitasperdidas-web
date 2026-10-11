@@ -86,7 +86,7 @@ export default function ModalDetener({ isOpen, id, onClose, onStopped }: ModalDe
                             <IconCreditCard />
                             <p>
                                 <b>Tu plan incluye un reembolso.</b> <br />
-                                Te mostraremos el monto aproximado que recibirás al confirmar esta
+                                Podrás ver el monto que recibirás en la pestaña "Finalizados" de "Mis avisos", al confirmar esta
                                 acción. La devolución será procesada manualmente por nuestro equipo.
                             </p>
                         </div>

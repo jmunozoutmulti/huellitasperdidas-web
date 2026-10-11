@@ -191,7 +191,7 @@ export default function PubCard({
     const plaBadge = hasPlan(reportType);
     const suffix = typeSuffix(reportType);
     const statusBadge = STATUS_BADGE[pub.status] ?? STATUS_BADGE.pending_approval;
-    const diasRestantes = getDiasRestantes(pub.expires_at);
+    const diasRestantes = getDiasRestantes(pub.expires_at ?? null);
     const displayName = reportType === 'found' ? buildFoundTitle(pub) : pub.title || reportTypeLabel(reportType);
     const planName = packages.find((p) => p.slug === pub.package_slug)?.name ?? pub.package_slug ?? '';
     const canReactivate = isReallyExpired(pub);
@@ -475,6 +475,16 @@ export default function PubCard({
     // ============ BODY: acción de pago pendiente (terminar de pagar) ============
     const renderPagoPendienteAction = () => {
         if (tab !== 'pago_pendiente') return null;
+        if (pub.payment_in_review) {
+            return (
+                <div className="admin-info-box info-box-revision">
+                    <IconClock />
+                    <p>
+                        <b>Pago en revisión.</b> Tu pago todavía se está procesando. Revisa en unos minutos. Si tarda más de 1 hora, contacta a soporte.
+                    </p>
+                </div>
+            );
+        }
         return (
             <div className="pub-editor-actions">
                 <button type="button" className="btn-reactivar-pago" onClick={onOpenRetryPago}>

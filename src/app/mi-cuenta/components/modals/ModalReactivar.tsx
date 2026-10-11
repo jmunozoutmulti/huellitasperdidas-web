@@ -33,6 +33,7 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
 
     useEffect(() => {
         if (!isOpen || !id) return;
+        let isCancelled = false;
         setPub(null);
         setPkg(null);
         setCurrencySymbol('');
@@ -42,12 +43,14 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
         idempotencyKeyRef.current = null;
 
         fetchReport(id).then(async (report) => {
+            if (isCancelled) return;
             setPub(report);
             if (report.package_slug && report.country) {
                 const [pkgs, country] = await Promise.all([
                     getPackages(report.country),
                     getCountryByAbbr(report.country),
                 ]);
+                if (isCancelled) return;
                 const foundPkg = pkgs.find((p) => p.slug === report.package_slug) ?? null;
                 setPkg(foundPkg);
                 setCurrencySymbol(country?.currencySymbol ?? '');
@@ -58,19 +61,26 @@ export default function ModalReactivar({ isOpen, id, onClose, onReactivated }: M
                 }
                 try {
                     const { payment } = await reactivateReport(id, report.package_slug, idempotencyKeyRef.current);
+                    if (isCancelled) return;
                     if (payment) {
                         setPendingPayment(payment);
                     }
                 } catch (err) {
+                    if (isCancelled) return;
                     const message = err instanceof ReportsApiError ? err.message : 'No pudimos cargar las opciones de pago.';
                     showToast(message, 'error');
                 }
             }
             setIsLoading(false);
         }).catch((err) => {
+            if (isCancelled) return;
             console.error('Error cargando datos para reactivar:', err);
             setIsLoading(false);
         });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [isOpen, id]);
 
     const handlePaymentConfirmed = useCallback(() => {

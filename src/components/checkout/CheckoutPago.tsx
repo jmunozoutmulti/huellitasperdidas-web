@@ -74,38 +74,58 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
             return;
         }
         setIsYapeSubmitting(true);
+        let yapeTokenId: string;
         try {
             const yapeMp = new MP(payment.public_key, { locale: 'es-PE' });
             const yape = yapeMp.yape({ otp: yapeOtp, phoneNumber: yapePhone });
             const yapeToken = await yape.create();
-            const result = await confirmYapePayment(payment.payment_id, yapeToken.id, yapeEmail);
+            yapeTokenId = yapeToken.id;
+        } catch (err) {
+            console.error('Error generando el token de Yape:', err);
+            setIsYapeSubmitting(false);
+            onCancelled();
+            return;
+        }
+        try {
+            const result = await confirmYapePayment(payment.payment_id, yapeTokenId, yapeEmail);
             if (result.status === 'paid') {
                 onConfirmed();
                 return;
             }
             if (result.status === 'failed') {
                 onCancelled();
+                await retryAttempt();
                 return;
             }
             startPolling();
         } catch (err) {
-            console.error('Error procesando el pago con Yape:', err);
-            onCancelled();
+            console.error('Error confirmando el pago con Yape:', err);
+            try {
+                const current = await getPaymentStatus(payment.payment_id);
+                if (current.status === 'paid') {
+                    onConfirmed();
+                    return;
+                }
+                if (current.status === 'failed') {
+                    onCancelled();
+                    await retryAttempt();
+                    return;
+                }
+            } catch {
+                // Sin poder verificar el estado no reintentamos: decide el polling
+            }
+            startPolling();
         } finally {
             setIsYapeSubmitting(false);
         }
     };
 
     useEffect(() => {
-        // Mercado Pago solo se usa para Perú en este proyecto — el locale
-        // de Bricks es siempre es-PE, no depende del país dinámicamente.
-        // Se reinicializa también si cambia el preference_id (reintento
-        // tras un pago fallido), aunque public_key/gateway sean los mismos.
         if (payment.gateway === 'mercadopago' && payment.public_key) {
             initMercadoPago(payment.public_key, { locale: 'es-PE' });
             setIsMpReady(true);
         }
-    }, [payment.public_key, payment.gateway, payment.preference_id]);
+    }, [payment.public_key, payment.gateway, payment.preference_id, payment.payment_id]);
 
     const startPolling = () => {
         pollStartRef.current = Date.now();
@@ -131,6 +151,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                     clearInterval(interval);
                     setIsPolling(false);
                     onCancelled();
+                    await retryAttempt();
                     return;
                 }
                 // 'pending' o 'refunded' recién creado — sigue esperando
@@ -231,8 +252,21 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                                     startPolling();
                                 } catch (err) {
                                     console.error('Error confirmando el pago con Mercado Pago:', err);
-                                    onCancelled();
-                                    await retryAttempt();
+                                    try {
+                                        const current = await getPaymentStatus(payment.payment_id);
+                                        if (current.status === 'paid') {
+                                            onConfirmed();
+                                            return;
+                                        }
+                                        if (current.status === 'failed') {
+                                            onCancelled();
+                                            await retryAttempt();
+                                            return;
+                                        }
+                                    } catch {
+                                        // Sin poder verificar el estado no reintentamos: decide el polling
+                                    }
+                                    startPolling();
                                 }
                             }}
                             onError={(err: any) => {
@@ -303,6 +337,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     return (
         <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!, currency: payment.currency }}>
             <PayPalButtons
+                key={payment.payment_id}
                 fundingSource="card"
                 style={{
                     //color: 'gold',
@@ -314,14 +349,20 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 createOrder={() => Promise.resolve(payment.order_id!)}
                 onApprove={async (data) => {
                     try {
-                        await capturePayment(payment.payment_id, data.orderID);
+                        const result = await capturePayment(payment.payment_id, data.orderID);
+                        if (result.status === 'paid') {
+                            onConfirmed();
+                            return;
+                        }
+                        if (result.status === 'failed') {
+                            onCancelled();
+                            await retryAttempt();
+                            return;
+                        }
                     } catch (err) {
                         console.error('Error capturando el pago de PayPal:', err);
-                        // Seguimos al polling de todas formas — si la captura
-                        // falló solo por red, el polling puede alcanzar a ver
-                        // el estado real igual; si de verdad falló, el
-                        // polling hará timeout y avisará al usuario.
                     }
+                    // 'pending' o error de red: el polling resuelve el estado real
                     startPolling();
                 }}
                 onCancel={() => onCancelled()}

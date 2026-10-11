@@ -85,14 +85,18 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 export async function uploadReportImage(
     reportId: string,
     imageDataUrl: string,
-    isFlyer: boolean = false
+    isFlyer: boolean = false,
+    isCover?: boolean
 ): Promise<any> {
     const blob = dataUrlToBlob(imageDataUrl);
     const form = new FormData();
     const ext = blob.type.split('/')[1] || 'jpg';
     form.append('file', blob, `photo.${ext}`);
 
-    const qs = isFlyer ? '?is_flyer=true' : '';
+    const params = new URLSearchParams();
+    if (isFlyer) params.set('is_flyer', 'true');
+    if (isCover !== undefined) params.set('is_cover', String(isCover));
+    const qs = params.toString() ? `?${params}` : '';
     const res = await authFetch(`/v1/reports/${reportId}/images${qs}`, {
         method: 'POST',
         body: form,
@@ -102,6 +106,28 @@ export async function uploadReportImage(
         throw new ReportsApiError(res.status, data.detail || 'No pudimos subir la imagen.');
     }
     return res.json().catch(() => ({}));
+}
+
+// Reintenta una vez si falla (cortes de red pasajeros). Devuelve false si
+// falló las dos veces, para que el formulario avise al usuario.
+export async function uploadReportImageWithRetry(
+    reportId: string,
+    imageDataUrl: string,
+    isFlyer: boolean = false,
+    isCover?: boolean
+): Promise<boolean> {
+    try {
+        await uploadReportImage(reportId, imageDataUrl, isFlyer, isCover);
+        return true;
+    } catch {
+        try {
+            await uploadReportImage(reportId, imageDataUrl, isFlyer, isCover);
+            return true;
+        } catch (err) {
+            console.error(isFlyer ? 'No se pudo subir el flyer' : 'No se pudo subir una foto', err);
+            return false;
+        }
+    }
 }
 
 // Igual que CreateReportPayload, pero sin los campos de ubicación — el

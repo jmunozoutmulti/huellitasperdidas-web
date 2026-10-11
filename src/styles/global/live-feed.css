@@ -120,7 +120,7 @@
 @media screen and (max-width: 760px) {
 
     .live-feed-popup {
-        display: none;
+        display: none !important;
         white-space: inherit;
         font-size: 0.9em;
         left: inherit;

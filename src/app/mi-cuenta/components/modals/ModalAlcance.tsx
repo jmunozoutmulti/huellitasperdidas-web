@@ -41,6 +41,7 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
 
     useEffect(() => {
         if (!isOpen || !id) return;
+        let isCancelled = false;
         setStep(1);
         setRadiusKm(null);
         setPendingPayment(null);
@@ -50,12 +51,14 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
         setIsLoading(true);
 
         fetchReport(id).then(async (report) => {
+            if (isCancelled) return;
             setPub(report);
             if (report.package_slug && report.country) {
                 const [pkgs, country] = await Promise.all([
                     getPackages(report.country),
                     getCountryByAbbr(report.country),
                 ]);
+                if (isCancelled) return;
                 const foundPkg = pkgs.find((p) => p.slug === report.package_slug) ?? null;
                 setPkg(foundPkg);
                 setCurrencySymbol(country?.currencySymbol ?? '');
@@ -64,9 +67,14 @@ export default function ModalAlcance({ isOpen, id, onClose, onPurchased }: Modal
             }
             setIsLoading(false);
         }).catch((err) => {
+            if (isCancelled) return;
             console.error('Error cargando datos para alcance:', err);
             setIsLoading(false);
         });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [isOpen, id]);
 
     const handlePaymentConfirmed = useCallback(() => {

@@ -9,6 +9,7 @@ import './globals.css';
 import '@/styles/dark-theme.css';
 import '@/styles/publicar.css';
 import '@/styles/mi-cuenta.css';
+import '@/styles/global/planes-modal.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 

@@ -6,7 +6,7 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import '@/styles/encontrado.css';
 import { useApp } from '@/context/AppContext';
 import { resizePetImage } from '@/lib/resizeImage';
-import { createReport, uploadReportImage, ReportsApiError } from '@/lib/reportsApi';
+import { createReport, uploadReportImageWithRetry, ReportsApiError } from '@/lib/reportsApi';
 import { useRouter } from 'next/navigation';
 import { generateFlyerImage } from '@/lib/flyerExport';
 import DraggablePhoto from '@/components/global/DraggablePhoto';
@@ -263,6 +263,7 @@ export default function PublicarEncontradoPage() {
 
     // Fotos cargadas para el flyer
     const validPhotos = uploadedImages.filter((img) => img !== null) as string[];
+    const coverIndex = uploadedImages.findIndex((img) => img !== null);
 
     useEffect(() => {
         setPhotoOffsets({});
@@ -386,9 +387,17 @@ export default function PublicarEncontradoPage() {
 
         if (currentStep === 1) {
             setIsGeneratingFlyer(true);
-            const flyerImage = await generateFlyerImage('flyer-preview');
-            setFlyerImageBase64(flyerImage);
-            setIsGeneratingFlyer(false);
+            try {
+                const flyerImage = await generateFlyerImage('flyer-preview');
+                if (!flyerImage) throw new Error('El flyer se generó vacío');
+                setFlyerImageBase64(flyerImage);
+            } catch (err) {
+                console.error('Error generando el flyer:', err);
+                showToast('No pudimos generar el anuncio. Intenta de nuevo.', 'error');
+                return;
+            } finally {
+                setIsGeneratingFlyer(false);
+            }
         }
 
         if (currentStep < 2) {
@@ -443,20 +452,23 @@ export default function PublicarEncontradoPage() {
                 },
             }, idempotencyKeyRef.current);
 
-            await Promise.allSettled([
-                ...validPhotos.map((foto) =>
-                    uploadReportImage(report.id, foto, false).catch((err) => {
-                        console.error('No se pudo subir una foto', err);
-                    })
+            const [photoResults, flyerUploaded] = await Promise.all([
+                Promise.all(
+                    validPhotos.map((foto, index) =>
+                        uploadReportImageWithRetry(report.id, foto, false, index === 0)
+                    )
                 ),
-                ...(flyerImageBase64
-                    ? [
-                        uploadReportImage(report.id, flyerImageBase64, true).catch((err) => {
-                            console.error('No se pudo subir el flyer', err);
-                        }),
-                    ]
-                    : []),
+                flyerImageBase64
+                    ? uploadReportImageWithRetry(report.id, flyerImageBase64, true)
+                    : Promise.resolve(true),
             ]);
+            const failedPhotos = photoResults.filter((ok) => !ok).length;
+            if (failedPhotos > 0 || !flyerUploaded) {
+                const faltantes: string[] = [];
+                if (failedPhotos > 0) faltantes.push(`${failedPhotos} foto${failedPhotos === 1 ? '' : 's'}`);
+                if (!flyerUploaded) faltantes.push('el anuncio');
+                showToast(`No pudimos subir ${faltantes.join(' y ')}. Puedes corregirlo editando tu aviso.`, 'error');
+            }
 
             setShowStatusOverlay(true);
             setTimeout(() => {
@@ -465,7 +477,6 @@ export default function PublicarEncontradoPage() {
         } catch (err) {
             const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
             showToast(message, 'error');
-        } finally {
             setIsSubmitting(false);
         }
     };
@@ -636,6 +647,9 @@ export default function PublicarEncontradoPage() {
                                                         >
                                                             <IconX />
                                                         </button>
+                                                    )}
+                                                    {idx === coverIndex && (
+                                                        <span className="photo-cover-badge">Portada</span>
                                                     )}
                                                 </div>
                                             ))}
@@ -1244,7 +1258,7 @@ export default function PublicarEncontradoPage() {
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">Se encontró en:</span>
                                                     {(distrito || provincia) && (
-                                                        <strong className="flyer-info-place">{distrito || provincia}</strong>
+                                                        <strong className={`flyer-info-place ${(distrito || provincia).length > 18 ? 'is-long' : ''}`}>{distrito || provincia}</strong>
                                                     )}
                                                     {direccion && <span className="flyer-info">{direccion}</span>}
                                                 </div>
@@ -1256,7 +1270,7 @@ export default function PublicarEncontradoPage() {
                                                 <IconBrandWhatsapp className="flyer-info-bigicon" />
                                                 <div className="flyer-info-text">
                                                     <span className="flyer-info-kicker">Si es tu mascota, llama o escribe al:</span>
-                                                    <strong className="flyer-info-phone">{telefono || '---------'}</strong>
+                                                    <strong className={`flyer-info-phone ${telefono.replace(/\D/g, '').length > 9 ? 'is-long' : ''}`}>{telefono || '---------'}</strong>
                                                 </div>
                                             </div>
                                         </div>
