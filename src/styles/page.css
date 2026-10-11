@@ -1739,7 +1739,7 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
     display: flex;
     flex-direction: column;
     gap: 0.6em;
-    width: 12em;
+    width: 13.75em;
     padding: 0.4em;
     border: 2px solid transparent;
     border-radius: 0.75em;
@@ -1812,8 +1812,7 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
 }
 
 .premium-title {
-    font-family: var(--font-outfit);
-    font-size: 1em;
+    font-size: 1.1em;
     font-weight: 700;
     line-height: 1;
     color: var(--text-main);
@@ -2040,7 +2039,7 @@ body:has(#popup-publicar-mascota:not(.hidden-view)) .popup-destacados {
     }
 
     .premium-card {
-        width: 9em;
+        width: 11em;
     }
 
     .premium-badge {

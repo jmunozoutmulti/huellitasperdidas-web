@@ -4,7 +4,7 @@ import { IconX, IconPin } from '@tabler/icons-react';
 import { PetData } from '@/lib/pets';
 
 const INITIAL_DELAY_MS = 5000;
-const VISIBLE_MS = 4000000;
+const VISIBLE_MS = 3000;
 const FADE_MS = 2000;
 const PAUSE_MS = 50000;
 
