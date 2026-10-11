@@ -771,20 +771,8 @@
     background-color: #25D366;
 }
 
-.item-messenger .grid-icon-circle {
-    background: linear-gradient(135deg, #00B2FF 0%, #006AFF 100%);
-}
-
 .item-facebook .grid-icon-circle {
     background-color: #1877F2;
-}
-
-.item-x .grid-icon-circle {
-    background-color: #000000;
-}
-
-.item-x .grid-icon-circle img {
-    width: 1.1em;
 }
 
 #btn-copy-link i {

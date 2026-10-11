@@ -27,12 +27,11 @@ import {
     IconBookmark,
     IconBookmarkFilled,
     IconBrandWhatsapp,
-    IconBrandMessenger,
     IconBrandFacebook,
     IconLink,
     IconDotsVertical,
     IconExternalLink
-} from '@tabler/icons-react';
+} from '@tabler/icons-react'
 
 interface PetDetailViewProps {
     pet: PetData;
@@ -355,18 +354,6 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                             <span className="grid-item-label">WhatsApp</span>
                                         </a>
                                         <a
-                                            href={`https://www.facebook.com/dialog/send?link=${encodeURIComponent(shareUrl)}&app_id=2186263202014959&redirect_uri=${encodeURIComponent(shareUrl)}`}
-                                            target="_blank"
-                                            className="share-grid-item item-messenger"
-                                            onClick={() => registerReportShare(pet.id)}
-                                            rel="noreferrer"
-                                        >
-                                            <span className="grid-icon-circle">
-                                                <IconBrandMessenger />
-                                            </span>
-                                            <span className="grid-item-label">Messenger</span>
-                                        </a>
-                                        <a
                                             href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                                             target="_blank"
                                             className="share-grid-item item-facebook"
@@ -377,18 +364,6 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
                                                 <IconBrandFacebook />
                                             </span>
                                             <span className="grid-item-label">Facebook</span>
-                                        </a>
-                                        <a
-                                            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`}
-                                            target="_blank"
-                                            className="share-grid-item item-x"
-                                            onClick={() => registerReportShare(pet.id)}
-                                            rel="noreferrer"
-                                        >
-                                            <span className="grid-icon-circle">
-                                                <img src="/images/icon-x.svg" alt="X" />
-                                            </span>
-                                            <span className="grid-item-label">X</span>
                                         </a>
                                     </div>
                                 )}
