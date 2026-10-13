@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { buildReportPath } from '@/lib/slug';
 import Link from 'next/link';
 import { showToast } from '@/components/global/Toast';
 import { useApp } from '@/context/AppContext';
@@ -94,7 +95,7 @@ export default function GuardadosSection() {
                                     </div>
                                 </div>
                                 <div className="guardado-actions">
-                                    <Link href={`/?id=${pet.id}`}>
+                                    <Link href={buildReportPath(pet.id, pet.title)}>
                                         <IconExternalLink />
                                     </Link>
                                     <button
