@@ -1,6 +1,26 @@
 Options -MultiViews
 RewriteEngine On
 
+# ── Avisos: vista previa para redes sociales ─────────────────────────────
+# Los bots de vista previa (WhatsApp, Facebook, X, Telegram...) no ejecutan
+# JavaScript, así que se les manda a la API, que responde un HTML con el título,
+# la descripción y la foto de ese aviso. Las personas no pasan por aquí.
+RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview|vkShare|redditbot|Embedly) [NC]
+RewriteCond %{HTTP_HOST} ^qa\. [NC]
+RewriteRule ^aviso/([^/]+)/?$ https://qa-api.huellasperdidas.com/share/aviso/$1 [R=302,L]
+
+RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview|vkShare|redditbot|Embedly) [NC]
+RewriteCond %{HTTP_HOST} !^qa\. [NC]
+RewriteRule ^aviso/([^/]+)/?$ https://api.huellasperdidas.com/share/aviso/$1 [R=302,L]
+
+# ── Avisos: página para personas ─────────────────────────────────────────
+# Next exporta una sola página molde en /aviso/_/; se sirve para cualquier
+# /aviso/<slug>/ y la app lee el id real desde la URL.
+RewriteRule ^aviso/([^/]+)$ /aviso/$1/ [R=301,L]
+RewriteRule ^aviso/[^/]+/$ /aviso/_/index.html [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^aviso/[^/]+/(.+)$ /aviso/_/$1 [L]
+
 # Si el archivo o directorio existe, servirlo directamente
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
