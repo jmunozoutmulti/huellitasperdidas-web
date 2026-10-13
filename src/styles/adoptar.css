@@ -1,0 +1,36 @@
+body.theme-adoptar .main-content {
+    --brand-red: #8578d8;
+    --brand-red-hover: #695acf;
+    --brand-red-alpha: #dfdcff;
+    --text-red: #8578d8;
+}
+
+body.theme-adoptar .main-content .tooltip-box {
+    box-shadow: 0 6px 20px rgb(133 120 216 / 30%);
+    background: #dfdcff;
+}
+
+body.theme-adoptar .main-content .btn-secondary:hover {
+    box-shadow: 0 6px 15px rgb(170 164 212 / 30%);
+}
+
+body.theme-adoptar .main-content .btn-publish {
+    box-shadow: 0 6px 20px #8578d840;
+}
+
+body.theme-adoptar .main-content .map-radar-ring {
+    background: rgb(133 120 216 / 10%);
+}
+
+body.theme-adoptar .main-content .option-dominant-wrapper .plan-item-premium .plan-card {
+    border-top: 1px solid #d2cfff;
+    border-bottom: 1px solid #d2cfff;
+}
+
+body.theme-adoptar .main-content .option-dominant-wrapper .plan-item-premium .attributes-plan {
+    border-top: 1px solid #d2cfff;
+}
+
+body.theme-adoptar .main-content .option-dominant-wrapper .plan-item-premium {
+    border: 1px solid #d2cfff;
+}

@@ -1,0 +1,29 @@
+Options -MultiViews
+RewriteEngine On
+
+# Plantilla: scripts/write-htaccess.mjs la copia a out/.htaccess después del build,
+# reemplazando __API_URL__ por NEXT_PUBLIC_API_URL (que viene de GitHub Secrets).
+
+# ── Avisos: vista previa para redes sociales ─────────────────────────────
+# Los bots de vista previa (WhatsApp, Facebook, X, Telegram...) no ejecutan
+# JavaScript, así que se les manda a la API, que responde un HTML con el título,
+# la descripción y la foto de ese aviso. Las personas no pasan por aquí.
+# La lista de bots debe ser la misma que en huellitasperdidas-api/app/routers/share.py.
+RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterestbot|SkypeUriPreview|vkShare|redditbot|Embedly) [NC]
+RewriteRule ^aviso/([^/]+)/?$ __API_URL__/share/aviso/$1 [R=302,L]
+
+# ── Avisos: página para personas ─────────────────────────────────────────
+# Next exporta una sola página molde en /aviso/_/; se sirve para cualquier
+# /aviso/<slug>/ y la app lee el id real desde la URL.
+RewriteRule ^aviso/([^/]+)$ /aviso/$1/ [R=301,L]
+RewriteRule ^aviso/[^/]+/$ /aviso/_/index.html [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^aviso/[^/]+/(.+)$ /aviso/_/$1 [L]
+
+# Si el archivo o directorio existe, servirlo directamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Para rutas dinámicas (ej: /reports/uuid/) redirigir al index.html raíz
+# El router de Next.js client-side toma control desde ahí
+RewriteRule ^ /index.html [L]

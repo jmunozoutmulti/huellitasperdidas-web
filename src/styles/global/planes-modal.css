@@ -1,0 +1,230 @@
+/* ==========================================================================
+   PLANES MODAL OVERLAY
+   ========================================================================== */
+.planes-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5em;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.planes-modal-overlay:not(.style-hidden) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: all;
+}
+
+.planes-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(244 245 247 / 90%);
+}
+
+.planes-modal-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 50em;
+    max-height: 95vh;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-radius: 1em;
+    padding: 1.5em;
+    transform: translateY(30px) scale(0.97);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 25px 150px rgba(0, 0, 0, 0.15);
+}
+
+.planes-modal-overlay:not(.style-hidden) .planes-modal-card {
+    transform: translateY(0) scale(1);
+}
+
+
+/* HEADER */
+.planes-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1em;
+    gap: 1em;
+}
+
+.planes-modal-header>div {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+.planes-modal-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 1em;
+    font-weight: 500;
+    color: var(--brand-red);
+    background: var(--brand-red-alpha);
+    border: 1px solid rgba(220, 38, 38, 0.1);
+    padding: 0.25em 0.75em;
+    border-radius: 3em;
+}
+
+.planes-modal-eyebrow svg {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+.planes-modal-close {
+    background: var(--bg-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1em;
+    color: var(--text-main);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.planes-modal-close svg {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+.planes-modal-close:hover {
+    background: var(--brand-red);
+    color: #fff;
+    border-color: var(--brand-red);
+}
+
+.modal-icon img {
+    width: 5em;
+}
+
+
+/* ACCIONES */
+.planes-modal-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-top: 1em;
+}
+
+.text-modal {
+    font-size: 0.875em;
+    font-weight: 100;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.375em;
+    position: relative;
+}
+
+.text-modal svg {
+    width: 1.3em;
+    height: 1.3em;
+    min-width: 1.3em;
+    min-height: 1.3em;
+}
+
+.btn-planes-back {
+    background: none;
+    border: none;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1.25em;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.btn-planes-back:hover {
+    color: var(--text-main);
+}
+
+/* RESUMEN DEL PLAN */
+.modal-summary {
+    display: grid;
+    grid-template-columns: 0.375fr 1fr;
+    gap: 1em;
+    align-items: flex-start;
+}
+
+.planes-modal-summary-bar {
+    display: flex;
+    gap: 1em;
+    background: var(--bg-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75em;
+    padding: 1em;
+}
+
+.planes-summary-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1em;
+}
+
+.planes-summary-label,
+#alcance-summary-km,
+#reactivar-summary-dias {
+    font-size: 0.9em;
+    line-height: 1.1;
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+.planes-summary-body h5 {
+    font-size: 1.1em;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: var(--text-main);
+    line-height: 1.1;
+    margin: 5px 0;
+}
+
+.planes-summary-price {
+    font-size: 1em;
+    font-weight: 900;
+    letter-spacing: -0.75px;
+    color: var(--text-main);
+}
+
+
+
+@media screen and (max-width: 760px) {
+
+    .text-modal {
+        align-items: flex-start;
+        padding-right: 1em;
+    }
+
+    .modal-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .payment-gateway-box {
+        padding: 1em;
+    }
+
+    .payment-methods-tabs {
+        grid-template-columns: 1fr;
+    }
+
+
+}

@@ -1,0 +1,1340 @@
+'use client';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import CustomSelect from '@/components/ui/CustomSelect';
+import '@/styles/encontrado.css';
+import { useApp } from '@/context/AppContext';
+import { resizePetImage } from '@/lib/resizeImage';
+import { createReport, uploadReportImageWithRetry, ReportsApiError } from '@/lib/reportsApi';
+import { useRouter } from 'next/navigation';
+import { generateFlyerImage } from '@/lib/flyerExport';
+import DraggablePhoto from '@/components/global/DraggablePhoto';
+import AutocompleteInput from '@/components/ui/AutocompleteInput';
+import { RAZAS_PERRO, RAZAS_GATO, ESPECIES_AVE, COLORES_PELAJE, COLORES_PLUMAJE } from '@/lib/petSuggestions';
+import { validateText } from '@/lib/textValidation';
+import { showToast } from '@/components/global/Toast';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { getCountryByAbbr, getLocaleForCountry, type Country } from '@/lib/countries';
+import { normalizePhoneInput, isValidPhone } from '@/lib/phoneUtils';
+import { getLevel1Options, getLevel2Options, getLevel3Options, countryHasLevel3 } from '@/lib/locations';
+import {
+    IconSparkles,
+    IconHeartHandshake,
+    IconCameraPlus,
+    IconX,
+    IconCalendarSearch,
+    IconGenderMale,
+    IconVenus,
+    IconInfoCircle,
+    IconChevronLeft,
+    IconChevronRight,
+    IconCheck,
+    IconCircleCheck,
+    IconCalendarBolt,
+    IconEye,
+    IconBrandWhatsapp,
+    IconCut,
+    IconPlus,
+    IconCalendarPin,
+    IconClock,
+    IconLoader,
+    IconCircleCheckFilled,
+    IconCircleDashedCheck
+} from '@tabler/icons-react';
+
+const mesesCompletos: Record<string, string> = {
+    '01': 'Enero',
+    '02': 'Febrero',
+    '03': 'Marzo',
+    '04': 'Abril',
+    '05': 'Mayo',
+    '06': 'Junio',
+    '07': 'Julio',
+    '08': 'Agosto',
+    '09': 'Septiembre',
+    '10': 'Octubre',
+    '11': 'Noviembre',
+    '12': 'Diciembre',
+};
+
+export default function PublicarEncontradoPage() {
+
+    useRequireAuth();
+
+    const { currentUser, isAuthChecked, isLoggedIn } = useApp();
+
+    const country = currentUser?.country ?? null;
+
+    // Teléfono del aviso — independiente del de la cuenta
+    const [telefono, setTelefono] = useState('');
+
+    useEffect(() => {
+        if (currentUser?.phone) {
+            setTelefono((prev) => prev || currentUser.phone!.replace(/^\+\d+\s*/, ''));
+        }
+    }, [currentUser?.phone]);
+    const [countryInfo, setCountryInfo] = useState<Country | null>(null);
+    const [isLoadingWizardData, setIsLoadingWizardData] = useState(true);
+
+    useEffect(() => {
+        let isCancelled = false;
+        setIsLoadingWizardData(true);
+        getCountryByAbbr(country).then((c) => {
+            if (!isCancelled) {
+                setCountryInfo(c);
+                setIsLoadingWizardData(false);
+            }
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
+    const isCountryReady = !isLoadingWizardData && !!countryInfo?.locationLabels;
+    const [labelNivel1, labelNivel2, labelNivel3] = countryInfo?.locationLabels ?? ['Departamento', 'Provincia', 'Distrito'];
+
+    // ==========================================
+    // ESTADOS DEL WIZARD (MULTIPASO - 2 PASOS)
+    // ==========================================
+    const [currentStep, setCurrentStep] = useState(1);
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [showStatusOverlay, setShowStatusOverlay] = useState(false);
+    const idempotencyKeyRef = useRef<string | null>(null);
+    const router = useRouter();
+
+    // ==========================================
+    // ESTADOS DEL FORMULARIO Y FLYER EN VIVO
+    // ==========================================
+    const [tipoMascota, setTipoMascota] = useState('');
+    const [fechaDia, setFechaDia] = useState('');
+    const [fechaMes, setFechaMes] = useState('');
+    const [fechaAnio, setFechaAnio] = useState('');
+    const [fechaDisplay, setFechaDisplay] = useState('');
+    const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+
+    const [sexo, setSexo] = useState('');
+    const [isCastrado, setIsCastrado] = useState(false);
+    const [raza, setRaza] = useState('');
+    const [color, setColor] = useState('');
+    const [tamano, setTamano] = useState('');
+    const [direccion, setDireccion] = useState('');
+
+    const [departamento, setDepartamento] = useState('');
+    const [provincia, setProvincia] = useState('');
+    const [distrito, setDistrito] = useState('');
+
+    const [hasLevel3, setHasLevel3] = useState(true);
+    useEffect(() => {
+        let isCancelled = false;
+        countryHasLevel3(country).then((result) => {
+            if (!isCancelled) setHasLevel3(result);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
+    const [nivel1Options, setNivel1Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel2Options, setNivel2Options] = useState<{ value: string; label: string }[]>([]);
+    const [nivel3Options, setNivel3Options] = useState<{ value: string; label: string }[]>([]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel1Options(country).then((opts) => {
+            if (!isCancelled) setNivel1Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel2Options(country, departamento).then((opts) => {
+            if (!isCancelled) setNivel2Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country, departamento]);
+
+    useEffect(() => {
+        let isCancelled = false;
+        getLevel3Options(country, departamento, provincia).then((opts) => {
+            if (!isCancelled) setNivel3Options(opts);
+        });
+        return () => {
+            isCancelled = true;
+        };
+    }, [country, departamento, provincia]);
+
+    const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false);
+    const [descripcion, setDescripcion] = useState('');
+
+    const [uploadedImages, setUploadedImages] = useState<(string | null)[]>([
+        null,
+        null,
+        null,
+        null,
+    ]);
+
+    // Posición vertical elegida por el usuario para cada foto del flyer (arrastre)
+    const [photoOffsets, setPhotoOffsets] = useState<Record<number, number>>({});
+
+    // Flyer generado automáticamente al avanzar del paso 1 al 2
+    const [flyerImageBase64, setFlyerImageBase64] = useState<string | null>(null);
+    const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
+
+    // Validación de campos obligatorios del paso 1
+    const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+
+    // Mobile Flyer Preview Toggle
+    const [isFlyerMobileVisible, setIsFlyerMobileVisible] = useState(false);
+
+    const datePopoverRef = useRef<HTMLDivElement>(null);
+
+    // ==========================================
+    // EFECTOS DE POPOVERS Y EVENTOS
+    // ==========================================
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (
+                datePopoverRef.current &&
+                !datePopoverRef.current.contains(e.target as Node)
+            ) {
+                setIsDatePopoverOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        if (fechaDia && fechaMes && fechaAnio) {
+            setIsDatePopoverOpen(false);
+        }
+    }, [fechaDia, fechaMes, fechaAnio]);
+
+
+    // Formatear Fecha Display
+    useEffect(() => {
+        if (fechaDia && fechaMes && fechaAnio) {
+            const mesNombre = mesesCompletos[fechaMes] || '';
+            setFechaDisplay(`${fechaDia} ${mesNombre} ${fechaAnio}`);
+        } else {
+            setFechaDisplay('');
+        }
+    }, [fechaDia, fechaMes, fechaAnio]);
+
+    // ==========================================
+    // CARGA Y REMOCIÓN DE IMÁGENES
+    // ==========================================
+    const handlePhotoChange = async (e: ChangeEvent<HTMLInputElement>, index: number) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            try {
+                const compressedBase64 = await resizePetImage(file);
+                setUploadedImages((prev) => {
+                    const next = [...prev];
+                    next[index] = compressedBase64;
+                    return next;
+                });
+                clearFieldError('fotos');
+            } catch (err) {
+                console.error('Error al procesar la imagen:', err);
+                showToast('No se pudo cargar la foto. Intenta con otra imagen.', 'error');
+            }
+        }
+    };
+
+    const handleRemovePhoto = (index: number) => {
+        setUploadedImages((prev) => {
+            const next = [...prev];
+            next[index] = null;
+            return next;
+        });
+        setPhotoOffsets((prev) => {
+            const next = { ...prev };
+            delete next[index];
+            return next;
+        });
+    };
+
+    // Fotos cargadas para el flyer
+    const validPhotos = uploadedImages.filter((img) => img !== null) as string[];
+    const coverIndex = uploadedImages.findIndex((img) => img !== null);
+
+    useEffect(() => {
+        setPhotoOffsets({});
+    }, [validPhotos.length]);
+
+    // ==========================================
+    // VALIDACIÓN Y SANITIZACIÓN (PASO 1)
+    // ==========================================
+    function sanitizeText(value: string): string {
+        return value.replace(/<[^>]*>?/gm, '').trim();
+    }
+
+    function clearFieldError(field: string) {
+        setFieldErrors((prev) => {
+            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    }
+
+    function tipoMascotaToApi(valor: string): string {
+        if (valor === 'Perro') return 'perro';
+        if (valor === 'Gato') return 'gato';
+        if (valor === 'Ave') return 'ave';
+        return 'otro';
+    }
+    function sexoToApi(valor: string): string | null {
+        if (valor === 'Macho') return 'macho';
+        if (valor === 'Hembra') return 'hembra';
+        return null;
+    }
+    function tamanoToApi(valor: string): string | null {
+        if (valor === 'Pequeño') return 'pequeño';
+        if (valor === 'Mediano') return 'mediano';
+        if (valor === 'Grande') return 'grande';
+        return null;
+    }
+
+    function validateStep1(): boolean {
+        const errors: Record<string, boolean> = {};
+        let specificError = '';
+
+        if (!fechaDia || !fechaMes || !fechaAnio) errors.fecha = true;
+        if (!sexo) errors.sexo = true;
+        if (!tipoMascota) errors.tipoMascota = true;
+        if (!tamano) errors.tamano = true;
+
+        if (!sanitizeText(raza)) {
+            errors.raza = true;
+        } else {
+            const check = validateText(raza, 3, 'La raza');
+            if (!check.valid) {
+                errors.raza = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
+        if (!sanitizeText(color)) {
+            errors.color = true;
+        } else {
+            const check = validateText(color, 3, 'El color');
+            if (!check.valid) {
+                errors.color = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
+        if (!sanitizeText(direccion)) {
+            errors.direccion = true;
+        } else {
+            const check = validateText(direccion, 10, 'La dirección');
+            if (!check.valid) {
+                errors.direccion = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
+        if (!departamento) errors.departamento = true;
+        if (!provincia) errors.provincia = true;
+        if (hasLevel3 && !distrito) errors.distrito = true;
+        if (validPhotos.length === 0) errors.fotos = true;
+
+        // Descripción es opcional — solo se valida si el usuario escribió algo
+        if (sanitizeText(descripcion)) {
+            const check = validateText(descripcion, 10, 'La descripción');
+            if (!check.valid) {
+                errors.descripcion = true;
+                specificError = specificError || check.error!;
+            }
+        }
+
+        if (!isValidPhone(telefono, country)) {
+            errors.telefono = true;
+            specificError = specificError || 'Ingresa un número de contacto válido';
+        }
+
+        setFieldErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            if (errors.fotos) {
+                showToast('Agrega al menos 1 foto de la mascota', 'error');
+            } else if (specificError) {
+                showToast(specificError, 'error');
+            } else {
+                showToast('Completa todos los campos obligatorios', 'error');
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    // ==========================================
+    // MANEJADORES DE NAVEGACIÓN Y SUBMIT
+    // ==========================================
+    const handleNextStep = async () => {
+        if (currentStep === 1 && !validateStep1()) {
+            return;
+        }
+
+        if (currentStep === 1) {
+            setIsGeneratingFlyer(true);
+            try {
+                const flyerImage = await generateFlyerImage('flyer-preview');
+                if (!flyerImage) throw new Error('El flyer se generó vacío');
+                setFlyerImageBase64(flyerImage);
+            } catch (err) {
+                console.error('Error generando el flyer:', err);
+                showToast('No pudimos generar el anuncio. Intenta de nuevo.', 'error');
+                return;
+            } finally {
+                setIsGeneratingFlyer(false);
+            }
+        }
+
+        if (currentStep < 2) {
+            setCurrentStep((prev) => prev + 1);
+        } else {
+            executeFormSubmission();
+        }
+    };
+
+    const handlePrevStep = () => {
+        if (currentStep > 1) {
+            setCurrentStep((prev) => prev - 1);
+        }
+    };
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const executeFormSubmission = async () => {
+        if (!currentUser) return;
+
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = crypto.randomUUID();
+        }
+
+        setIsSubmitting(true);
+        try {
+            const { report } = await createReport({
+                report_type: 'found',
+                pet_type: tipoMascota ? tipoMascotaToApi(tipoMascota) : null,
+                title: null, // encontrado no captura nombre de mascota
+                description: sanitizeText(descripcion) || null,
+                country: country,
+                region: departamento || null,
+                province: provincia || null,
+                district: distrito || null,
+                address_hint: sanitizeText(direccion) || null,
+                lat: null,
+                lng: null,
+                event_date: fechaDia && fechaMes && fechaAnio
+                    ? `${fechaAnio}-${String(fechaMes).padStart(2, '0')}-${String(fechaDia).padStart(2, '0')}`
+                    : null,
+                contact_name: currentUser.name || null,
+                contact_phone: `${countryInfo?.dialCode ?? ''} ${normalizePhoneInput(telefono, country)}`.trim() || null,
+                contact_email: currentUser.email || null,
+                meta: {
+                    sex: sexoToApi(sexo),
+                    is_neutered: isCastrado,
+                    size: tamanoToApi(tamano),
+                    breed: sanitizeText(raza) || null,
+                    color: sanitizeText(color) || null,
+                    age: null, // encontrado no captura edad
+                },
+            }, idempotencyKeyRef.current);
+
+            const [photoResults, flyerUploaded] = await Promise.all([
+                Promise.all(
+                    validPhotos.map((foto, index) =>
+                        uploadReportImageWithRetry(report.id, foto, false, index === 0)
+                    )
+                ),
+                flyerImageBase64
+                    ? uploadReportImageWithRetry(report.id, flyerImageBase64, true)
+                    : Promise.resolve(true),
+            ]);
+            const failedPhotos = photoResults.filter((ok) => !ok).length;
+            if (failedPhotos > 0 || !flyerUploaded) {
+                const faltantes: string[] = [];
+                if (failedPhotos > 0) faltantes.push(`${failedPhotos} foto${failedPhotos === 1 ? '' : 's'}`);
+                if (!flyerUploaded) faltantes.push('el anuncio');
+                showToast(`No pudimos subir ${faltantes.join(' y ')}. Puedes corregirlo editando tu aviso.`, 'error');
+            }
+
+            setShowStatusOverlay(true);
+            setTimeout(() => {
+                router.push('/mi-cuenta');
+            }, 5000);
+        } catch (err) {
+            const message = err instanceof ReportsApiError ? err.message : 'No pudimos publicar tu aviso. Intenta de nuevo.';
+            showToast(message, 'error');
+            setIsSubmitting(false);
+        }
+    };
+
+
+    const fechaCorta =
+        fechaDia && fechaMes
+            ? `${Number(fechaDia)} de ${(mesesCompletos[String(fechaMes).padStart(2, '0')] ?? '').toLowerCase()}`.trim()
+            : '';
+
+    const flyerCards = [
+        { key: 'raza', value: raza },
+        { key: 'sexo', value: sexo },
+        { key: 'color', value: color },
+        { key: 'castrado', value: isCastrado ? (sexo === 'Hembra' ? 'Esterilizada' : 'Esterilizado') : '' },
+    ].filter((card) => card.value);
+
+    // Fecha actual formateada para el resumen del paso 2
+    const getFechaHoy = () => {
+        const hoy = new Date();
+        const opciones: Intl.DateTimeFormatOptions = {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        };
+        return hoy.toLocaleDateString(getLocaleForCountry(country), opciones);
+    };
+
+    return (
+        <main className="main-content">
+            <section id="view-publish-found" className="animate-fade-in">
+                <div className="grid-publish">
+                    {/* ==========================================
+                        PANEL IZQUIERDO (PASOS Y SLOGAN)
+                        ========================================== */}
+                    <div className="left-panel">
+                        <h1>Publicar hallazgo</h1>
+
+                        <div className="wizard-vertical-steps">
+                            {/* PASO 1 */}
+                            <div
+                                className={`wizard-v-step ${currentStep === 1
+                                    ? 'active'
+                                    : currentStep > 1
+                                        ? 'completed'
+                                        : ''
+                                    }`}
+                                data-step="1"
+                            >
+                                <div className="step-icon-wrapper">
+                                    <div className="step-icon">
+                                        {currentStep > 1}
+                                    </div>
+                                    <div className="step-line"></div>
+                                </div>
+                                <div className="step-content">
+                                    <span className="step-status">
+                                        {currentStep === 1
+                                            ? 'En progreso'
+                                            : currentStep > 1
+                                                ? 'Completado'
+                                                : 'Pendiente'}
+                                    </span>
+                                    <h4 className="step-title">Detalles del hallazgo</h4>
+                                </div>
+                            </div>
+
+                            {/* PASO 2 */}
+                            <div
+                                className={`wizard-v-step ${currentStep === 2 ? 'active' : ''}`}
+                                data-step="2"
+                            >
+                                <div className="step-icon-wrapper">
+                                    <div className="step-icon"></div>
+                                </div>
+                                <div className="step-content">
+                                    <span className="step-status">
+                                        {currentStep === 2 ? 'En progreso' : 'Pendiente'}
+                                    </span>
+                                    <h4 className="step-title">Validación y publicación</h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="slogan-paragraph">
+                            <div>
+                                <span className="slogan-eyebrow">
+                                    <IconSparkles /> Cómo funciona
+                                </span>
+                                <div className="slogan-body">
+                                    <p>
+                                        Tu reporte ayuda a que <b>el dueño te encuentre</b> más rápido.
+                                    </p>
+                                </div>
+                                <div className="slogan-divider"></div>
+                                <div className="slogan-reach-row">
+                                    <div className="slogan-reach-item">
+                                        <span className="slogan-reach-icon">
+                                            <IconHeartHandshake />
+                                        </span>
+                                        <span>
+                                            Publicación <b>100% gratuita</b>, visible de inmediato para la comunidad.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ==========================================
+              PANEL CENTRAL (FORMULARIO Y PASOS)
+             ========================================== */}
+                    <div className="center-panel">
+                        <form
+                            id="multi-step-found-form"
+                            autoComplete="off"
+                            onSubmit={(e) => e.preventDefault()}
+                        >
+                            {/* ==================== PASO 1 ==================== */}
+                            <div
+                                className={`wizard-step ${currentStep === 1 ? 'active' : ''}`}
+                                id="wizard-step-1"
+                            >
+                                <div id="form-encontrado" className="publish-form-panel active">
+                                    {/* UPLOADER FOTOS */}
+                                    <div className="groups form-group">
+                                        <label>Fotos de la mascota encontrada (Máx. 4)</label>
+                                        <div className={`photo-upload-grid ${fieldErrors.fotos ? 'input-error' : ''}`}>
+                                            {[0, 1, 2, 3].map((idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="photo-uploader-box"
+                                                    id={`e-box-${idx}`}
+                                                    style={{
+                                                        backgroundImage: uploadedImages[idx]
+                                                            ? `url('${uploadedImages[idx]}')`
+                                                            : 'none',
+                                                        backgroundSize: 'cover',
+                                                        backgroundPosition: 'center',
+                                                    }}
+                                                >
+                                                    {!uploadedImages[idx] && (
+                                                        <>
+                                                            <IconCameraPlus />
+                                                            <input
+                                                                type="file"
+                                                                className="pet-photo-input"
+                                                                data-index={idx}
+                                                                accept="image/*"
+                                                                onChange={(e) => handlePhotoChange(e, idx)}
+                                                            />
+                                                            {idx === 0 && (
+                                                                <div className="scanner-corners">
+                                                                    <span className="corner tl"></span>
+                                                                    <span className="corner tr"></span>
+                                                                    <span className="corner bl"></span>
+                                                                    <span className="corner br"></span>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {uploadedImages[idx] && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn-remove-photo"
+                                                            data-index={idx}
+                                                            onClick={() => handleRemovePhoto(idx)}
+                                                        >
+                                                            <IconX />
+                                                        </button>
+                                                    )}
+                                                    {idx === coverIndex && (
+                                                        <span className="photo-cover-badge">Portada</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {fieldErrors.fotos && (
+                                            <small style={{ color: '#dc2626', display: 'block', marginTop: '0.3em' }}>
+                                                Agrega al menos 1 foto
+                                            </small>
+                                        )}
+                                    </div>
+
+                                    <div className="groups grid-2col">
+                                        {/* TIPO DE MASCOTA */}
+                                        <div
+                                            className={`form-group  ${tipoMascota ? 'has-value' : ''
+                                                }`}
+                                        >
+                                            <CustomSelect
+                                                id="e-tipo"
+                                                placeholder="Tipo de mascota"
+                                                value={tipoMascota}
+                                                onChange={(val) => {
+                                                    setTipoMascota(val);
+                                                    clearFieldError('tipoMascota');
+                                                }}
+                                                className={fieldErrors.tipoMascota ? 'input-error' : ''}
+                                                options={[
+                                                    { value: 'Perro', label: 'Perro' },
+                                                    { value: 'Gato', label: 'Gato' },
+                                                    { value: 'Ave', label: 'Ave' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        {/* FECHA CON POPOVER */}
+                                        <div
+                                            className="form-group date-picker-group"
+                                            ref={datePopoverRef}
+                                        >
+                                            <div
+                                                className={`date-input-trigger ${fechaDisplay ? 'has-value' : ''
+                                                    } ${fieldErrors.fecha ? 'input-error' : ''}`}
+                                                id="date-input-trigger"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsDatePopoverOpen(!isDatePopoverOpen);
+                                                }}
+                                            >
+                                                <IconCalendarSearch />
+                                                <input
+                                                    type="text"
+                                                    id="e-fecha-display"
+                                                    className="form-input"
+                                                    placeholder="Fecha en que lo encontraste"
+                                                    readOnly
+                                                    autoComplete="off"
+                                                    value={fechaDisplay}
+                                                />
+                                            </div>
+
+                                            <div
+                                                className={`date-popover ${isDatePopoverOpen ? 'open' : ''
+                                                    }`}
+                                                id="date-popover"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div className="date-selects-inline">
+                                                    <CustomSelect
+                                                        id="e-fecha-dia"
+                                                        placeholder="Día"
+                                                        value={fechaDia}
+                                                        onChange={(val) => {
+                                                            setFechaDia(val);
+                                                            clearFieldError('fecha');
+                                                        }}
+                                                        options={Array.from({ length: 31 }, (_, i) => {
+                                                            const val = String(i + 1).padStart(2, '0');
+                                                            return { value: val, label: String(i + 1) };
+                                                        })}
+                                                    />
+
+                                                    <CustomSelect
+                                                        id="e-fecha-mes"
+                                                        placeholder="Mes"
+                                                        value={fechaMes}
+                                                        onChange={(val) => {
+                                                            setFechaMes(val);
+                                                            clearFieldError('fecha');
+                                                        }}
+                                                        options={[
+                                                            { value: '01', label: 'Ene' },
+                                                            { value: '02', label: 'Feb' },
+                                                            { value: '03', label: 'Mar' },
+                                                            { value: '04', label: 'Abr' },
+                                                            { value: '05', label: 'May' },
+                                                            { value: '06', label: 'Jun' },
+                                                            { value: '07', label: 'Jul' },
+                                                            { value: '08', label: 'Ago' },
+                                                            { value: '09', label: 'Sep' },
+                                                            { value: '10', label: 'Oct' },
+                                                            { value: '11', label: 'Nov' },
+                                                            { value: '12', label: 'Dic' },
+                                                        ]}
+                                                    />
+
+                                                    <CustomSelect
+                                                        id="e-fecha-anio"
+                                                        placeholder="Año"
+                                                        value={fechaAnio}
+                                                        onChange={(val) => {
+                                                            setFechaAnio(val);
+                                                            clearFieldError('fecha');
+                                                        }}
+                                                        options={[
+                                                            { value: '2026', label: '2026' },
+                                                            { value: '2025', label: '2025' }
+                                                        ]}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* SEXO */}
+                                        <div className="form-group">
+                                            <div className={`gender-pill-group ${fieldErrors.sexo ? 'input-error' : ''}`}>
+                                                <input type="hidden" id="e-sexo" value={sexo} />
+                                                <button
+                                                    type="button"
+                                                    className={`gender-pill-btn ${sexo === 'Macho' ? 'active' : ''
+                                                        }`}
+                                                    data-value="Macho"
+                                                    onClick={() => {
+                                                        setSexo('Macho');
+                                                        clearFieldError('sexo');
+                                                    }}
+                                                >
+                                                    <IconGenderMale /> Macho
+                                                    <IconCircleDashedCheck className="icon-check-active" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`gender-pill-btn ${sexo === 'Hembra' ? 'active' : ''
+                                                        }`}
+                                                    data-value="Hembra"
+                                                    onClick={() => {
+                                                        setSexo('Hembra');
+                                                        clearFieldError('sexo');
+                                                    }}
+                                                >
+                                                    <IconVenus /> Hembra
+                                                    <IconCircleDashedCheck className="icon-check-active" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* CASTRADO */}
+                                        <div className="form-group flex">
+                                            <label className="form-label">¿Se nota esterilizado?</label>
+                                            <div className="toggle-switch-container">
+                                                <label className="toggle-switch">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="e-castrado"
+                                                        className="toggle-switch-checkbox"
+                                                        checked={isCastrado}
+                                                        onChange={(e) => setIsCastrado(e.target.checked)}
+                                                    />
+                                                    <span className="toggle-switch-slider"></span>
+                                                </label>
+                                                <span
+                                                    className="toggle-switch-text"
+                                                    id="e-castrado-label"
+                                                >
+                                                    {isCastrado ? 'Sí' : 'No'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* RAZA / ESPECIE (dinámico según tipo de mascota) */}
+                                        <div className="form-group">
+                                            <label>{tipoMascota === 'Ave' ? 'Especie' : 'Raza'}</label>
+                                            <AutocompleteInput
+                                                id="e-raza"
+                                                className={`form-input ${fieldErrors.raza ? 'input-error' : ''}`}
+                                                placeholder={
+                                                    tipoMascota === 'Ave'
+                                                        ? 'Ej: Loro'
+                                                        : tipoMascota === 'Gato'
+                                                            ? 'Ej: Persa'
+                                                            : 'Ej: Labrador'
+                                                }
+                                                value={raza}
+                                                onChange={(val) => {
+                                                    setRaza(val);
+                                                    clearFieldError('raza');
+                                                }}
+                                                suggestions={
+                                                    tipoMascota === 'Ave'
+                                                        ? ESPECIES_AVE
+                                                        : tipoMascota === 'Gato'
+                                                            ? RAZAS_GATO
+                                                            : RAZAS_PERRO
+                                                }
+                                            />
+                                        </div>
+
+                                        {/* COLOR (dinámico según tipo de mascota) */}
+                                        <div className="form-group">
+                                            <label>{tipoMascota === 'Ave' ? 'Color del plumaje' : 'Color del pelaje'}</label>
+                                            <AutocompleteInput
+                                                id="e-color"
+                                                className={`form-input ${fieldErrors.color ? 'input-error' : ''}`}
+                                                placeholder="Ej: Blanco"
+                                                value={color}
+                                                onChange={(val) => {
+                                                    setColor(val);
+                                                    clearFieldError('color');
+                                                }}
+                                                suggestions={tipoMascota === 'Ave' ? COLORES_PLUMAJE : COLORES_PELAJE}
+                                            />
+                                        </div>
+
+                                        {/* TAMAÑO */}
+                                        <div className={`form-group ${fieldErrors.tamano ? 'input-error' : ''}`}>
+                                            <CustomSelect
+                                                id="e-tamano"
+                                                placeholder="Tamaño"
+                                                value={tamano}
+                                                onChange={(val) => {
+                                                    setTamano(val);
+                                                    clearFieldError('tamano');
+                                                }}
+                                                options={[
+                                                    { value: 'Pequeño', label: 'Pequeño' },
+                                                    { value: 'Mediano', label: 'Mediano' },
+                                                    { value: 'Grande', label: 'Grande' },
+                                                ]}
+                                            />
+                                        </div>
+
+
+                                        {/* ZONA (SIN POPOVER) */}
+                                        <div className="form-group grid-1col">
+                                            <label>¿Dónde lo encontraste?</label>
+                                            {!isCountryReady ? (
+                                                <div className="admin-info-box">
+                                                    <IconInfoCircle />
+                                                    <p>Tu país todavía no está configurado para publicar. Vuelve más tarde.</p>
+                                                </div>
+                                            ) : (
+                                                <div className={hasLevel3 ? 'grid-3col' : 'grid-2col'}>
+                                                    <div className="form-group">
+                                                        <CustomSelect
+                                                            id="e-departamento"
+                                                            placeholder={labelNivel1}
+                                                            value={departamento}
+                                                            onChange={(val) => {
+                                                                setDepartamento(val);
+                                                                clearFieldError('departamento');
+                                                            }}
+                                                            options={nivel1Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
+                                                        />
+                                                    </div>
+
+                                                    <div className="form-group">
+                                                        <CustomSelect
+                                                            id="e-provincia"
+                                                            placeholder={labelNivel2}
+                                                            value={provincia}
+                                                            onChange={(val) => {
+                                                                setProvincia(val);
+                                                                clearFieldError('provincia');
+                                                            }}
+                                                            options={nivel2Options}
+                                                            searchable={true}
+                                                            className={fieldErrors.departamento ? 'input-error' : ''}
+                                                        />
+                                                    </div>
+
+                                                    {hasLevel3 && (
+                                                        <div className="form-group">
+                                                            <CustomSelect
+                                                                id="e-distrito"
+                                                                placeholder={labelNivel3}
+                                                                value={distrito}
+                                                                onChange={(val) => {
+                                                                    setDistrito(val);
+                                                                    clearFieldError('distrito');
+                                                                }}
+                                                                options={nivel3Options}
+                                                                searchable={true}
+                                                                className={fieldErrors.departamento ? 'input-error' : ''}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* DIRECCIÓN */}
+                                        <div
+                                            className={`form-group  grid-1col ${direccion ? 'has-value' : ''}`}
+                                            style={{ marginTop: '-0.35em' }}>
+                                            <input
+                                                type="text"
+                                                id="e-direccion"
+                                                className={`form-input ${direccion ? 'has-value' : ''} ${fieldErrors.direccion ? 'input-error' : ''
+                                                    }`}
+                                                placeholder="Calle, avenida o punto de referencia"
+                                                autoComplete="off"
+                                                value={direccion}
+                                                onChange={(e) => {
+                                                    setDireccion(e.target.value);
+                                                    clearFieldError('direccion');
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* TELÉFONO DE CONTACTO — propio de este aviso, no de la cuenta */}
+                                    <div className="groups grid-2col">
+                                        <div className="form-group grid-1col">
+                                            <label>¿Dónde te pueden contactar?</label>
+                                            <div className={`field-tel ${fieldErrors.telefono ? 'input-error' : ''}`}>
+                                                <span>{countryInfo?.dialCode}</span>
+                                                <input
+                                                    type="tel"
+                                                    name="telefono-aviso"
+                                                    className="form-input"
+                                                    autoComplete="tel"
+                                                    maxLength={15}
+                                                    placeholder="Número de teléfono"
+                                                    value={telefono}
+                                                    onChange={(e) => {
+                                                        const soloTelefono = e.target.value.replace(/[^\d\s\-()]/g, '');
+                                                        setTelefono(soloTelefono);
+                                                        clearFieldError('telefono');
+                                                    }}
+                                                    readOnly
+                                                    onFocus={(e) => e.target.removeAttribute('readonly')}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* SECCIÓN COLAPSABLE */}
+                                    <div className="collapsible-details-section">
+                                        <button
+                                            type="button"
+                                            className={`btn-toggle-details ${isCollapsibleOpen ? 'open' : ''
+                                                }`}
+                                            data-target="#e-collapsible-content"
+                                            onClick={() => setIsCollapsibleOpen(!isCollapsibleOpen)}
+                                        >
+                                            <span className="icon">
+                                                <IconPlus />
+                                            </span>
+                                            <div>
+                                                <strong>Agregar más detalles</strong>
+                                                <small>Estado del animal y señas distintivas</small>
+                                            </div>
+                                        </button>
+
+                                        <div
+                                            className="collapsible-content"
+                                            id="e-collapsible-content"
+                                            style={{
+                                                display: isCollapsibleOpen ? 'block' : 'none',
+                                            }}
+                                        >
+                                            <div className="groups form-group">
+                                                <textarea
+                                                    id="e-descripcion"
+                                                    rows={3}
+                                                    placeholder="Ej: Tiene una placa con el nombre 'Toby', se ve sano, lleva collar rojo..."
+                                                    className="form-textarea"
+                                                    value={descripcion}
+                                                    onChange={(e) => setDescripcion(e.target.value)}
+                                                ></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ==================== PASO 2 ==================== */}
+                            <div
+                                className={`wizard-step ${currentStep === 2 ? 'active' : ''}`}
+                                id="wizard-step-2"
+                            >
+                                <div id="wrapper-free-checkout">
+                                    <div className="free-notice-box">
+                                        <h3>¡Todo listo!</h3>
+                                        <p>
+                                            Tu reporte se publicará en el portal de Huellas para que el
+                                            dueño pueda encontrarte.
+                                        </p>
+                                    </div>
+
+                                    <div className="upgrade-notice-banner">
+                                        <IconInfoCircle />
+                                        <p>
+                                            Gracias por ayudar. Tu publicación es <b>100% gratuita</b>{' '}
+                                            y estará visible de inmediato para la comunidad.
+                                        </p>
+                                    </div>
+
+                                    <div className="terms-acceptance-box">
+                                        <div
+                                            className="terms-checkbox-label"
+                                            onClick={() => setAcceptTerms(!acceptTerms)}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                id="accept-terms"
+                                                className="terms-checkbox-input"
+                                                checked={acceptTerms}
+                                                onChange={(e) => setAcceptTerms(e.target.checked)}
+                                            />
+                                            <span className="terms-checkbox-custom">
+                                                <i className="check"></i>
+                                            </span>
+                                            <span className="terms-checkbox-text">
+                                                Acepto que he leído y declaro que la información publicada es verídica.{' '}
+                                                <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">
+                                                    Términos y Condiciones
+                                                </Link>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BOTONES ACCIÓN WIZARD */}
+                            <div className="wizard-actions">
+                                <button
+                                    type="button"
+                                    id="btn-wizard-prev"
+                                    className="btn-secondary"
+                                    style={{ display: currentStep > 1 ? 'inline-flex' : 'none' }}
+                                    onClick={handlePrevStep}
+                                >
+                                    <IconChevronLeft /> Anterior
+                                </button>
+
+                                <button
+                                    type="button"
+                                    id="btn-wizard-next"
+                                    className="btn-publish"
+                                    disabled={(currentStep === 2 && !acceptTerms) || isGeneratingFlyer || isSubmitting}
+                                    onClick={handleNextStep}
+                                >
+                                    {isSubmitting ? (
+                                        'Publicando...'
+                                    ) : isGeneratingFlyer ? (
+                                        'Generando flyer...'
+                                    ) : currentStep === 1 ? (
+                                        <>
+                                            Siguiente <IconChevronRight />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <IconCheck /> Publicar Gratis
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* ==========================================
+              PANEL DERECHO (FLYER / RESUMEN)
+             ========================================== */}
+                    <div className="right-panel">
+                        {/* RESUMEN DE CONFIRMACIÓN (PASO 2) */}
+                        <div
+                            id="right-panel-summary"
+                            style={{ display: currentStep === 2 ? 'block' : 'none' }}
+                        >
+                            <div className="summary-checks">
+                                <div className="summary-check-item">
+                                    <span className="badge-plan-flyer">
+                                        <span className="status-pulse"></span> Flyer Generado
+                                    </span>
+                                    <span className="summary-ready-badge">
+                                        <IconCircleCheck /> Listo
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="summary">
+                                <div className="summary-reservation">
+                                    <div className="summary-dates-open">
+                                        <div className="summary-date-col">
+                                            <span className="summary-date-label">
+                                                Fecha de publicación
+                                            </span>
+                                            <strong
+                                                className="summary-date-value"
+                                                id="sum-fecha-publicacion"
+                                            >
+                                                {getFechaHoy()}
+                                            </strong>
+                                        </div>
+                                        <div className="summary-date-col">
+                                            <span className="summary-date-label">Vigencia</span>
+                                            <strong className="summary-date-value">
+                                                <IconCalendarBolt /> 3 meses
+                                            </strong>
+                                        </div>
+                                    </div>
+
+                                    <div className="summary-activacion-badge badge-activacion-green">
+                                        <IconClock />
+                                        <div>
+                                            <b>En revisión</b>
+                                            <p>Aprobación en máximo 24 hrs hábiles.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* FLYER EN VIVO (PASO 1) */}
+                        <div
+                            id="right-panel-flyer"
+                            style={{ display: currentStep === 1 ? 'block' : 'none' }}
+                        >
+                            <div className="editor-stage">
+                                <div className="flyer-box">
+                                    <div className="flyer-box-header">
+                                        <span className="badge-plan-flyer">
+                                            <span className="status-pulse"></span> Generando en vivo
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className={`btn-toggle-flyer-mobile ${isFlyerMobileVisible ? 'active' : ''
+                                                }`}
+                                            id="btn-toggle-flyer-preview"
+                                            onClick={() =>
+                                                setIsFlyerMobileVisible(!isFlyerMobileVisible)
+                                            }
+                                        >
+                                            {isFlyerMobileVisible ? (
+                                                <>
+                                                    <IconX /> Cerrar
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <IconEye /> Ver el Flyer
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        className={`flyer-canvas container-flyer-design state-encontrado ${isFlyerMobileVisible ? 'mobile-visible' : ''
+                                            }`}
+                                        id="flyer-preview"
+                                    >
+                                        {/* 1. Cabecera */}
+                                        <div className="flyer-alert-header">
+                                            <div className="flyer-title-row">
+                                                <h3 id="flyer-titulo-alerta" className="title-small">¿LO RECONOCES?</h3>
+                                            </div>
+                                        </div>
+
+                                        {/* 2. Fotos */}
+                                        <div className="flyer-photo-stage">
+                                            <div
+                                                className={`flyer-dynamic-grid ${validPhotos.length === 0
+                                                    ? 'layout-empty'
+                                                    : `layout-${validPhotos.length}`
+                                                    }`}
+                                                id="flyer-grid-photos"
+                                            >
+                                                {validPhotos.length === 0 ? (
+                                                    <div className="flyer-img-placeholder" id="flyer-main-img-view">
+                                                        <IconCameraPlus />
+                                                    </div>
+                                                ) : (
+                                                    validPhotos.map((imgSrc, idx) => (
+                                                        <div key={idx} className="flyer-grid-item">
+                                                            <DraggablePhoto
+                                                                src={imgSrc}
+                                                                offsetY={photoOffsets[idx] || 0}
+                                                                onOffsetChange={(newOffset) => {
+                                                                    setPhotoOffsets((prev) => ({ ...prev, [idx]: newOffset }));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+
+                                            {fechaCorta && <span className="flyer-date">El {fechaCorta}</span>}
+                                        </div>
+
+                                        {/* 3. Franja de datos */}
+                                        <div className="flyer-info-band">
+                                            <div className="flyer-info-where">
+                                                <IconCalendarPin className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Se encontró en:</span>
+                                                    {(distrito || provincia) && (
+                                                        <strong className={`flyer-info-place ${(distrito || provincia).length > 18 ? 'is-long' : ''}`}>{distrito || provincia}</strong>
+                                                    )}
+                                                    {direccion && <span className="flyer-info">{direccion}</span>}
+                                                </div>
+                                            </div>
+
+                                            <div className="flyer-info-divider" />
+
+                                            <div className="flyer-info-call">
+                                                <IconBrandWhatsapp className="flyer-info-bigicon" />
+                                                <div className="flyer-info-text">
+                                                    <span className="flyer-info-kicker">Si es tu mascota, llama o escribe al:</span>
+                                                    <strong className={`flyer-info-phone ${telefono.replace(/\D/g, '').length > 9 ? 'is-long' : ''}`}>{telefono || '---------'}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Tarjetas */}
+                                        {flyerCards.length > 0 && (
+                                            <div className="flyer-cards">
+                                                {flyerCards.map((card) => (
+                                                    <div key={card.key} className="flyer-card">
+                                                        <span>{card.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* 5. Pie */}
+                                        <div className="flyer-thanks-band">
+                                            <p className="flyer-thanks-main">
+                                                Busco a mi <br />familia <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
+                                            </p>
+                                            <p className="flyer-thanks-note">
+                                                {descripcion || 'Si es tu mascota, por favor comunícate.'}
+                                            </p>
+                                            <p className="flyer-thanks-gracias">¡Gracias!</p>
+                                        </div>
+                                    </div>
+
+                                    <p className="editor-canvas-caption">
+                                        <IconCut /> Podrás imprimir este anuncio
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* OVERLAY STATUS FINAL */}
+            <div
+                id="status-overlay"
+                className={`status-overlay ${showStatusOverlay ? '' : 'style-hidden'
+                    }`}
+            >
+                <div className="status-overlay-backdrop"></div>
+                <div className="status-overlay-card">
+                    <div className="overlay-content">
+                        <span className="overlay-eyebrow">
+                            <IconCircleCheckFilled /> Reporte enviado
+                        </span>
+                        <h3 id="overlay-title">Procesando reporte...</h3>
+                        <p id="overlay-msg">
+                            Tu reporte de hallazgo está siendo procesado en la cola estándar de
+                            Huellas de manera gratuita.
+                        </p>
+                    </div>
+
+                    <div className="overlay-redirect-row">
+                        <IconLoader className="animate-spin" />
+                        <span>Redirigiendo en unos segundos...</span>
+                    </div>
+
+                    <div className="countdown-bar"></div>
+                </div>
+            </div>
+        </main>
+    );
+}
