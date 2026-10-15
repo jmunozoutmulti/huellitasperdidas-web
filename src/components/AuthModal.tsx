@@ -188,9 +188,9 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                         <h3 className="auth-modal-title">Inicia sesión</h3>
                         <p className="auth-modal-desc">
                             Al continuar, aceptas nuestros{' '}
-                            <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">Términos</Link>{' '}
+                            <a href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones" target="_blank">Términos</a>{' '}
                             y nuestra{' '}
-                            <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.
+                            <a href="https://www.huellasperdidas.com/informacion/politica-de-privacidad" target="_blank">Política de Privacidad</a>.
                         </p>
                         <div className="form-auth " onKeyDown={submitOnEnter(canSubmitLogin && !isSubmitting, handleLogin)}>
                             <div className="field-auth">
@@ -267,9 +267,9 @@ export default function AuthModal({ onClose, initialMode = 'login', resetToken =
                         <h3 className="auth-modal-title">Crea tu cuenta</h3>
                         <p className="auth-modal-desc">
                             Al continuar, aceptas nuestros{' '}
-                            <Link href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones/" target="_blank">Términos</Link>{' '}
+                            <a href="https://www.huellasperdidas.com/informacion/terminos-y-condiciones" target="_blank">Términos</a>{' '}
                             y nuestra{' '}
-                            <Link href="/privacidad" target="_blank">Política de Privacidad</Link>.
+                            <a href="https://www.huellasperdidas.com/informacion/politica-de-privacidad" target="_blank">Política de Privacidad</a>.
                         </p>
 
                         <div className="form-auth" onKeyDown={submitOnEnter(canSubmitRegister && !isSubmitting, handleRegister)}>
