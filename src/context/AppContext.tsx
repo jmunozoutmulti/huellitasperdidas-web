@@ -119,6 +119,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
     }, []);
 
+    useEffect(() => {
+        if (!isLoggedIn) return;
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshCentinelaStatus();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [isLoggedIn]);
+
     const toggleTheme = (overrideIsDark?: boolean) => {
         const newDarkState = overrideIsDark !== undefined ? overrideIsDark : !isDarkMode;
         setIsDarkMode(newDarkState);
