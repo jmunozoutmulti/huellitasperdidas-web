@@ -79,7 +79,9 @@ import {
     removeRecentSearch as removeRecentSearchStorage,
 } from '@/lib/searchHistory';
 import { showToast } from '@/components/global/Toast';
+import { ApiError } from '@/lib/authFetch';
 import { resizePetImage } from '@/lib/resizeImage';
+
 // ==========================================
 // CONSTANTES
 // ==========================================
@@ -662,6 +664,43 @@ export default function BuscarIAPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [centinela?.activo, centinela?.id]);
 
+    // Con el Centinela activo, se vuelve a consultar su estado y sus hallazgos
+    // cada 5 minutos y al volver a la pestaña. El backend lo desactiva si el
+    // usuario pierde el acceso, y aquí se refleja sin recargar la página.
+    useEffect(() => {
+        if (!centinela?.activo || isCentinelaToggling) return;
+
+        const refreshCentinela = async () => {
+            if (document.visibilityState !== 'visible') return;
+            try {
+                const data = await getMyCentinela();
+                if (!data?.activo) {
+                    setCentinela((prev) => (prev ? { ...prev, activo: false } : prev));
+                    setCentinelaEstaActivo(false);
+                    setCentinelaMatches([]);
+                    showToast('Tu Centinela se desactivó porque tu plan ya no lo incluye o venció.', 'info');
+                    return;
+                }
+                loadCentinelaMatches();
+            } catch {
+                // silencioso — se vuelve a intentar en el siguiente ciclo
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refreshCentinela();
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        const intervalId = window.setInterval(refreshCentinela, 5 * 60 * 1000);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.clearInterval(intervalId);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [centinela?.activo, isCentinelaToggling]);
+
     const handleToggleCentinela = async () => {
         if (!hasToolsAccess || isCentinelaToggling) return;
 
@@ -702,7 +741,14 @@ export default function BuscarIAPage() {
                 setCentinelaEstaActivo(!!created.activo);
             }
         } catch (err) {
-            showToast('No pudimos actualizar el Centinela. Intenta de nuevo.', 'error');
+            if (err instanceof ApiError && err.status === 403) {
+                setCentinela((prev) => (prev ? { ...prev, activo: false } : prev));
+                setCentinelaEstaActivo(false);
+                setCentinelaMatches([]);
+                showToast(err.message, 'error');
+            } else {
+                showToast('No pudimos actualizar el Centinela. Intenta de nuevo.', 'error');
+            }
         } finally {
             setIsCentinelaToggling(false);
         }
