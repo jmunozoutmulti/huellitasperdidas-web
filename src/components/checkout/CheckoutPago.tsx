@@ -2,7 +2,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, type PaymentInfo } from '@/lib/paymentsApi';
+import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, loadMercadoPagoDeviceScript, type PaymentInfo } from '@/lib/paymentsApi';
+import { useApp } from '@/context/AppContext';
 import { retryPayment, ReportsApiError } from '@/lib/reportsApi';
 import { showToast } from '@/components/global/Toast';
 import { IconLoader } from '@tabler/icons-react';
@@ -43,6 +44,8 @@ const PAYMENT_BRICK_CUSTOMIZATION: PaymentBrickProps['customization'] = {
 };
 
 function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed, onTimeout, onCancelled }: CheckoutPagoProps) {
+    const { currentUser } = useApp();
+    const payerEmail = currentUser?.email ?? '';
     const [isPolling, setIsPolling] = useState(false);
     const pollStartRef = useRef<number | null>(null);
     const [isMpReady, setIsMpReady] = useState(false);
@@ -59,8 +62,11 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     const [activeMethod, setActiveMethod] = useState<'card' | 'yape'>('card');
     const [yapePhone, setYapePhone] = useState('');
     const [yapeOtp, setYapeOtp] = useState('');
-    const [yapeEmail, setYapeEmail] = useState('');
+    const [yapeEmail, setYapeEmail] = useState(payerEmail);
     const [isYapeSubmitting, setIsYapeSubmitting] = useState(false);
+    useEffect(() => {
+        if (payerEmail) setYapeEmail((current) => current || payerEmail);
+    }, [payerEmail]);
 
     const retryAttempt = async () => {
         setIsRetrying(true);
@@ -141,6 +147,7 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
 
     useEffect(() => {
         if (payment.gateway === 'mercadopago' && payment.public_key) {
+            loadMercadoPagoDeviceScript();
             initMercadoPago(payment.public_key, { locale: 'es-PE' });
             setIsMpReady(true);
         }
@@ -154,8 +161,12 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     // Props del formulario de tarjeta que tienen que mantener la misma
     // referencia entre renders (ver PAYMENT_BRICK_CUSTOMIZATION).
     const paymentInitialization = useMemo<PaymentBrickProps['initialization']>(
-        () => ({ amount: payment.amount, preferenceId: payment.preference_id }),
-        [payment.amount, payment.preference_id]
+        () => ({
+            amount: payment.amount,
+            preferenceId: payment.preference_id,
+            ...(payerEmail ? { payer: { email: payerEmail } } : {}),
+        }),
+        [payment.amount, payment.preference_id, payerEmail]
     );
 
     // Los callbacks del Brick también deben ser estables. Se guarda la versión
