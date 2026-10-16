@@ -1,8 +1,8 @@
 'use client';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+import { initMercadoPago, Payment, StatusScreen } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, loadMercadoPagoDeviceScript, type PaymentInfo } from '@/lib/paymentsApi';
+import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, loadMercadoPagoDeviceScript, type PaymentInfo, type ThreeDSChallenge } from '@/lib/paymentsApi';
 import { useApp } from '@/context/AppContext';
 import { retryPayment, ReportsApiError } from '@/lib/reportsApi';
 import { showToast } from '@/components/global/Toast';
@@ -23,6 +23,9 @@ interface CheckoutPagoProps {
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 15000;
+// While the buyer completes a 3D Secure challenge with their bank.
+const CHALLENGE_POLL_INTERVAL_MS = 3000;
+const CHALLENGE_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 type PaymentBrickProps = React.ComponentProps<typeof Payment>;
 
@@ -55,6 +58,8 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     // (empieza siendo el que llega por props) y lo reemplazamos cuando
     // pedimos un reintento con uno nuevo.
     const [payment, setPayment] = useState(initialPayment);
+    const [challenge, setChallenge] = useState<ThreeDSChallenge | null>(null);
+    const challengeRef = useRef<ThreeDSChallenge | null>(null);
     const retryIdempotencyKeyRef = useRef<string | null>(null);
 
     // Yape: formulario propio (teléfono + OTP + email), separado del Brick
@@ -179,6 +184,14 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 onConfirmed();
                 return;
             }
+            if (result.status === 'pending' && result.challenge) {
+                // The bank asks the buyer to confirm (3DS): show its challenge
+                // and keep polling until Mercado Pago resolves the payment.
+                challengeRef.current = result.challenge;
+                setChallenge(result.challenge);
+                startPolling();
+                return;
+            }
             if (result.status === 'failed') {
                 onCancelled();
                 await retryAttempt();
@@ -207,6 +220,15 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
         }
     };
 
+    // Stable reference for the Status Screen Brick (same reason as the Payment Brick).
+    const challengeInitialization = useMemo(
+        () => challenge && {
+            paymentId: challenge.mp_payment_id,
+            additionalInfo: { externalResourceURL: challenge.external_resource_url, creq: challenge.creq },
+        },
+        [challenge]
+    );
+
     const handleCardSubmit = useCallback(
         (...args: Parameters<NonNullable<PaymentBrickProps['onSubmit']>>) => cardSubmitRef.current!(...args),
         []
@@ -226,6 +248,8 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     useEffect(() => {
         if (!isPolling) return;
         let isCancelledEffect = false;
+        const inChallenge = challengeRef.current !== null;
+        const timeoutMs = inChallenge ? CHALLENGE_POLL_TIMEOUT_MS : POLL_TIMEOUT_MS;
 
         const interval = setInterval(async () => {
             try {
@@ -235,12 +259,16 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 if (result.status === 'paid') {
                     clearInterval(interval);
                     setIsPolling(false);
+                    challengeRef.current = null;
+                    setChallenge(null);
                     onConfirmed();
                     return;
                 }
                 if (result.status === 'failed') {
                     clearInterval(interval);
                     setIsPolling(false);
+                    challengeRef.current = null;
+                    setChallenge(null);
                     onCancelled();
                     await retryAttempt();
                     return;
@@ -250,18 +278,29 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 // error de red puntual — no corta el polling, reintenta en el próximo tick
             }
 
-            if (pollStartRef.current && Date.now() - pollStartRef.current >= POLL_TIMEOUT_MS) {
+            if (pollStartRef.current && Date.now() - pollStartRef.current >= timeoutMs) {
                 clearInterval(interval);
                 setIsPolling(false);
+                challengeRef.current = null;
+                setChallenge(null);
                 onTimeout();
             }
-        }, POLL_INTERVAL_MS);
+        }, inChallenge ? CHALLENGE_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
 
         return () => {
             isCancelledEffect = true;
             clearInterval(interval);
         };
     }, [isPolling, payment.payment_id, onConfirmed, onCancelled, onTimeout]);
+
+    if (challenge) {
+        return (
+            <div className="payment-3ds-challenge">
+                <p>Tu banco necesita confirmar que eres tú. Sigue los pasos que aparecen abajo.</p>
+                <StatusScreen key={challenge.mp_payment_id} initialization={challengeInitialization!} />
+            </div>
+        );
+    }
 
     if (isPolling) {
         return (
