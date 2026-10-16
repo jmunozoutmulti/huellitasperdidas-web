@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, type PaymentInfo } from '@/lib/paymentsApi';
@@ -22,6 +22,25 @@ interface CheckoutPagoProps {
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 15000;
+
+type PaymentBrickProps = React.ComponentProps<typeof Payment>;
+
+const PAYMENT_BRICK_CUSTOMIZATION: PaymentBrickProps['customization'] = {
+    paymentMethods: { creditCard: 'all', debitCard: 'all' },
+    visual: {
+        style: {
+            customVariables: {
+                formBackgroundColor: '#ffffff',
+                baseColor: '#e70808',
+                borderRadiusSmall: '100px',
+                borderRadiusMedium: '7px',
+                fontSizeSmall: '13px',
+                fontSizeMedium: '13px',
+                inputBackgroundColor: '#f4f5f7',
+            },
+        },
+    },
+};
 
 function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed, onTimeout, onCancelled }: CheckoutPagoProps) {
     const [isPolling, setIsPolling] = useState(false);
@@ -132,6 +151,67 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
         setIsPolling(true);
     };
 
+    // Props del formulario de tarjeta que tienen que mantener la misma
+    // referencia entre renders (ver PAYMENT_BRICK_CUSTOMIZATION).
+    const paymentInitialization = useMemo<PaymentBrickProps['initialization']>(
+        () => ({ amount: payment.amount, preferenceId: payment.preference_id }),
+        [payment.amount, payment.preference_id]
+    );
+
+    // Los callbacks del Brick también deben ser estables. Se guarda la versión
+    // más reciente en un ref y se le pasa al Brick una función fija que la llama.
+    const cardSubmitRef = useRef<PaymentBrickProps['onSubmit']>(undefined);
+    cardSubmitRef.current = async (formData) => {
+        try {
+            const result = await confirmPayment(payment.payment_id, formData.formData);
+            if (result.status === 'paid') {
+                onConfirmed();
+                return;
+            }
+            if (result.status === 'failed') {
+                onCancelled();
+                await retryAttempt();
+                return;
+            }
+            // 'pending' — el webhook lo termina de confirmar; el
+            // polling ya montado sigue funcionando como respaldo.
+            startPolling();
+        } catch (err) {
+            console.error('Error confirmando el pago con Mercado Pago:', err);
+            try {
+                const current = await getPaymentStatus(payment.payment_id);
+                if (current.status === 'paid') {
+                    onConfirmed();
+                    return;
+                }
+                if (current.status === 'failed') {
+                    onCancelled();
+                    await retryAttempt();
+                    return;
+                }
+            } catch {
+                // Sin poder verificar el estado no reintentamos: decide el polling
+            }
+            startPolling();
+        }
+    };
+
+    const handleCardSubmit = useCallback(
+        (...args: Parameters<NonNullable<PaymentBrickProps['onSubmit']>>) => cardSubmitRef.current!(...args),
+        []
+    );
+
+    const onCancelledRef = useRef(onCancelled);
+    onCancelledRef.current = onCancelled;
+
+    const handleCardError = useCallback((err: any) => {
+        console.error('Error en Mercado Pago Bricks:', err);
+        if (err?.type === 'non_critical') {
+            return;
+        }
+        onCancelledRef.current();
+    }, []);
+
     useEffect(() => {
         if (!isPolling) return;
         let isCancelledEffect = false;
@@ -217,65 +297,10 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                     >
                         <Payment
                             key={payment.payment_id}
-                            initialization={{ amount: payment.amount, preferenceId: payment.preference_id }}
-                            customization={{
-                                paymentMethods: { creditCard: 'all', debitCard: 'all' },
-                                visual: {
-                                    style: {
-
-                                        customVariables: {
-                                            formBackgroundColor: '#ffffff',
-                                            baseColor: '#e70808',
-                                            borderRadiusSmall: '100px',
-                                            borderRadiusMedium: '7px',
-                                            fontSizeSmall: '13px',
-                                            fontSizeMedium: '13px',
-                                            inputBackgroundColor: '#f4f5f7',
-                                        },
-                                    },
-                                },
-                            }}
-                            onSubmit={async (formData) => {
-                                try {
-                                    const result = await confirmPayment(payment.payment_id, formData.formData);
-                                    if (result.status === 'paid') {
-                                        onConfirmed();
-                                        return;
-                                    }
-                                    if (result.status === 'failed') {
-                                        onCancelled();
-                                        await retryAttempt();
-                                        return;
-                                    }
-                                    // 'pending' — el webhook lo termina de confirmar; el
-                                    // polling ya montado sigue funcionando como respaldo.
-                                    startPolling();
-                                } catch (err) {
-                                    console.error('Error confirmando el pago con Mercado Pago:', err);
-                                    try {
-                                        const current = await getPaymentStatus(payment.payment_id);
-                                        if (current.status === 'paid') {
-                                            onConfirmed();
-                                            return;
-                                        }
-                                        if (current.status === 'failed') {
-                                            onCancelled();
-                                            await retryAttempt();
-                                            return;
-                                        }
-                                    } catch {
-                                        // Sin poder verificar el estado no reintentamos: decide el polling
-                                    }
-                                    startPolling();
-                                }
-                            }}
-                            onError={(err: any) => {
-                                console.error('Error en Mercado Pago Bricks:', err);
-                                if (err?.type === 'non_critical') {
-                                    return;
-                                }
-                                onCancelled();
-                            }}
+                            initialization={paymentInitialization}
+                            customization={PAYMENT_BRICK_CUSTOMIZATION}
+                            onSubmit={handleCardSubmit}
+                            onError={handleCardError}
                         />
                     </div>
 

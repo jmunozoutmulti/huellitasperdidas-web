@@ -24,6 +24,12 @@ export class PaymentsApiError extends Error {
     }
 }
 
+function getMercadoPagoDeviceId(): string | null {
+    if (typeof window === 'undefined') return null;
+    const deviceId = (window as unknown as { MP_DEVICE_SESSION_ID?: unknown }).MP_DEVICE_SESSION_ID;
+    return typeof deviceId === 'string' && deviceId ? deviceId : null;
+}
+
 export async function getPaymentStatus(paymentId: string): Promise<PaymentStatus> {
     try {
         return await authFetchJson<PaymentStatus>(`/v1/payments/${paymentId}`, { method: 'GET' });
@@ -37,7 +43,7 @@ export async function confirmPayment(paymentId: string, formData: Record<string,
     try {
         return await authFetchJson<PaymentStatus>(`/v1/payments/${paymentId}/confirm`, {
             method: 'POST',
-            body: JSON.stringify(formData),
+            body: JSON.stringify({ ...formData, device_id: getMercadoPagoDeviceId() }),
         });
     } catch (err) {
         if (err instanceof ApiError) throw new PaymentsApiError(err.status, err.message);
@@ -49,7 +55,7 @@ export async function confirmYapePayment(paymentId: string, token: string, payer
     try {
         return await authFetchJson<PaymentStatus>(`/v1/payments/${paymentId}/confirm-yape`, {
             method: 'POST',
-            body: JSON.stringify({ token, payer_email: payerEmail }),
+            body: JSON.stringify({ token, payer_email: payerEmail, device_id: getMercadoPagoDeviceId() }),
         });
     } catch (err) {
         if (err instanceof ApiError) throw new PaymentsApiError(err.status, err.message);
