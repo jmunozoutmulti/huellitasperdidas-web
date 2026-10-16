@@ -10,10 +10,18 @@ export interface PaymentInfo {
     order_id?: string;
 }
 
+export interface ThreeDSChallenge {
+    mp_payment_id: string;
+    external_resource_url: string;
+    creq: string;
+}
+
 export interface PaymentStatus {
     payment_id: string;
     status: 'pending' | 'paid' | 'failed' | 'refunded';
     flow_type: string;
+    failure_reason?: string | null;
+    challenge?: ThreeDSChallenge | null;  // 3D Secure: the issuer must authenticate the buyer
 }
 
 export class PaymentsApiError extends Error {
