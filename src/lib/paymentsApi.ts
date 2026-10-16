@@ -24,6 +24,20 @@ export class PaymentsApiError extends Error {
     }
 }
 
+const MP_SECURITY_SCRIPT_ID = 'mp-security-js';
+
+// Mercado Pago's antifraud needs a device fingerprint. The SDK alone does NOT set
+// window.MP_DEVICE_SESSION_ID — only this security script does (view="checkout").
+export function loadMercadoPagoDeviceScript(): void {
+    if (typeof document === 'undefined' || document.getElementById(MP_SECURITY_SCRIPT_ID)) return;
+    const script = document.createElement('script');
+    script.id = MP_SECURITY_SCRIPT_ID;
+    script.src = 'https://www.mercadopago.com/v2/security.js';
+    script.async = true;
+    script.setAttribute('view', 'checkout');
+    document.body.appendChild(script);
+}
+
 function getMercadoPagoDeviceId(): string | null {
     if (typeof window === 'undefined') return null;
     const deviceId = (window as unknown as { MP_DEVICE_SESSION_ID?: unknown }).MP_DEVICE_SESSION_ID;
