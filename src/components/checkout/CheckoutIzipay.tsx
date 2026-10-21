@@ -161,7 +161,7 @@ export default function CheckoutIzipay({ payment, onResult }: CheckoutIzipayProp
             </div>
 
             {!isFormReady && !loadError && (
-                <p style={{ textAlign: 'center', margin: '1em 0' }}>Cargando formulario de pago…</p>
+                <p style={{ display: 'flex', justifyContent: 'center', fontSize: '0.9em' }}> <i className="icon-loading"></i> Cargando formulario de pago…</p>
             )}
 
             {loadError && (
@@ -169,7 +169,7 @@ export default function CheckoutIzipay({ payment, onResult }: CheckoutIzipayProp
             )}
 
             {isConfirming && (
-                <p style={{ textAlign: 'center', margin: '1em 0' }}>Confirmando tu pago…</p>
+                <p style={{ textAlign: 'center', margin: '1em 0' }}> <i className="icon-loading"></i> Confirmando tu pago…</p>
             )}
 
             {confirmError && (

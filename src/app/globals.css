@@ -2852,6 +2852,7 @@ h1 {
 /* ==========================================
    CHECKOUT IZIPAY
    ========================================== */
+
 #izipay-payment-form {
   --kr-global-color-primary: var(--brand-red);
   width: 100%;
@@ -2865,13 +2866,20 @@ h1 {
 }
 
 #izipay-payment-form .kr-card-header {
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  border-radius: 0.5em;
+  background: #fff;
+  border: none;
   margin-bottom: 1em;
 }
 
-/* Dos columnas: fecha y CVV, y cuotas y diferido, lado a lado */
+.icon-loading {
+  width: 1.3em;
+  height: 1.3em;
+  background: url(/images/loading.gif);
+  background-size: contain;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
 #izipay-payment-form .kr-embedded {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2890,80 +2898,18 @@ h1 {
   grid-column: auto;
 }
 
-/* Etiquetas, como .form-group > label */
-#izipay-payment-form .kr-field-element::before {
-  display: block;
-  font-size: 0.925em;
-  line-height: 1em;
-  color: var(--text-secondary);
-  margin-bottom: 0.375em;
-  font-weight: 500;
-}
-
-#izipay-payment-form .kr-pan::before {
-  content: 'Número de tarjeta';
-}
-
-#izipay-payment-form .kr-expiry::before {
-  content: 'Expiración';
-}
-
-#izipay-payment-form .kr-security-code::before {
-  content: 'CVV';
-}
-
-#izipay-payment-form .kr-installment-number::before {
-  content: 'Cuotas';
-}
-
-#izipay-payment-form .kr-first-installment-delay::before {
-  content: 'Pago diferido';
-}
-
-#izipay-payment-form .kr-card-holder-name::before {
-  content: 'Nombre impreso en tarjeta';
-}
-
-/* Cajas de los campos, como .form-input */
-#izipay-payment-form .kr-field-wrapper {
-  height: 3.25em;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  border-radius: 0.5em;
-  box-shadow: none;
-}
-
-#izipay-payment-form .kr-select,
-#izipay-payment-form .kr-input-field {
-  height: 100%;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  color: var(--text-main);
-}
-
-#izipay-payment-form .kr-field-element.kr-focus .kr-field-wrapper {
-  border-color: var(--border-color-focus);
-}
-
-#izipay-payment-form .kr-field-element.kr-error .kr-field-wrapper {
-  border-color: var(--border-color-error);
-}
-
-/* Botón de pago, como .btn-publish. El !important es necesario porque
-   Izipay pone el color directamente en el atributo style del botón. */
 #izipay-payment-form .kr-payment-button {
   background: var(--brand-red) !important;
   border: none !important;
   color: #ffffff !important;
   border-radius: 3em;
-  padding: 0.95em 1em;
+  padding: 0.8em 1.3em;
   height: auto;
   font-size: 1em;
   line-height: 1em;
   cursor: pointer;
+  width: fit-content;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 6px 20px rgba(255, 77, 77, 0.3);
 }
 
 #izipay-payment-form .kr-payment-button:hover {
@@ -2971,10 +2917,6 @@ h1 {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(255, 77, 77, 0.6);
 }
-
-
-
-
 
 
 
