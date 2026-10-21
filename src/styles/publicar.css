@@ -9,6 +9,7 @@
 .right-panel {
     position: sticky;
     top: 5em;
+    z-index: 9;
 }
 
 .right-panel {
