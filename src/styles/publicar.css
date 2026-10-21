@@ -9,7 +9,7 @@
 .right-panel {
     position: sticky;
     top: 5em;
-    z-index: 9;
+    z-index: 0;
 }
 
 .right-panel {
@@ -22,6 +22,7 @@
     border-radius: 1em;
     padding: 1.5em;
     position: relative;
+    z-index: 1;
 }
 
 
