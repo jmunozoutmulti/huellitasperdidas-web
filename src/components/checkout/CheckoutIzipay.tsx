@@ -10,14 +10,7 @@ const IZIPAY_THEME_BASE_URL = `${IZIPAY_ENDPOINT}/static/js/krypton-client/V4.0/
 const IZIPAY_FORM_CONTAINER_ID = 'izipay-payment-form';
 
 type IzipayTheme = 'neon' | 'classic';
-
-// Tema por defecto: neon. Para comparar, se puede abrir la página con
-// ?izipayTheme=classic (se lee una sola vez, al cargar el formulario).
-function getIzipayTheme(): IzipayTheme {
-    if (typeof window === 'undefined') return 'neon';
-    const theme = new URLSearchParams(window.location.search).get('izipayTheme');
-    return theme === 'classic' ? 'classic' : 'neon';
-}
+const IZIPAY_THEME: IzipayTheme = 'classic';
 
 // Carga el CSS y el JS del tema antes que la librería, como indica Izipay.
 // Si ya se cargaron en esta visita, no se vuelven a agregar.
@@ -110,7 +103,7 @@ export default function CheckoutIzipay({ payment, onResult }: CheckoutIzipayProp
 
         const setupForm = async () => {
             try {
-                await loadIzipayTheme(getIzipayTheme());
+                await loadIzipayTheme(IZIPAY_THEME);
                 if (isCancelled) return;
 
                 const { KR } = await KRGlue.loadLibrary(IZIPAY_ENDPOINT, payment.izipay_public_key!);
@@ -137,6 +130,7 @@ export default function CheckoutIzipay({ payment, onResult }: CheckoutIzipayProp
                     KR.removeForms();
                     return;
                 }
+                await KR.button.setLabel('Pagar %amount-and-currency%');
                 setIsFormReady(true);
             } catch (err) {
                 console.error('Error cargando el formulario de Izipay:', err);

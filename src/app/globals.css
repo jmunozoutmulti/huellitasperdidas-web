@@ -2849,6 +2849,131 @@ h1 {
 
 
 
+/* ==========================================
+   CHECKOUT IZIPAY
+   ========================================== */
+#izipay-payment-form {
+  --kr-global-color-primary: var(--brand-red);
+  width: 100%;
+}
+
+#izipay-payment-form .kr-smart-form,
+#izipay-payment-form .kr-smart-form-wrapper,
+#izipay-payment-form .kr-embedded {
+  width: 100%;
+  max-width: 100%;
+}
+
+#izipay-payment-form .kr-card-header {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5em;
+  margin-bottom: 1em;
+}
+
+/* Dos columnas: fecha y CVV, y cuotas y diferido, lado a lado */
+#izipay-payment-form .kr-embedded {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+}
+
+#izipay-payment-form .kr-embedded>* {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+#izipay-payment-form .kr-embedded>.kr-expiry,
+#izipay-payment-form .kr-embedded>.kr-security-code,
+#izipay-payment-form .kr-embedded>.kr-installment-number,
+#izipay-payment-form .kr-embedded>.kr-first-installment-delay {
+  grid-column: auto;
+}
+
+/* Etiquetas, como .form-group > label */
+#izipay-payment-form .kr-field-element::before {
+  display: block;
+  font-size: 0.925em;
+  line-height: 1em;
+  color: var(--text-secondary);
+  margin-bottom: 0.375em;
+  font-weight: 500;
+}
+
+#izipay-payment-form .kr-pan::before {
+  content: 'Número de tarjeta';
+}
+
+#izipay-payment-form .kr-expiry::before {
+  content: 'Expiración';
+}
+
+#izipay-payment-form .kr-security-code::before {
+  content: 'CVV';
+}
+
+#izipay-payment-form .kr-installment-number::before {
+  content: 'Cuotas';
+}
+
+#izipay-payment-form .kr-first-installment-delay::before {
+  content: 'Pago diferido';
+}
+
+#izipay-payment-form .kr-card-holder-name::before {
+  content: 'Nombre impreso en tarjeta';
+}
+
+/* Cajas de los campos, como .form-input */
+#izipay-payment-form .kr-field-wrapper {
+  height: 3.25em;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5em;
+  box-shadow: none;
+}
+
+#izipay-payment-form .kr-select,
+#izipay-payment-form .kr-input-field {
+  height: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-main);
+}
+
+#izipay-payment-form .kr-field-element.kr-focus .kr-field-wrapper {
+  border-color: var(--border-color-focus);
+}
+
+#izipay-payment-form .kr-field-element.kr-error .kr-field-wrapper {
+  border-color: var(--border-color-error);
+}
+
+/* Botón de pago, como .btn-publish. El !important es necesario porque
+   Izipay pone el color directamente en el atributo style del botón. */
+#izipay-payment-form .kr-payment-button {
+  background: var(--brand-red) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 3em;
+  padding: 0.95em 1em;
+  height: auto;
+  font-size: 1em;
+  line-height: 1em;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 20px rgba(255, 77, 77, 0.3);
+}
+
+#izipay-payment-form .kr-payment-button:hover {
+  background: var(--brand-red-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 77, 77, 0.6);
+}
+
+
+
 
 
 
@@ -2891,6 +3016,10 @@ h1 {
 
   .btn-add>button span {
     display: none;
+  }
+
+  #izipay-payment-form .kr-embedded {
+    grid-template-columns: 1fr;
   }
 
   .fab-publish-wrapper {
