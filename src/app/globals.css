@@ -123,7 +123,7 @@ a {
 .navbar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 1;
   padding: 0.375em 2.5%;
   display: flex;
   justify-content: space-between;
@@ -2849,7 +2849,74 @@ h1 {
 
 
 
+/* ==========================================
+   CHECKOUT IZIPAY
+   ========================================== */
 
+#izipay-payment-form {
+  --kr-global-color-primary: var(--brand-red);
+  width: 100%;
+}
+
+#izipay-payment-form .kr-smart-form,
+#izipay-payment-form .kr-smart-form-wrapper,
+#izipay-payment-form .kr-embedded {
+  width: 100%;
+  max-width: 100%;
+}
+
+#izipay-payment-form .kr-card-header {
+  background: #fff;
+  border: none;
+  margin-bottom: 1em;
+}
+
+.icon-loading {
+  width: 1.3em;
+  height: 1.3em;
+  background: url(/images/loading.gif);
+  background-size: contain;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+#izipay-payment-form .kr-embedded {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+}
+
+#izipay-payment-form .kr-embedded>* {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+#izipay-payment-form .kr-embedded>.kr-expiry,
+#izipay-payment-form .kr-embedded>.kr-security-code,
+#izipay-payment-form .kr-embedded>.kr-installment-number,
+#izipay-payment-form .kr-embedded>.kr-first-installment-delay {
+  grid-column: auto;
+}
+
+#izipay-payment-form .kr-payment-button {
+  background: var(--brand-red) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 3em;
+  padding: 0.8em 1.3em;
+  height: auto;
+  font-size: 1em;
+  line-height: 1em;
+  cursor: pointer;
+  width: fit-content;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#izipay-payment-form .kr-payment-button:hover {
+  background: var(--brand-red-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 77, 77, 0.6);
+}
 
 
 
@@ -2891,6 +2958,10 @@ h1 {
 
   .btn-add>button span {
     display: none;
+  }
+
+  #izipay-payment-form .kr-embedded {
+    grid-template-columns: 1fr;
   }
 
   .fab-publish-wrapper {

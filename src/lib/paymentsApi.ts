@@ -2,12 +2,14 @@ import { authFetchJson, ApiError } from './authFetch';
 
 export interface PaymentInfo {
     payment_id: string;
-    gateway: 'mercadopago' | 'paypal';
+    gateway: 'mercadopago' | 'paypal' | 'izipay';
     amount: number;
     currency: string;
     preference_id?: string;
     public_key?: string;
     order_id?: string;
+    form_token?: string;          // Izipay
+    izipay_public_key?: string;   // Izipay
 }
 
 export interface ThreeDSChallenge {
@@ -95,6 +97,20 @@ export async function capturePayment(paymentId: string, orderId: string): Promis
         return await authFetchJson<PaymentStatus>(`/v1/payments/${paymentId}/capture`, {
             method: 'POST',
             body: JSON.stringify({ order_id: orderId }),
+        });
+    } catch (err) {
+        if (err instanceof ApiError) throw new PaymentsApiError(err.status, err.message);
+        throw err;
+    }
+}
+
+// Izipay: la respuesta del formulario (kr-answer) se envía tal cual, como
+// texto, porque el backend valida la firma (kr-hash) sobre ese texto exacto.
+export async function confirmIzipayPayment(paymentId: string, krAnswer: string, krHash: string): Promise<PaymentStatus> {
+    try {
+        return await authFetchJson<PaymentStatus>(`/v1/payments/${paymentId}/izipay-confirm`, {
+            method: 'POST',
+            body: JSON.stringify({ kr_answer: krAnswer, kr_hash: krHash }),
         });
     } catch (err) {
         if (err instanceof ApiError) throw new PaymentsApiError(err.status, err.message);

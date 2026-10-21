@@ -2,11 +2,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initMercadoPago, Payment, StatusScreen } from '@mercadopago/sdk-react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, loadMercadoPagoDeviceScript, type PaymentInfo, type ThreeDSChallenge } from '@/lib/paymentsApi';
+import { getPaymentStatus, confirmPayment, capturePayment, confirmYapePayment, loadMercadoPagoDeviceScript, type PaymentInfo, type PaymentStatus, type ThreeDSChallenge } from '@/lib/paymentsApi';
 import { useApp } from '@/context/AppContext';
 import { retryPayment, ReportsApiError } from '@/lib/reportsApi';
 import { showToast } from '@/components/global/Toast';
 import { IconLoader } from '@tabler/icons-react';
+import CheckoutIzipay from './CheckoutIzipay';
 import {
     IconCreditCard,
     IconDeviceMobile
@@ -163,6 +164,21 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
         setIsPolling(true);
     };
 
+    // Resultado de izipay-confirm: mismo manejo que la tarjeta de Mercado Pago.
+    const handleIzipayResult = (result: PaymentStatus) => {
+        if (result.status === 'paid') {
+            onConfirmed();
+            return;
+        }
+        if (result.status === 'failed') {
+            onCancelled();
+            retryAttempt();
+            return;
+        }
+        // 'pending': se consulta el estado hasta que el backend lo confirme.
+        startPolling();
+    };
+
     // Props del formulario de tarjeta que tienen que mantener la misma
     // referencia entre renders (ver PAYMENT_BRICK_CUSTOMIZATION).
     const paymentInitialization = useMemo<PaymentBrickProps['initialization']>(
@@ -308,6 +324,16 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 <IconLoader />
                 <p>Confirmando tu pago...</p>
             </div>
+        );
+    }
+
+    if (payment.gateway === 'izipay') {
+        return (
+            <CheckoutIzipay
+                key={payment.payment_id}
+                payment={payment}
+                onResult={handleIzipayResult}
+            />
         );
     }
 
