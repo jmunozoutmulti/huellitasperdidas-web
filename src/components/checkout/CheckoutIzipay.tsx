@@ -10,7 +10,7 @@ const IZIPAY_THEME_BASE_URL = `${IZIPAY_ENDPOINT}/static/js/krypton-client/V4.0/
 const IZIPAY_FORM_CONTAINER_ID = 'izipay-payment-form';
 
 type IzipayTheme = 'neon' | 'classic';
-const IZIPAY_THEME: IzipayTheme = 'classic';
+const IZIPAY_THEME: IzipayTheme = 'neon';
 
 // Carga el CSS y el JS del tema antes que la librería, como indica Izipay.
 // Si ya se cargaron en esta visita, no se vuelven a agregar.
