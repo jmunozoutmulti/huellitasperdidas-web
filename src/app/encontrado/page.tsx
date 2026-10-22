@@ -1286,13 +1286,18 @@ export default function PublicarEncontradoPage() {
                                             </div>
                                         )}
 
+                                        {/* 4b. Texto del usuario, en letra pequeña (máximo 2 líneas) */}
+                                        {descripcion.trim() && (
+                                            <p className="flyer-desc-note">{descripcion}</p>
+                                        )}
+
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
                                             <p className="flyer-thanks-main">
                                                 Busco a mi <br />familia <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
                                             </p>
                                             <p className="flyer-thanks-note">
-                                                {descripcion || 'Si es tu mascota, por favor comunícate.'}
+                                                Si es tu mascota, por favor comunícate.
                                             </p>
                                             <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>

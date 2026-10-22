@@ -1071,6 +1071,11 @@ export default function ModalEditarAviso({
                                             </div>
                                         )}
 
+                                        {/* 4b. Texto del usuario, en letra pequeña (máximo 2 líneas) */}
+                                        {editObservaciones.trim() && (
+                                            <p className="flyer-desc-note">{editObservaciones}</p>
+                                        )}
+
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
                                             <p className="flyer-thanks-main">
@@ -1078,7 +1083,7 @@ export default function ModalEditarAviso({
                                                 <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} loading="eager" />
                                             </p>
                                             <p className="flyer-thanks-note">
-                                                {editObservaciones || fc.noteDefault}
+                                                {fc.noteDefault}
                                             </p>
                                             <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>

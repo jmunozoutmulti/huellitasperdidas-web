@@ -820,6 +820,21 @@
     background: #ffffff;
 }
 
+/* Texto del usuario en el flyer: letra pequeña, máximo 2 líneas */
+.flyer-desc-note {
+    margin: -1px 0 0 0;
+    padding: 0 0.75em 0.5em;
+    background: #ffffff;
+    color: #333333;
+    font-size: 0.7em;
+    line-height: 1.2;
+    text-align: center;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 .flyer-card {
     text-align: center;
     background: var(--brand-red-alpha);
