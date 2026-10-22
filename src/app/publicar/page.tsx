@@ -1222,7 +1222,7 @@ export default function PublicarPerdidaPage() {
                                             </span>
                                             <div>
                                                 <strong>Agregar más detalles</strong>
-                                                <small>Recompensa, edad y señas distintivas</small>
+                                                <small>Recompensa, edad y otros detalles</small>
                                             </div>
                                         </button>
 
@@ -1887,13 +1887,14 @@ export default function PublicarPerdidaPage() {
                                             </div>
                                         )}
 
+
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
                                             <p className="flyer-thanks-main">
                                                 Ayúdame a  <br />volver a casa  <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
                                             </p>
                                             <p className="flyer-thanks-note">
-                                                {observaciones || 'Cualquier información, por favor comunícate.'}
+                                                Cualquier información, por favor comunícate.
                                             </p>
                                             <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>

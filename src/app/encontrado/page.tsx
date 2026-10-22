@@ -1292,7 +1292,7 @@ export default function PublicarEncontradoPage() {
                                                 Busco a mi <br />familia <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
                                             </p>
                                             <p className="flyer-thanks-note">
-                                                {descripcion || 'Si es tu mascota, por favor comunícate.'}
+                                                Si es tu mascota, por favor comunícate.
                                             </p>
                                             <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>

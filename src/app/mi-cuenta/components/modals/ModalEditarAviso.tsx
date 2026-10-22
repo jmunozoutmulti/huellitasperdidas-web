@@ -1078,7 +1078,7 @@ export default function ModalEditarAviso({
                                                 <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} loading="eager" />
                                             </p>
                                             <p className="flyer-thanks-note">
-                                                {editObservaciones || fc.noteDefault}
+                                                {fc.noteDefault}
                                             </p>
                                             <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>

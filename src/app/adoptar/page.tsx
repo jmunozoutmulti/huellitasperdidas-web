@@ -1068,7 +1068,7 @@ export default function PublicarAdoptarPage() {
                                             </span>
                                             <div>
                                                 <strong>Agregar más detalles</strong>
-                                                <small>Personalidad, historia y edad</small>
+                                                <small>Accesorios, edad y más detalles</small>
                                             </div>
                                         </button>
 
@@ -1727,13 +1727,14 @@ export default function PublicarAdoptarPage() {
                                             </div>
                                         )}
 
+
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
                                             <p className="flyer-thanks-main">
                                                 En busca <br />de un hogar <Image src="/images/logo-light.svg" alt="Huellas Perdidas" width={120} height={40} />
                                             </p>
                                             <p className="flyer-thanks-note">
-                                                {descripcion || 'Si quieres adoptarme, por favor comunícate.'}
+                                                Si quieres adoptarme, por favor comunícate.
                                             </p>
                                             <p className="flyer-thanks-gracias">¡Gracias!</p>
                                         </div>
