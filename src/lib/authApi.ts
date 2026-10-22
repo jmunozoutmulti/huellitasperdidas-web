@@ -17,6 +17,8 @@ export interface AuthApiUser {
     district: string | null;
     avatar: string | null;
     has_password: boolean;
+    // "Ver como usuario": correo del administrador, o null en una sesión normal.
+    impersonated_by?: string | null;
 }
 
 export interface LoginResponse {
@@ -65,6 +67,22 @@ export async function loginUser(email: string, password: string): Promise<LoginR
         // El backend distingue "correo no verificado" con este mensaje exacto —
         // el caller (AuthModal) lo puede detectar leyendo err.message.
         throw new AuthApiError(res.status, data.detail || 'No pudimos iniciar sesión.');
+    }
+    return data;
+}
+
+// "Ver como usuario" (solo lectura): canjea el código de un solo uso con el que
+// el admin abre /ver-como/#code=... por un token de sesión. Se llama sin sesión.
+// Responde igual que el login; 401 si el código caducó o no es válido.
+export async function exchangeImpersonationCode(code: string): Promise<LoginResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/impersonate/exchange`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new AuthApiError(res.status, data.detail || 'El enlace caducó o no es válido.');
     }
     return data;
 }

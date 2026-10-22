@@ -3,6 +3,7 @@ import { Google_Sans } from 'next/font/google';
 import { Outfit } from 'next/font/google';
 import Script from 'next/script';
 import PopupPublicar from '@/components/global/PopupPublicar';
+import ImpersonationBanner from '@/components/global/ImpersonationBanner';
 import { AppProvider } from '@/context/AppContext';
 import 'swiper/css/bundle';
 import './globals.css';
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className={`${google.className} ${outfit.variable}`} suppressHydrationWarning>
         <AppProvider>
           <div className="container">
+            <ImpersonationBanner />
             <Header />
             {children}
             <Footer />

@@ -326,4 +326,11 @@
         color: #ffffff !important;
     }
 
+    .payment-gateway-box .yape-manual {
+        --text-main: #000000;
+        --text-secondary: #555555;
+        --bg-input: #F4F5F7;
+        --border-color: #e0e4e8;
+    }
+
 }

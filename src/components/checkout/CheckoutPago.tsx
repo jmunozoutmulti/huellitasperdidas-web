@@ -8,6 +8,7 @@ import { retryPayment, ReportsApiError } from '@/lib/reportsApi';
 import { showToast } from '@/components/global/Toast';
 import { IconLoader } from '@tabler/icons-react';
 import CheckoutIzipay from './CheckoutIzipay';
+import CheckoutYapeManual from './CheckoutYapeManual';
 import {
     IconCreditCard,
     IconDeviceMobile
@@ -20,6 +21,7 @@ interface CheckoutPagoProps {
     onConfirmed: () => void;       // status: 'paid' — el beneficio ya se aplicó
     onTimeout: () => void;         // pagó, pero no confirmamos en ~15s
     onCancelled: () => void;       // usuario canceló, o la pasarela reportó error/failed
+    onManualPaymentSubmitted?: () => void; // Yape manual: el pago quedó en revisión (si falta, se usa onTimeout)
 }
 
 const POLL_INTERVAL_MS = 1500;
@@ -47,7 +49,7 @@ const PAYMENT_BRICK_CUSTOMIZATION: PaymentBrickProps['customization'] = {
     },
 };
 
-function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed, onTimeout, onCancelled }: CheckoutPagoProps) {
+function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed, onTimeout, onCancelled, onManualPaymentSubmitted }: CheckoutPagoProps) {
     const { currentUser } = useApp();
     const payerEmail = currentUser?.email ?? '';
     const [isPolling, setIsPolling] = useState(false);
@@ -66,6 +68,12 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     // Yape: formulario propio (teléfono + OTP + email), separado del Brick
     // de tarjeta — ambos coexisten como tabs dentro del mismo componente.
     const [activeMethod, setActiveMethod] = useState<'card' | 'yape'>('card');
+
+    // Checkout de Perú con Izipay: tarjeta (primera pestaña, abierta) y Yape
+    // manual. El formulario de Izipay se monta al inicio y después solo se
+    // oculta o se muestra al cambiar de pestaña.
+    const [izipayMethod, setIzipayMethod] = useState<'yape' | 'card'>('card');
+    const [hasOpenedIzipayCard, setHasOpenedIzipayCard] = useState(true);
     const [yapePhone, setYapePhone] = useState('');
     const [yapeOtp, setYapeOtp] = useState('');
     const [yapeEmail, setYapeEmail] = useState(payerEmail);
@@ -328,12 +336,56 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     }
 
     if (payment.gateway === 'izipay') {
+        const openIzipayCard = () => {
+            setIzipayMethod('card');
+            setHasOpenedIzipayCard(true);
+        };
+
         return (
-            <CheckoutIzipay
-                key={payment.payment_id}
-                payment={payment}
-                onResult={handleIzipayResult}
-            />
+            <>
+                <div className="payment-methods-tabs">
+                    <button
+                        type="button"
+                        className={`pay-tab-btn ${izipayMethod === 'card' ? 'active' : ''}`}
+                        onClick={openIzipayCard}
+                    >
+                        <IconCreditCard /> Tarjeta débito / crédito
+                    </button>
+                    <button
+                        type="button"
+                        className={`pay-tab-btn ${izipayMethod === 'yape' ? 'active' : ''}`}
+                        onClick={() => setIzipayMethod('yape')}
+                    >
+                        <IconDeviceMobile /> Yape
+                    </button>
+                </div>
+
+                <div className="payment-methods-content">
+                    <div
+                        className={`pay-method-panel ${izipayMethod === 'yape' ? 'active' : ''}`}
+                        style={{ display: izipayMethod === 'yape' ? 'block' : 'none' }}
+                    >
+                        <CheckoutYapeManual
+                            key={payment.payment_id}
+                            payment={payment}
+                            onSubmitted={onManualPaymentSubmitted ?? onTimeout}
+                        />
+                    </div>
+
+                    <div
+                        className={`pay-method-panel ${izipayMethod === 'card' ? 'active' : ''}`}
+                        style={{ display: izipayMethod === 'card' ? 'block' : 'none' }}
+                    >
+                        {hasOpenedIzipayCard && (
+                            <CheckoutIzipay
+                                key={payment.payment_id}
+                                payment={payment}
+                                onResult={handleIzipayResult}
+                            />
+                        )}
+                    </div>
+                </div>
+            </>
         );
     }
 

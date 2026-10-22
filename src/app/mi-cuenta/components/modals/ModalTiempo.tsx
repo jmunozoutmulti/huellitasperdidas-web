@@ -87,6 +87,12 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
         showToast('Tu pago está siendo confirmado, puede tardar unos minutos. Revisa "Mis avisos" en un momento.', 'info');
     }, [onClose, onExtended]);
 
+    const handleManualPaymentSubmitted = useCallback(() => {
+        onClose();
+        onExtended();
+        showToast('¡Gracias! Verificaremos tu pago y activaremos tu aviso en breve.', 'success');
+    }, [onClose, onExtended]);
+
     const handlePaymentCancelled = useCallback(() => {
         showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
     }, []);
@@ -286,7 +292,7 @@ export default function ModalTiempo({ isOpen, id, onClose, onExtended }: ModalTi
                                     reportId={id}
                                     country={pub?.country}
                                     onConfirmed={handlePaymentConfirmed}
-                                    onTimeout={handlePaymentTimeout}
+                                    onTimeout={handlePaymentTimeout} onManualPaymentSubmitted={handleManualPaymentSubmitted}
                                     onCancelled={handlePaymentCancelled}
                                 />
                                 <span className='text-chat'>¿Problemas con tu pago? <a href="https://tawk.to/chat/6aba144ddff27f343f63f5c8/1k3jduk17?layout=modern" target='blank'>Escríbenos aquí</a> y te ayudamos.</span>
