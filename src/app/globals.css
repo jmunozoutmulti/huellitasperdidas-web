@@ -3140,8 +3140,8 @@ h1 {
   height: 1.1em;
 }
 
-/* El header (sticky en top: 0) baja la altura del aviso mientras se muestra */
-body.is-impersonating .navbar {
+
+body.is-impersonating:not(.is-home) .navbar {
   top: 44px;
 }
 
