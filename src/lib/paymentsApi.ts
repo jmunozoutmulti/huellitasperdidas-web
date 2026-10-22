@@ -117,3 +117,18 @@ export async function confirmIzipayPayment(paymentId: string, krAnswer: string, 
         throw err;
     }
 }
+
+// Yape manual: el usuario yapea al número de la tienda y envía el código de
+// seguridad (app de Yape, 3 dígitos) o el número de operación (app BCP,
+// 8 dígitos). El pago queda "en revisión" hasta que el equipo lo verifique.
+export async function confirmYapeManual(paymentId: string, app: 'yape' | 'bcp', code: string): Promise<void> {
+    try {
+        await authFetchJson<unknown>(`/v1/payments/${paymentId}/yape-manual`, {
+            method: 'POST',
+            body: JSON.stringify({ app, code }),
+        });
+    } catch (err) {
+        if (err instanceof ApiError) throw new PaymentsApiError(err.status, err.message);
+        throw err;
+    }
+}

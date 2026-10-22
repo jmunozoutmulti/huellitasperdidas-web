@@ -2920,6 +2920,142 @@ h1 {
 
 
 
+/* ==========================================
+   CHECKOUT YAPE MANUAL
+   ========================================== */
+.yape-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.yape-manual-pay {
+  display: flex;
+  align-items: center;
+  gap: 1.25em;
+  padding: 1em;
+  background: var(--bg-input);
+  border-radius: 0.75em;
+}
+
+.yape-manual-qr {
+  width: 9em;
+  height: 9em;
+  object-fit: contain;
+  border-radius: 0.5em;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.yape-manual-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  flex: 1;
+  min-width: 0;
+}
+
+.yape-manual-label {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.yape-manual-amount {
+  font-size: 1.6em;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-main);
+}
+
+.yape-manual-number {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  margin-top: 0.5em;
+  padding: 0.6em 0.8em;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5em;
+}
+
+.yape-manual-number-value {
+  display: block;
+  font-size: 1.15em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+}
+
+.yape-manual-number-owner {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.yape-manual-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  flex-shrink: 0;
+  padding: 0.5em 0.9em;
+  border: none;
+  border-radius: 3em;
+  background: var(--brand-red-alpha);
+  color: var(--text-red);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.yape-manual-copy svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.yape-manual-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.yape-manual-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.yape-manual-field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.925em;
+  color: var(--text-secondary);
+}
+
+.yape-manual-field-label img {
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 0.35em;
+}
+
+.yape-manual-error {
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--text-red);
+}
+
+.yape-manual-submit {
+  align-self: flex-end;
+}
+
+.yape-manual-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+
+
 @media screen and (min-width: 1900px) {
   body {
     font-size: 18px;
@@ -3116,6 +3252,32 @@ h1 {
   .terms-checkbox-label {
     gap: 0.8em;
   }
+
+
+  /* ==========================================
+   CHECKOUT YAPE MANUAL
+   ========================================== */
+
+  .yape-manual-pay {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .yape-manual-info {
+    width: 100%;
+    align-items: center;
+  }
+
+  .yape-manual-number {
+    width: 100%;
+    text-align: left;
+  }
+
+  .yape-manual-submit {
+    width: 100%;
+    justify-content: center;
+  }
+
 
 
 }

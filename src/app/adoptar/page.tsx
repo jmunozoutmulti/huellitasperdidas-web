@@ -585,6 +585,11 @@ export default function PublicarAdoptarPage() {
         router.push('/mi-cuenta');
     };
 
+    const handleManualPaymentSubmitted = () => {
+        showToast('¡Gracias! Verificaremos tu pago y activaremos tu aviso en breve.', 'success');
+        router.push('/mi-cuenta');
+    };
+
     const handlePaymentCancelled = () => {
         showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
     };
@@ -1276,7 +1281,7 @@ export default function PublicarAdoptarPage() {
                                                 reportId={createdReportId!}
                                                 country={country}
                                                 onConfirmed={handlePaymentConfirmed}
-                                                onTimeout={handlePaymentTimeout}
+                                                onTimeout={handlePaymentTimeout} onManualPaymentSubmitted={handleManualPaymentSubmitted}
                                                 onCancelled={handlePaymentCancelled}
                                             />
                                         )}

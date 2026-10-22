@@ -380,6 +380,8 @@ export default function PubCard({
     // ============ BODY: upsell (solo activos, solo lost/adoption) ============
     const renderUpsell = () => {
         if (tab !== 'activas' || !plaBadge) return null;
+        // Con un pago en revisión no se puede iniciar otra compra.
+        if (pub.payment_in_review) return renderPaymentInReviewNotice();
         if (paid) {
             return (
                 <div className="admin-flyer-actions">
@@ -472,18 +474,21 @@ export default function PubCard({
         return null;
     };
 
+    // ============ BODY: aviso de pago en revisión (por ejemplo, Yape manual) ============
+    const renderPaymentInReviewNotice = () => (
+        <div className="admin-info-box info-box-revision">
+            <IconClock />
+            <p>
+                <b>Pago en revisión.</b> Estamos verificando tu pago y activaremos tu aviso apenas lo confirmemos.
+            </p>
+        </div>
+    );
+
     // ============ BODY: acción de pago pendiente (terminar de pagar) ============
     const renderPagoPendienteAction = () => {
         if (tab !== 'pago_pendiente') return null;
         if (pub.payment_in_review) {
-            return (
-                <div className="admin-info-box info-box-revision">
-                    <IconClock />
-                    <p>
-                        <b>Pago en revisión.</b> Tu pago todavía se está procesando. Revisa en unos minutos. Si tarda más de 1 hora, contacta a soporte.
-                    </p>
-                </div>
-            );
+            return renderPaymentInReviewNotice();
         }
         return (
             <div className="pub-editor-actions">
@@ -497,6 +502,8 @@ export default function PubCard({
     // ============ BODY: acción de finalizadas (reactivar / republicar) ============
     const renderFinalizadaAction = () => {
         if (tab !== 'finalizadas' || !plaBadge) return null;
+        // Con un pago en revisión (por ejemplo, una reactivación) no se puede iniciar otra compra.
+        if (pub.payment_in_review) return renderPaymentInReviewNotice();
         if (paid) {
             // Reactivar (con el mismo plan) solo si de verdad venció y el
             // usuario no lo detuvo antes de tiempo (confirmado con backend:
@@ -598,16 +605,22 @@ export default function PubCard({
                     <div className="pub-accordion-meta">
                         {pub.district && <span><IconPin /> {[pub.district, pub.province].filter(Boolean).join(', ')}</span>}
                         {tab === 'activas' && paid && pub.expires_at && (
-                            <span
-                                className="pub-accordion-time-left"
-                                role="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onOpenTiempo();
-                                }}
-                            >
-                                <IconHistory /> <u>Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}</u>
-                            </span>
+                            pub.payment_in_review ? (
+                                <span className="pub-accordion-time-left">
+                                    <IconHistory /> Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}
+                                </span>
+                            ) : (
+                                <span
+                                    className="pub-accordion-time-left"
+                                    role="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onOpenTiempo();
+                                    }}
+                                >
+                                    <IconHistory /> <u>Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}</u>
+                                </span>
+                            )
                         )}
                         <span><b>Publicado:</b> {formatFecha(pub.created_at, pub.country)}</span>
                     </div>

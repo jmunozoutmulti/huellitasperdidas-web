@@ -594,6 +594,11 @@ export default function PublicarPerdidaPage() {
         router.push('/mi-cuenta');
     };
 
+    const handleManualPaymentSubmitted = () => {
+        showToast('¡Gracias! Verificaremos tu pago y activaremos tu aviso en breve.', 'success');
+        router.push('/mi-cuenta');
+    };
+
     const handlePaymentCancelled = () => {
         showToast('No pudimos procesar el pago. Puedes intentarlo de nuevo.', 'error');
         // pendingPayment se queda igual — el widget de pago sigue montado
@@ -1438,7 +1443,7 @@ export default function PublicarPerdidaPage() {
                                                 reportId={createdReportId!}
                                                 country={country}
                                                 onConfirmed={handlePaymentConfirmed}
-                                                onTimeout={handlePaymentTimeout}
+                                                onTimeout={handlePaymentTimeout} onManualPaymentSubmitted={handleManualPaymentSubmitted}
                                                 onCancelled={handlePaymentCancelled}
                                             />
                                         )}
