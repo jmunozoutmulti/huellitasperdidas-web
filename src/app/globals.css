@@ -1678,7 +1678,7 @@ h1 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5em;
-  margin-bottom: 1.5em;
+  margin-bottom: 1em;
 }
 
 .pay-tab-btn {
@@ -2883,7 +2883,7 @@ h1 {
 #izipay-payment-form .kr-embedded {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1em;
+  gap: 0.5em;
 }
 
 #izipay-payment-form .kr-embedded>* {
@@ -2903,13 +2903,15 @@ h1 {
   border: none !important;
   color: #ffffff !important;
   border-radius: 3em;
-  padding: 0.8em 1.3em;
+  padding: 0.9em 1.3em;
   height: auto;
   font-size: 1em;
   line-height: 1em;
   cursor: pointer;
   width: fit-content;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: Google Sans !important;
+  font-size: 15px !important;
 }
 
 #izipay-payment-form .kr-payment-button:hover {
@@ -2918,29 +2920,47 @@ h1 {
   box-shadow: 0 6px 20px rgba(255, 77, 77, 0.6);
 }
 
+#izipay-payment-form .kr-input-field,
+#izipay-payment-form .kr-select span,
+#izipay-payment-form .kr-payment-button span {
+  font-size: 15px !important;
+  font-family: Google Sans !important;
+}
+
+
+
 
 
 /* ==========================================
    CHECKOUT YAPE MANUAL
    ========================================== */
 .yape-manual {
-  display: flex;
-  flex-direction: column;
-  gap: 1em;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5em 1em;
+}
+
+.yape-manual>* {
+  grid-column: 1 / -1;
+}
+
+/* Los dos campos (Yape y BCP), lado a lado */
+.yape-manual>.yape-manual-field {
+  grid-column: auto;
 }
 
 .yape-manual-pay {
   display: flex;
   align-items: center;
-  gap: 1.25em;
-  padding: 1em;
+  gap: 1em;
+  padding: 0.75em;
   background: var(--bg-input);
   border-radius: 0.75em;
 }
 
 .yape-manual-qr {
-  width: 9em;
-  height: 9em;
+  width: 7.5em;
+  height: 7.5em;
   object-fit: contain;
   border-radius: 0.5em;
   background: #ffffff;
@@ -2950,7 +2970,7 @@ h1 {
 .yape-manual-info {
   display: flex;
   flex-direction: column;
-  gap: 0.35em;
+  gap: 0.25em;
   flex: 1;
   min-width: 0;
 }
@@ -2961,7 +2981,7 @@ h1 {
 }
 
 .yape-manual-amount {
-  font-size: 1.6em;
+  font-size: 1.4em;
   font-weight: 700;
   line-height: 1.1;
   color: var(--text-main);
@@ -2972,8 +2992,8 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 0.75em;
-  margin-top: 0.5em;
-  padding: 0.6em 0.8em;
+  margin-top: 0.35em;
+  padding: 0.5em 0.75em;
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 0.5em;
@@ -2984,6 +3004,7 @@ h1 {
   font-size: 1.15em;
   font-weight: 700;
   letter-spacing: 0.05em;
+  white-space: nowrap;
   color: var(--text-main);
 }
 
@@ -3003,7 +3024,7 @@ h1 {
   border-radius: 3em;
   background: var(--brand-red-alpha);
   color: var(--text-red);
-  font-size: 0.9em;
+  font-size: 0.875em;
   cursor: pointer;
 }
 
@@ -3013,7 +3034,6 @@ h1 {
 }
 
 .yape-manual-title {
-  margin: 0;
   font-weight: 600;
   color: var(--text-main);
 }
@@ -3022,20 +3042,27 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 0.4em;
+  transition: opacity 0.2s ease;
+}
+
+.yape-manual-field.is-inactive {
+  opacity: 0.3;
 }
 
 .yape-manual-field-label {
   display: flex;
   align-items: center;
-  gap: 0.5em;
-  font-size: 0.925em;
+  gap: 0.4em;
+  font-size: 0.85em;
+  line-height: 1.2;
   color: var(--text-secondary);
 }
 
 .yape-manual-field-label img {
-  width: 1.6em;
-  height: 1.6em;
+  width: 1.5em;
+  height: 1.5em;
   border-radius: 0.35em;
+  flex-shrink: 0;
 }
 
 .yape-manual-error {
@@ -3045,7 +3072,7 @@ h1 {
 }
 
 .yape-manual-submit {
-  align-self: flex-end;
+  justify-self: start;
 }
 
 .yape-manual-submit:disabled {
@@ -3253,10 +3280,20 @@ h1 {
     gap: 0.8em;
   }
 
+  #izipay-payment-form .kr-input-field,
+  #izipay-payment-form .kr-select span {
+    font-size: 13px !important;
+  }
+
+
+
 
   /* ==========================================
    CHECKOUT YAPE MANUAL
    ========================================== */
+  .yape-manual {
+    grid-template-columns: 1fr;
+  }
 
   .yape-manual-pay {
     flex-direction: column;
@@ -3270,14 +3307,15 @@ h1 {
 
   .yape-manual-number {
     width: 100%;
-    text-align: left;
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5em;
   }
 
   .yape-manual-submit {
     width: 100%;
     justify-content: center;
   }
-
 
 
 }

@@ -127,9 +127,10 @@ export default function PetDetailView({ pet, onClose }: PetDetailViewProps) {
             if (swiperRef.current) {
                 swiperRef.current.destroy(true, true);
             }
+            const slideCount = (pet.images && pet.images.length > 0 ? pet.images : [pet.imgSrc]).length;
             swiperRef.current = new Swiper('.detail-swiper', {
                 modules: [Navigation, Pagination],
-                loop: true,
+                loop: slideCount > 1,
                 autoHeight: true,
                 observer: true,
                 observeParents: true,

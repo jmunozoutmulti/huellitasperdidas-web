@@ -19,9 +19,11 @@ interface CheckoutYapeManualProps {
     onSubmitted: () => void;
 }
 
-function formatAmount(amount: number, currency: string): string {
+// La API puede enviar el monto como número (30) o como texto ("30.00").
+function formatAmount(amount: number | string, currency: string): string {
     const symbol = currency === 'PEN' ? 'S/' : currency;
-    return `${symbol} ${amount.toFixed(2)}`;
+    const value = Number(amount);
+    return Number.isFinite(value) ? `${symbol} ${value.toFixed(2)}` : `${symbol} ${amount}`;
 }
 
 export default function CheckoutYapeManual({ payment, onSubmitted }: CheckoutYapeManualProps) {
@@ -91,9 +93,9 @@ export default function CheckoutYapeManual({ payment, onSubmitted }: CheckoutYap
 
             <p className="yape-manual-title">Ingresa la info del pago:</p>
 
-            <div className="yape-manual-field">
+            <div className={`yape-manual-field ${bcpCode.length > 0 ? 'is-inactive' : ''}`}>
                 <label htmlFor="yape-manual-code" className="yape-manual-field-label">
-                    <img src="/images/yape.svg" alt="" /> Yapeaste por la app de Yape (3 dígitos)
+                    <img src="/images/yape.svg" alt="" /> Yapeaste desde Yape (3 dígitos)
                 </label>
                 <input
                     id="yape-manual-code"
@@ -109,9 +111,9 @@ export default function CheckoutYapeManual({ payment, onSubmitted }: CheckoutYap
                 />
             </div>
 
-            <div className="yape-manual-field">
+            <div className={`yape-manual-field ${yapeCode.length > 0 ? 'is-inactive' : ''}`}>
                 <label htmlFor="yape-manual-operation" className="yape-manual-field-label">
-                    <img src="/images/bcp.svg" alt="" /> Yapeaste por la app BCP (8 dígitos)
+                    <img src="/images/bcp.svg" alt="" /> Yapeaste desde BCP (8 dígitos)
                 </label>
                 <input
                     id="yape-manual-operation"

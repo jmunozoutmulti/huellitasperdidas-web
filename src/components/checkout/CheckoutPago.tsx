@@ -69,11 +69,11 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
     // de tarjeta — ambos coexisten como tabs dentro del mismo componente.
     const [activeMethod, setActiveMethod] = useState<'card' | 'yape'>('card');
 
-    // Checkout de Perú con Izipay: Yape manual (primera pestaña) y tarjeta.
-    // El formulario de Izipay se monta la primera vez que se abre su pestaña
-    // y después solo se oculta o se muestra.
-    const [izipayMethod, setIzipayMethod] = useState<'yape' | 'card'>('yape');
-    const [hasOpenedIzipayCard, setHasOpenedIzipayCard] = useState(false);
+    // Checkout de Perú con Izipay: tarjeta (primera pestaña, abierta) y Yape
+    // manual. El formulario de Izipay se monta al inicio y después solo se
+    // oculta o se muestra al cambiar de pestaña.
+    const [izipayMethod, setIzipayMethod] = useState<'yape' | 'card'>('card');
+    const [hasOpenedIzipayCard, setHasOpenedIzipayCard] = useState(true);
     const [yapePhone, setYapePhone] = useState('');
     const [yapeOtp, setYapeOtp] = useState('');
     const [yapeEmail, setYapeEmail] = useState(payerEmail);
@@ -346,17 +346,17 @@ function CheckoutPago({ payment: initialPayment, reportId, country, onConfirmed,
                 <div className="payment-methods-tabs">
                     <button
                         type="button"
-                        className={`pay-tab-btn ${izipayMethod === 'yape' ? 'active' : ''}`}
-                        onClick={() => setIzipayMethod('yape')}
-                    >
-                        <IconDeviceMobile /> Yape
-                    </button>
-                    <button
-                        type="button"
                         className={`pay-tab-btn ${izipayMethod === 'card' ? 'active' : ''}`}
                         onClick={openIzipayCard}
                     >
                         <IconCreditCard /> Tarjeta débito / crédito
+                    </button>
+                    <button
+                        type="button"
+                        className={`pay-tab-btn ${izipayMethod === 'yape' ? 'active' : ''}`}
+                        onClick={() => setIzipayMethod('yape')}
+                    >
+                        <IconDeviceMobile /> Yape
                     </button>
                 </div>
 
