@@ -26,6 +26,7 @@ interface AppContextType {
     usuarioTienePublicacionActiva: boolean;
     centinelaEstaActivo: boolean;
     setCentinelaEstaActivo: (value: boolean) => void;
+    impersonatedBy: string | null; // "Ver como usuario": correo del admin, o null en una sesión normal
     isAuthChecked: boolean;
     updateCurrentUser: (patch: Partial<AuthUser>) => void;
     updateProfile: (patch: { name?: string; last_name_paterno?: string; last_name_materno?: string; phone?: string; country?: string; region?: string; province?: string; district?: string; password?: string; current_password?: string }) => Promise<void>;
@@ -46,6 +47,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const [usuarioTienePublicacionActiva] = useState(false);
     const [centinelaEstaActivo, setCentinelaEstaActivo] = useState(false);
+    const [impersonatedBy, setImpersonatedBy] = useState<string | null>(null);
 
     const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
     const [isCountryDetectionDone, setIsCountryDetectionDone] = useState(false);
@@ -94,6 +96,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 };
                 setCurrentUser(user);
                 setIsLoggedIn(true);
+                setImpersonatedBy(apiUser.impersonated_by ?? null);
                 backfillDetectedCountry(apiUser.country);
                 refreshCentinelaStatus();
             } catch (err) {
@@ -113,6 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const handleUnauthorized = () => {
             setCurrentUser(null);
             setIsLoggedIn(false);
+            setImpersonatedBy(null);
             showToast('Tu sesión expiró. Inicia sesión de nuevo.', 'info');
         };
         window.addEventListener('auth:unauthorized', handleUnauthorized);
@@ -213,6 +217,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         clearAccessToken();
         setCurrentUser(null);
         setIsLoggedIn(false);
+        setImpersonatedBy(null);
         setCentinelaEstaActivo(false);
         showToast('Sesión cerrada', 'info');
     };
@@ -317,6 +322,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 usuarioTienePublicacionActiva,
                 centinelaEstaActivo,
                 setCentinelaEstaActivo,
+                impersonatedBy,
                 isAuthChecked,
                 updateCurrentUser,
                 updateProfile,

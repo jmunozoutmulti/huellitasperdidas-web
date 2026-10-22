@@ -3081,6 +3081,69 @@ h1 {
 }
 
 
+/* ==========================================
+   AVISO "VER COMO USUARIO" (SESIÓN DE ADMINISTRADOR)
+   ========================================== */
+.impersonation-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0 2.5%;
+  background: #1f2937;
+  color: #ffffff;
+  font-size: 0.9em;
+}
+
+.impersonation-banner>svg {
+  width: 1.2em;
+  height: 1.2em;
+  flex-shrink: 0;
+}
+
+.impersonation-banner-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.impersonation-banner-short {
+  display: none;
+}
+
+.impersonation-banner-exit {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  flex-shrink: 0;
+  padding: 0.35em 0.9em;
+  border: none;
+  border-radius: 3em;
+  background: var(--brand-red);
+  color: #ffffff;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.impersonation-banner-exit:hover {
+  background: var(--brand-red-hover);
+}
+
+.impersonation-banner-exit svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* El header (sticky en top: 0) baja la altura del aviso mientras se muestra */
+body.is-impersonating .navbar {
+  top: 44px;
+}
 
 
 @media screen and (min-width: 1900px) {
@@ -3118,6 +3181,16 @@ h1 {
   body {
     font-size: 15px;
   }
+
+  /* El header (sticky en top: 0) baja la altura del aviso mientras se muestra */
+  .impersonation-banner-full {
+    display: none;
+  }
+
+  .impersonation-banner-short {
+    display: inline;
+  }
+
 
   .btn-add>button span {
     display: none;
