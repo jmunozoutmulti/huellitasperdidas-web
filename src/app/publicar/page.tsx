@@ -1222,7 +1222,7 @@ export default function PublicarPerdidaPage() {
                                             </span>
                                             <div>
                                                 <strong>Agregar más detalles</strong>
-                                                <small>Recompensa, edad y señas distintivas</small>
+                                                <small>Recompensa, edad y otros detalles</small>
                                             </div>
                                         </button>
 
@@ -1887,10 +1887,6 @@ export default function PublicarPerdidaPage() {
                                             </div>
                                         )}
 
-                                        {/* 4b. Texto del usuario, en letra pequeña (máximo 2 líneas) */}
-                                        {observaciones.trim() && (
-                                            <p className="flyer-desc-note">{observaciones}</p>
-                                        )}
 
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">

@@ -1286,11 +1286,6 @@ export default function PublicarEncontradoPage() {
                                             </div>
                                         )}
 
-                                        {/* 4b. Texto del usuario, en letra pequeña (máximo 2 líneas) */}
-                                        {descripcion.trim() && (
-                                            <p className="flyer-desc-note">{descripcion}</p>
-                                        )}
-
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
                                             <p className="flyer-thanks-main">

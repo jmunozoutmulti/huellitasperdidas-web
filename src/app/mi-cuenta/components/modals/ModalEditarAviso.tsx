@@ -1071,11 +1071,6 @@ export default function ModalEditarAviso({
                                             </div>
                                         )}
 
-                                        {/* 4b. Texto del usuario, en letra pequeña (máximo 2 líneas) */}
-                                        {editObservaciones.trim() && (
-                                            <p className="flyer-desc-note">{editObservaciones}</p>
-                                        )}
-
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
                                             <p className="flyer-thanks-main">

@@ -1068,7 +1068,7 @@ export default function PublicarAdoptarPage() {
                                             </span>
                                             <div>
                                                 <strong>Agregar más detalles</strong>
-                                                <small>Personalidad, historia y edad</small>
+                                                <small>Accesorios, edad y más detalles</small>
                                             </div>
                                         </button>
 
@@ -1727,10 +1727,6 @@ export default function PublicarAdoptarPage() {
                                             </div>
                                         )}
 
-                                        {/* 4b. Texto del usuario, en letra pequeña (máximo 2 líneas) */}
-                                        {descripcion.trim() && (
-                                            <p className="flyer-desc-note">{descripcion}</p>
-                                        )}
 
                                         {/* 5. Pie */}
                                         <div className="flyer-thanks-band">
