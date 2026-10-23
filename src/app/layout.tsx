@@ -4,6 +4,7 @@ import { Outfit } from 'next/font/google';
 import Script from 'next/script';
 import PopupPublicar from '@/components/global/PopupPublicar';
 import ImpersonationBanner from '@/components/global/ImpersonationBanner';
+import GoogleAdsTag from '@/components/global/GoogleAdsTag';
 import { AppProvider } from '@/context/AppContext';
 import 'swiper/css/bundle';
 import './globals.css';
@@ -59,6 +60,7 @@ export default function RootLayout({
           src="https://accounts.google.com/gsi/client"
           strategy="afterInteractive"
         />
+        <GoogleAdsTag />
       </body>
     </html>
   );
